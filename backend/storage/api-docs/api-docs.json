@@ -138,6 +138,75 @@
                 }
             }
         },
+        "/api/countries": {
+            "get": {
+                "tags": [
+                    "Countries"
+                ],
+                "summary": "Get all countries",
+                "description": "Returns a list of all available countries.",
+                "operationId": "getCountries",
+                "responses": {
+                    "200": {
+                        "description": "Countries fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Countries fetched successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 500
+                                        },
+                                        "data": {
+                                            "nullable": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal Server Error"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/test": {
             "get": {
                 "tags": [
@@ -148,6 +217,9 @@
                 "responses": {
                     "200": {
                         "description": "Ça fonctionne"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
                     }
                 }
             }
@@ -166,6 +238,10 @@
         {
             "name": "Auth",
             "description": "Authentification et création de compte"
+        },
+        {
+            "name": "Countries",
+            "description": "Countries"
         },
         {
             "name": "Test",

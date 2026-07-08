@@ -545,7 +545,35 @@ CREATE TABLE SearchDictionary (
     KEY IX_SearchDictionary_DisplayText (DisplayText),
     KEY IX_SearchDictionary_SourceType_SourceID (SourceType, SourceID)
 ) ENGINE=InnoDB;
+CREATE TABLE UserRefreshTokens (
+    UserRefreshTokenID   INT AUTO_INCREMENT PRIMARY KEY,
+    UserID                INT NOT NULL,
+    UserDeviceID           INT NULL,
 
+    TokenHash             VARCHAR(255) NOT NULL,
+    IPAddress               VARCHAR(45) NULL,
+
+    ExpiresAt               DATETIME NOT NULL,
+    IsRevoked                BOOLEAN NOT NULL DEFAULT FALSE,
+    RevokedAt                DATETIME NULL,
+
+    ReplacedByTokenHash  VARCHAR(255) NULL,
+
+    CreatedAt               DATETIME NOT NULL DEFAULT (UTC_TIMESTAMP()),
+
+    CONSTRAINT FK_UserRefreshTokens_Users
+        FOREIGN KEY (UserID) REFERENCES Users(UserID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_UserRefreshTokens_UserDevices
+        FOREIGN KEY (UserDeviceID) REFERENCES UserDevices(UserDeviceID)
+        ON DELETE CASCADE,
+
+    INDEX IX_UserRefreshTokens_UserID (UserID),
+    INDEX IX_UserRefreshTokens_UserDeviceID (UserDeviceID),
+    INDEX IX_UserRefreshTokens_TokenHash (TokenHash),
+    INDEX IX_UserRefreshTokens_ExpiresAt (ExpiresAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IPGeoLocations (
     IPGeoLocationID INT AUTO_INCREMENT PRIMARY KEY,
     IPAddress       VARCHAR(45) NOT NULL,

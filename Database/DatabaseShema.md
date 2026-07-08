@@ -632,7 +632,19 @@ SearchTermProductStats {
         DATETIME CreatedAt
         DATETIME UpdatedAt
     }
-
+UserRefreshTokens {
+    INT UserRefreshTokenID PK
+    INT UserID FK
+    NVARCHAR Token
+    NVARCHAR TokenHash        "store hash, not raw token"
+    NVARCHAR DeviceInfo
+    NVARCHAR IPAddress
+    DATETIME ExpiresAt
+    BIT IsRevoked
+    DATETIME RevokedAt
+    NVARCHAR ReplacedByToken  "for rotation chain tracking"
+    DATETIME CreatedAt
+}
 ProductRankingFactors {
         INT ProductRankingFactorID PK
 
@@ -744,7 +756,8 @@ Categories ||--o{ CategoryClosure : Descendant
 %%====================================================
 %% CATEGORY ATTRIBUTES
 %%====================================================
-
+UserDevices ||--o{ UserRefreshTokens : issues
+Users ||--o{ UserRefreshTokens : owns
 Categories ||--o{ ProductsConfigAttribute : defines
 
 Units ||--o{ ProductsConfigAttribute : uses_unit

@@ -20,6 +20,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(
+        \App\Repositories\Interface\CountryRepositoryInterface::class,
+        \App\Repositories\sql\CountryRepository::class
+    );
+
+    $this->app->bind(
+        \App\Services\Interface\CountryServiceInterface::class,
+        \App\Services\CountryService::class
+    );
     }
 
     /**

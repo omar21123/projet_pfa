@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use OpenApi\Attributes as OA;
 
 class TestController extends Controller
@@ -15,10 +16,25 @@ class TestController extends Controller
         response: 200,
         description: "Ça fonctionne"
     )]
+    #[OA\Response(
+        response: 500,
+        description: "Internal Server Error"
+    )]
     public function ping()
     {
-        return response()->json([
-            'message' => 'Swagger fonctionne !'
-        ]);
+        try {
+            return response()->json([
+                'message' => 'Swagger fonctionne !'
+            ], 200);
+        } catch (Exception $ex) {
+            return response()->json([
+                'success' => false,
+                'message' => $ex->getMessage(),
+                'exception' => get_class($ex),
+                'file' => $ex->getFile(),
+                'line' => $ex->getLine(),
+                'trace' => $ex->getTraceAsString(),
+            ], 500);
+        }
     }
 }
