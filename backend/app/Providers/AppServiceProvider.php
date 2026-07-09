@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Repositories\Interface\UserRepositoryInterface;
 use App\Repositories\sql\UserRepository;
+use App\Repositories\Interface\RefreshTokenRepositoryInterface;
+use App\Repositories\sql\RefreshTokenRepository;
 use App\Services\AuthService;
 use App\Services\Interface\AuthServiceInterface;
 use App\Services\AccessTokenService;
@@ -35,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(RefreshTokenRepositoryInterface::class, RefreshTokenRepository::class);
         $this->app->bind(
             \App\Repositories\Interface\CountryRepositoryInterface::class,
             \App\Repositories\sql\CountryRepository::class

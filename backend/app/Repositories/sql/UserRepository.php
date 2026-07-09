@@ -5,6 +5,7 @@ namespace App\Repositories\sql;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\UserDto;
+use App\DTOs\Auth\UserStandardInfoDto;
 use App\Repositories\Interface\UserRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -177,16 +178,20 @@ public function phoneNumberExists(string $phoneNumber): bool
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
 
-    public function getRolesForUser(int $userId): array
-    {
-        return DB::select(
-            "SELECT r.RoleID, r.Name, r.Code
-             FROM UserRoles ur
-             INNER JOIN Roles r ON r.RoleID = ur.RoleID
-             WHERE ur.UserID = ?",
-            [$userId]
-        );
-    }
+   public function getRoleForUser(int $userId): string
+{
+    $result = DB::selectOne(
+        "SELECT r.Code
+         FROM UserRoles ur
+         INNER JOIN Roles r ON r.RoleID = ur.RoleID
+         WHERE ur.UserID = ?
+         ORDER BY ur.AssignedAt DESC
+         LIMIT 1",
+        [$userId]
+    );
+
+    return $result?->Code;
+}
 
     public function updateLastLogin(int $id): void
 {
@@ -215,5 +220,20 @@ public function getReadNotificationsCount(int $userId): int
     );
 
     return (int) $row->Total;
+}
+public function getUserStandardInformation(int $userId): ?UserStandardInfoDto
+{
+    $row = DB::selectOne(
+        "SELECT
+            UserID, PublicID, FirstName, LastName, DisplayName, BirthDate, Gender,
+            Email, PhoneNumber, AvatarURL, HasPassword, EmailVerified, PhoneVerified,
+            IsActive, LastLoginAt, CreatedAt, UpdatedAt
+         FROM Users
+         WHERE UserID = ?
+           AND IsDeleted = 0",
+        [$userId]
+    );
+ 
+    return $row ? UserStandardInfoDto::fromDbRow($row) : null;
 }
 }

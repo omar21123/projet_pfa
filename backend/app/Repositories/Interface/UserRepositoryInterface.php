@@ -5,6 +5,7 @@ namespace App\Repositories\Interface;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\UserDto;
+use App\DTOs\Auth\UserStandardInfoDto;
 
 interface UserRepositoryInterface
 {
@@ -30,7 +31,7 @@ interface UserRepositoryInterface
 
     public function updateLastLogin(int $id): void;
 
-    public function getRolesForUser(int $userId): array;
+      public function getRoleForUser(int $userId): string;
     public function emailExists(string $email): bool;
     public function phoneNumberExists(string $phoneNumber): bool;
     public function getLoginInfoByEmail(string $email): ?LoginInfoDto;
@@ -41,4 +42,5 @@ interface UserRepositoryInterface
     int $ttl
 ): void;
 public function getReadNotificationsCount(int $userId): int;
+public function getUserStandardInformation(int $userId): ?UserStandardInfoDto;
 }

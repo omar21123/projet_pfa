@@ -12,6 +12,8 @@ use App\Services\Interface\AuthServiceInterface;
 use App\Services\RefreshTokenService;
 use App\Services\UserService;
 use App\Http\Requests\Auth\CustomerRegisterRequest;
+use App\Http\Requests\Auth\RefreshTokenRequest;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 use Illuminate\Validation\ValidationException;
 
@@ -253,7 +255,8 @@ public function Customerregister(CustomerRegisterRequest $request)
             new OA\Property(property: "displayName", type: "string", example: "Mohammed Bourass"),
             new OA\Property(property: "verify_email", type: "boolean", example: false),
             new OA\Property(property: "verify_phone", type: "boolean", example: false),
-            new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000")
+                new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000"),
+                new OA\Property(property: "role", type: "string", example: "CUSTOMER")
         ]
     )
 )]
@@ -319,6 +322,7 @@ public function CustomerRegisterWeb(CustomerRegisterRequest $request)
 
     return response()->json([
         'message' => 'Compte créé avec succès.',
+         'role' => 'CUSTOMER',
         'access_token' => $accessToken,
         'unreadNotifications' => 0,
         'displayName' => $dto->firstName . ' ' . $dto->lastName,
@@ -440,6 +444,7 @@ public function CustomerRegisterWeb(CustomerRegisterRequest $request)
             new OA\Property(property: "verify_email", type: "boolean", example: false),
             new OA\Property(property: "verify_phone", type: "boolean", example: false),
             new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000"),
+            new OA\Property(property: "role", type: "string", example: "CUSTOMER"),
         ]
     )
 )]
@@ -477,7 +482,8 @@ public function webLogin(LoginRequest $request)
     $this->userService->updateLastLogin($result->userId);
 
     $refreshToken = $this->refreshTokenService->generate();
-    $accessToken = $this->accessTokenService->generate($result->publicId, 'CUSTOMER');
+    $userRole = $this->userService->getRolesForUser($result->userId);
+    $accessToken = $this->accessTokenService->generate($result->publicId, $userRole);
 
     $ttlSeconds = (int) env('JWT_REFRESH_TTL', 2592000);
 
@@ -505,6 +511,7 @@ public function webLogin(LoginRequest $request)
 
     return response()->json([
         'message' => 'Connexion réussie.',
+        'role' => $userRole,
         'access_token' => $accessToken,
         'unreadNotifications' => $unreadNotificationsCount,
         'displayName' => $result->displayName,
@@ -512,5 +519,338 @@ public function webLogin(LoginRequest $request)
         'verify_phone' => $result->phoneVerified,
         'public_id' => $result->publicId,
     ], 201)->withCookie($refreshCookie);
+}
+
+    #[OA\Post(
+        path: "/api/auth/mobile/refresh",
+        tags: ["Auth"],
+        summary: "Rafraîchir le token d'accès (Mobile)",
+        description: "Génère un nouvel access token et un nouveau refresh token à partir du refresh token envoyé dans le corps de la requête. L'ancien refresh token est révoqué (rotation)."
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["refresh_token"],
+            properties: [
+                new OA\Property(property: "refresh_token", type: "string", example: "c8f5a2d4ae9b12..."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 201,
+        description: "Token rafraîchi avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "message", type: "string", example: "Token rafraîchi avec succès."),
+                new OA\Property(property: "access_token", type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."),
+                new OA\Property(property: "refresh_token", type: "string", example: "a1b2c3d4e5f6..."),
+                new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 401,
+        description: "Refresh token invalide, expiré ou révoqué",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "message", type: "string", example: "Refresh token invalide ou expiré.")
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Erreur de validation",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "message", type: "string", example: "The given data was invalid."),
+                new OA\Property(property: "errors", type: "object", example: ["refresh_token" => ["Le refresh token est requis."]])
+            ]
+        )
+    )]
+    public function refresh(RefreshTokenRequest $request)
+    {
+        $data = $request->validated();
+
+        $rawToken = $data['refresh_token'];
+        $CurrentRefreshTokenDTO = $this->userService->findActiveByTokenHash($this->refreshTokenService->hash($rawToken));
+        if(!$CurrentRefreshTokenDTO){
+            return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+        }
+        if($CurrentRefreshTokenDTO->isRevoked) {
+            return response()->json(['message' => 'Refresh token révoqué.'], 401);
+        }
+        if($CurrentRefreshTokenDTO->expiresAt < now()) {
+            return response()->json(['message' => 'Refresh token expiré.'], 401);
+        }
+        $user = $this->userService->getUserStandardInformation($CurrentRefreshTokenDTO->userId);
+        if(!$user) {
+            return response()->json(['message' => 'Utilisateur non trouvé.'], 404);
+        }
+        if($user->isActive === false) {
+            return response()->json(['message' => 'account suspendu.'], 403);
+        }
+        $userRole = $this->userService->getRolesForUser($CurrentRefreshTokenDTO->userId);
+        $NewRefreshToken = $this->refreshTokenService->generate();
+        $NewAccessToken = $this->accessTokenService->generate($user->publicId, $userRole);
+        $this->userService->revokeByTokenHash($CurrentRefreshTokenDTO->tokenHash, $NewRefreshToken['token_hash']);
+        $this->userService->createRefreshToken(
+            $CurrentRefreshTokenDTO->userId,
+            $NewRefreshToken['token_hash'],
+            request()->ip(),
+            (int) env('JWT_REFRESH_TTL', 2592000)
+        );
+        return response()->json([
+            'message' => 'Token rafraîchi avec succès.',
+            'access_token' => $NewAccessToken,
+            'refresh_token' => $NewRefreshToken['token'],
+            'public_id' => $user->publicId,
+        ], 201);
+    }
+
+    #[OA\Post(
+        path: "/api/auth/web/refresh",
+        tags: ["Auth"],
+        summary: "Rafraîchir le token d'accès (Web)",
+        description: "Lit le refresh token depuis le cookie HttpOnly (aucun corps de requête requis). Génère un nouvel access token et fait tourner (rotate) le refresh token via un nouveau cookie HttpOnly.",
+        security: [["cookieAuth" => []]]
+    )]
+    #[OA\Response(
+        response: 201,
+        description: "Token rafraîchi avec succès. Un nouveau cookie refresh_token est défini via Set-Cookie.",
+        headers: [
+            new OA\Header(
+                header: "Set-Cookie",
+                description: "Cookie HttpOnly, Secure, SameSite=Strict contenant le nouveau refresh token.",
+                schema: new OA\Schema(
+                    type: "string",
+                    example: "refresh_token=a1b2c3d4e5f6...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                )
+            )
+        ],
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "message", type: "string", example: "Token rafraîchi avec succès."),
+                new OA\Property(property: "access_token", type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."),
+                new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 401,
+        description: "Cookie refresh_token manquant, invalide, expiré ou révoqué",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "message", type: "string", example: "Refresh token invalide ou expiré.")
+            ]
+        )
+    )]
+    public function webRefresh(Request $request)
+    {
+        $rawToken = $request->cookie('refresh_token');
+
+        if (!$rawToken) {
+            return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+        }
+
+        $CurrentRefreshTokenDTO = $this->userService->findActiveByTokenHash($this->refreshTokenService->hash($rawToken));
+        if (!$CurrentRefreshTokenDTO) {
+            return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+        }
+        if ($CurrentRefreshTokenDTO->isRevoked) {
+            return response()->json(['message' => 'Refresh token révoqué.'], 401);
+        }
+        if ($CurrentRefreshTokenDTO->expiresAt < now()) {
+            return response()->json(['message' => 'Refresh token expiré.'], 401);
+        }
+
+        $user = $this->userService->getUserStandardInformation($CurrentRefreshTokenDTO->userId);
+        if (!$user) {
+            return response()->json(['message' => 'Utilisateur non trouvé.'], 404);
+        }
+        if ($user->isActive === false) {
+            return response()->json(['message' => 'account suspendu.'], 403);
+        }
+
+        $userRole = $this->userService->getRolesForUser($CurrentRefreshTokenDTO->userId);
+        $NewRefreshToken = $this->refreshTokenService->generate();
+        $NewAccessToken = $this->accessTokenService->generate($user->publicId, $userRole);
+
+        $this->userService->revokeByTokenHash($CurrentRefreshTokenDTO->tokenHash, $NewRefreshToken['token_hash']);
+
+        $ttlSeconds = (int) env('JWT_REFRESH_TTL', 2592000);
+
+        $this->userService->createRefreshToken(
+            $CurrentRefreshTokenDTO->userId,
+            $NewRefreshToken['token_hash'],
+            request()->ip(),
+            $ttlSeconds
+        );
+
+        // Laravel's cookie() helper expects minutes, not seconds
+        $refreshCookie = cookie(
+            'refresh_token',                // name
+            $NewRefreshToken['token'],      // value
+            (int) ($ttlSeconds / 60),       // minutes
+            '/',                             // path
+            null,                            // domain (null = current domain)
+            true,                            // secure (HTTPS only — keep true in prod)
+            true,                            // httpOnly
+            false,                           // raw
+            'Strict'                         // sameSite
+        );
+
+        return response()->json([
+            'message' => 'Token rafraîchi avec succès.',
+            'access_token' => $NewAccessToken,
+            'public_id' => $user->publicId,
+        ], 201)->withCookie($refreshCookie);
+    }
+    #[OA\Post(
+    path: "/api/auth/mobile/logout",
+    tags: ["Auth"],
+    summary: "Déconnexion utilisateur (Mobile)",
+    description: "Révoque le refresh token envoyé dans le corps de la requête. L'access token reste valide jusqu'à expiration (stateless), seule la rotation future est bloquée."
+)]
+#[OA\RequestBody(
+    required: true,
+    content: new OA\JsonContent(
+        required: ["refresh_token"],
+        properties: [
+            new OA\Property(property: "refresh_token", type: "string", example: "c8f5a2d4ae9b12..."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 200,
+    description: "Déconnexion réussie",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Déconnexion réussie."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 401,
+    description: "Refresh token invalide ou déjà révoqué",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Refresh token invalide ou expiré.")
+        ]
+    )
+)]
+#[OA\Response(
+    response: 422,
+    description: "Erreur de validation",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "The given data was invalid."),
+            new OA\Property(property: "errors", type: "object", example: ["refresh_token" => ["Le refresh token est requis."]])
+        ]
+    )
+)]
+public function logout(RefreshTokenRequest $request)
+{
+        $data = $request->validated();
+
+        $rawToken = $data['refresh_token'];
+        $CurrentRefreshTokenDTO = $this->userService->findActiveByTokenHash($this->refreshTokenService->hash($rawToken));
+        if(!$CurrentRefreshTokenDTO){
+            return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+        }
+        if($CurrentRefreshTokenDTO->isRevoked) {
+            return response()->json(['message' => 'Refresh token révoqué.'], 401);
+        }
+        if($CurrentRefreshTokenDTO->expiresAt < now()) {
+            return response()->json(['message' => 'Refresh token expiré.'], 401);
+        }
+        $user = $this->userService->getUserStandardInformation($CurrentRefreshTokenDTO->userId);
+        if(!$user) {
+            return response()->json(['message' => 'Utilisateur non trouvé.'], 404);
+        }
+        if($user->isActive === false) {
+            return response()->json(['message' => 'account suspendu.'], 403);
+        }
+   $this->userService->revokeByTokenHash($CurrentRefreshTokenDTO->tokenHash, null);
+   return response()->json(['message' => 'Déconnexion réussie.'], 200);
+}
+
+#[OA\Post(
+    path: "/api/auth/web/logout",
+    tags: ["Auth"],
+    summary: "Déconnexion utilisateur (Web)",
+    description: "Lit le refresh token depuis le cookie HttpOnly, le révoque côté serveur, puis efface le cookie.",
+    security: [["cookieAuth" => []]]
+)]
+#[OA\Response(
+    response: 200,
+    description: "Déconnexion réussie. Le cookie refresh_token est effacé via Set-Cookie.",
+    headers: [
+        new OA\Header(
+            header: "Set-Cookie",
+            description: "Cookie refresh_token expiré (Max-Age=0) pour effacement côté client.",
+            schema: new OA\Schema(
+                type: "string",
+                example: "refresh_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0"
+            )
+        )
+    ],
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Déconnexion réussie."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 401,
+    description: "Cookie refresh_token manquant, invalide ou déjà révoqué",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Refresh token invalide ou expiré.")
+        ]
+    )
+)]
+public function webLogout(Request $request)
+{
+    $rawToken = $request->cookie('refresh_token');
+
+    if (!$rawToken) {
+        return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+    }
+
+    $CurrentRefreshTokenDTO = $this->userService->findActiveByTokenHash($this->refreshTokenService->hash($rawToken));
+    if (!$CurrentRefreshTokenDTO) {
+        return response()->json(['message' => 'Refresh token invalide ou expiré.'], 401);
+    }
+    if ($CurrentRefreshTokenDTO->isRevoked) {
+        return response()->json(['message' => 'Refresh token révoqué.'], 401);
+    }
+    if ($CurrentRefreshTokenDTO->expiresAt < now()) {
+        return response()->json(['message' => 'Refresh token expiré.'], 401);
+    }
+
+    $user = $this->userService->getUserStandardInformation($CurrentRefreshTokenDTO->userId);
+    if (!$user) {
+        return response()->json(['message' => 'Utilisateur non trouvé.'], 404);
+    }
+    if ($user->isActive === false) {
+        return response()->json(['message' => 'account suspendu.'], 403);
+    }
+
+    $this->userService->revokeByTokenHash($CurrentRefreshTokenDTO->tokenHash, null);
+
+    // Laravel's cookie() helper expects minutes, not seconds
+    $emptyCookie = cookie(
+        'refresh_token', // name
+        '',               // value (empty)
+        -1,               // minutes (negative = expire immediately)
+        '/',              // path
+        null,             // domain (null = current domain)
+        true,             // secure
+        true,             // httpOnly
+        false,            // raw
+        'Strict'          // sameSite
+    );
+
+    return response()->json(['message' => 'Déconnexion réussie.'], 200)->withCookie($emptyCookie);
 }
 }
