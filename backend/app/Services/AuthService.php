@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Auth\LoginDto;
+use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\TokenResponseDto;
 use App\DTOs\Auth\UserDto;
@@ -18,7 +19,23 @@ class AuthService implements AuthServiceInterface
     public function __construct(private UserRepositoryInterface $userRepository)
     {
     }
+    public function createCustomer(
+    RegisterDto $dto,
+    string $tokenHash,
+    ?string $ipAddress,
+    int $ttl
+): string
+{
+    $passwordHash = Hash::make($dto->password);
 
+    return $this->userRepository->createCustomerUser(
+        $dto,
+        $passwordHash,
+        $tokenHash,
+        $ipAddress,
+        $ttl
+    );
+}
     public function register(RegisterDto $dto): TokenResponseDto
     {
         return DB::transaction(function () use ($dto) {
@@ -48,25 +65,22 @@ class AuthService implements AuthServiceInterface
         });
     }
 
-    public function login(LoginDto $dto): TokenResponseDto
+    public function login(LoginDto $dto): LoginInfoDto
     {
-        $user = $this->userRepository->findByEmail($dto->email);
+        $user = $this->userRepository->getLoginInfoByEmail($dto->email);
 
-        if (!$user || !Hash::check($dto->password, $user->passwordHash)) {
+        if (!$user) {
             throw ValidationException::withMessages([
                 'email' => ['Identifiants invalides.'],
             ]);
         }
-
-        if (!$user->isActive || $user->isDeleted) {
-            throw ValidationException::withMessages([
-                'email' => ['Ce compte est désactivé.'],
-            ]);
+        if(Hash::check($dto->password, $user->passwordHash))
+        {
+            return $user;
         }
-
-        $this->userRepository->updateLastLogin($user->id);
-
-        return new TokenResponseDto($user, $this->generateToken($user));
+        throw ValidationException::withMessages([
+            'email' => ['Identifiants invalides.'],
+        ]);
     }
 
     private function generateToken(UserDto $user): string

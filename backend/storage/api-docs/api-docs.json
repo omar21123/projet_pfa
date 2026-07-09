@@ -6,13 +6,14 @@
         "version": "1.0.0"
     },
     "paths": {
-        "/api/auth/register": {
+        "/api/auth/mobile/register": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Créer un compte utilisateur",
-                "operationId": "d764dd091cc4494ae0baf360b03319f3",
+                "summary": "Créer un compte client",
+                "description": "Création d'un compte client avec génération d'un utilisateur, profil client et refresh token.",
+                "operationId": "2aa54c02ee2535b3e3acfe3397209cf0",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -22,22 +23,21 @@
                                     "first_name",
                                     "last_name",
                                     "email",
-                                    "password",
-                                    "account_type"
+                                    "password"
                                 ],
                                 "properties": {
                                     "first_name": {
                                         "type": "string",
-                                        "example": "Ali"
+                                        "example": "Mohammed"
                                     },
                                     "last_name": {
                                         "type": "string",
-                                        "example": "Benali"
+                                        "example": "Bourass"
                                     },
                                     "email": {
                                         "type": "string",
                                         "format": "email",
-                                        "example": "ali@example.com"
+                                        "example": "mohammed@example.com"
                                     },
                                     "password": {
                                         "type": "string",
@@ -46,32 +46,24 @@
                                     },
                                     "phone_number": {
                                         "type": "string",
-                                        "example": "+212600000000",
+                                        "example": "+212612345678",
                                         "nullable": true
                                     },
                                     "birth_date": {
                                         "type": "string",
                                         "format": "date",
-                                        "example": "1998-04-12",
+                                        "example": "2002-05-15",
                                         "nullable": true
                                     },
                                     "gender": {
+                                        "description": "1: Male, 2: Female",
                                         "type": "integer",
                                         "example": 1,
                                         "nullable": true
                                     },
-                                    "account_type": {
+                                    "avatar_url": {
                                         "type": "string",
-                                        "example": "customer"
-                                    },
-                                    "store_name": {
-                                        "type": "string",
-                                        "example": "My Store",
-                                        "nullable": true
-                                    },
-                                    "store_description": {
-                                        "type": "string",
-                                        "example": "Boutique en ligne",
+                                        "example": "https://example.com/avatar.png",
                                         "nullable": true
                                     }
                                 },
@@ -82,18 +74,219 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Compte créé avec succès"
+                        "description": "Compte créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte créé avec succès."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "Refresh_token": {
+                                            "type": "string",
+                                            "example": "c8f5a2d4ae9b12..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "verify_email": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "verify_phone": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Cet email existe déjà."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
-        "/api/auth/login": {
+        "/api/auth/web/customer/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Créer un compte client (Web)",
+                "description": "Création d'un compte client avec génération d'un utilisateur et d'un profil client. Le refresh token est stocké dans un cookie HttpOnly sécurisé et n'est pas retourné dans le corps de la réponse.",
+                "operationId": "1e4fa7a03c825cccc00e8e07a0618b33",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "first_name",
+                                    "last_name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "first_name": {
+                                        "type": "string",
+                                        "example": "Mohammed"
+                                    },
+                                    "last_name": {
+                                        "type": "string",
+                                        "example": "Bourass"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "mohammed@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Password123!"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "+212612345678",
+                                        "nullable": true
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2002-05-15",
+                                        "nullable": true
+                                    },
+                                    "gender": {
+                                        "description": "1: Male, 2: Female",
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "avatar_url": {
+                                        "type": "string",
+                                        "example": "https://example.com/avatar.png",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Compte créé avec succès. Le refresh token est défini via un cookie HttpOnly (non présent dans le corps de la réponse).",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Cookie HttpOnly, Secure, SameSite=Strict contenant le refresh token.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "refresh_token=c8f5a2d4ae9b12...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte créé avec succès."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "verify_email": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "verify_phone": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Cet email existe déjà."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/mobile/login": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Connexion utilisateur",
-                "operationId": "8dcb70df1020986038d098cc08d05dae",
+                "description": "Authentification d'un client avec email et mot de passe. Retourne un access token et un refresh token.",
+                "operationId": "b21191224723f454592aba448428bcae",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -121,8 +314,213 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "Connexion réussie"
+                    "201": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "unreadNotifications": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "Refresh_token": {
+                                            "type": "string",
+                                            "example": "c8f5a2d4ae9b12..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "verify_email": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "verify_phone": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Identifiants invalides",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Identifiants invalides."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "L'email est requis."
+                                                ],
+                                                "password": [
+                                                    "Le mot de passe est requis."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/web/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Connexion utilisateur (Web)",
+                "description": "Authentification d'un client avec email et mot de passe. Retourne un access token dans le body et un refresh token dans un cookie HttpOnly.",
+                "operationId": "c671516d0fceddc3bd016751e4687cfb",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "ali@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Password123!"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "unreadNotifications": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "verify_email": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "verify_phone": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Identifiants invalides",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Identifiants invalides."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "L'email est requis."
+                                                ],
+                                                "password": [
+                                                    "Le mot de passe est requis."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -12,9 +12,7 @@ readonly class RegisterDto
         public ?string $phoneNumber,
         public ?string $birthDate,
         public ?int $gender,
-        public string $accountType,     // 'customer' | 'vendor'
-        public ?string $storeName,
-        public ?string $storeDescription,
+        public ?string $avatarUrl,
     ) {
     }
 
@@ -28,9 +26,7 @@ readonly class RegisterDto
             phoneNumber: $data['phone_number'] ?? null,
             birthDate: $data['birth_date'] ?? null,
             gender: $data['gender'] ?? null,
-            accountType: $data['account_type'],
-            storeName: $data['store_name'] ?? null,
-            storeDescription: $data['store_description'] ?? null,
+            avatarUrl: $data['avatar_url'] ?? null,
         );
     }
 }

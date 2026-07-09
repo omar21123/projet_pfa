@@ -9,7 +9,6 @@ readonly class LoginDto
         public string $password,
     ) {
     }
-
     public static function fromArray(array $data): self
     {
         return new self(

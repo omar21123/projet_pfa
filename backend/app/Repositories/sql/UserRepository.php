@@ -2,6 +2,7 @@
 
 namespace App\Repositories\sql;
 
+use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\UserDto;
 use App\Repositories\Interface\UserRepositoryInterface;
@@ -44,7 +45,74 @@ class UserRepository implements UserRepositoryInterface
 
         return (int) $result[0]->UserID;
     }
+     
+    public function createCustomerUser(
+    RegisterDto $dto,
+    string $passwordHash,
+    string $tokenHash,
+    ?string $ipAddress,
+    int $ttl
+): string
+{
+    try {
 
+        $result = DB::select(
+            'CALL sp_CreateCustomerUser(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $dto->firstName,
+                $dto->lastName,
+                $dto->birthDate,
+                $dto->gender,
+                $dto->email,
+                $dto->phoneNumber,
+                $passwordHash,
+                $dto->avatarUrl,
+                $tokenHash,
+                $ipAddress,
+                $ttl,
+            ]
+        );
+
+        return $result[0]->PublicID;
+
+    } catch (\Throwable $e) {
+
+        throw new \Exception(
+            'Failed to create customer user. ' . $e->getMessage(),
+            0,
+            $e
+        );
+    }
+}
+    public function emailExists(string $email): bool
+{
+    $result = DB::selectOne(
+        "SELECT EXISTS(
+            SELECT 1
+            FROM Users
+            WHERE Email = ?
+              AND IsDeleted = 0
+        ) AS ExistsFlag",
+        [$email]
+    );
+
+    return (bool) $result->ExistsFlag;
+}
+
+public function phoneNumberExists(string $phoneNumber): bool
+{
+    $result = DB::selectOne(
+        "SELECT EXISTS(
+            SELECT 1
+            FROM Users
+            WHERE PhoneNumber = ?
+              AND IsDeleted = 0
+        ) AS ExistsFlag",
+        [$phoneNumber]
+    );
+
+    return (bool) $result->ExistsFlag;
+}
     public function getRoleIdByCode(string $code): ?int
     {
         $row = DB::selectOne("SELECT RoleID FROM Roles WHERE Code = ?", [$code]);
@@ -92,20 +160,21 @@ class UserRepository implements UserRepositoryInterface
 
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
+    public function getLoginInfoByEmail(string $email): ?LoginInfoDto
+{
+    $rows = DB::select('CALL GetLoginInfoByEmail(?)', [$email]);
 
+    if (empty($rows)) {
+        return null;
+    }
+
+    return LoginInfoDto::fromDbRows($rows);
+}
     public function findById(int $id): ?UserDto
     {
         $row = DB::selectOne("SELECT * FROM Users WHERE UserID = ?", [$id]);
 
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
-    }
-
-    public function updateLastLogin(int $id): void
-    {
-        DB::update(
-            "UPDATE Users SET LastLoginAt = ? WHERE UserID = ?",
-            [now()->format('Y-m-d H:i:s'), $id]
-        );
     }
 
     public function getRolesForUser(int $userId): array
@@ -118,4 +187,33 @@ class UserRepository implements UserRepositoryInterface
             [$userId]
         );
     }
+
+    public function updateLastLogin(int $id): void
+{
+    DB::update(
+        "UPDATE Users SET LastLoginAt = ? WHERE UserID = ?",
+        [now()->format('Y-m-d H:i:s'), $id]
+    );
+}
+
+public function createRefreshToken(
+    int $userId,
+    string $tokenHash,
+    ?string $ipAddress,
+    int $ttl
+): void {
+    DB::insert(
+        'CALL sp_CreateRefreshToken(?, ?, ?, ?)',
+        [$userId, $tokenHash, $ipAddress, $ttl]
+    );
+}
+public function getReadNotificationsCount(int $userId): int
+{
+    $row = DB::selectOne(
+        "SELECT COUNT(*) AS Total FROM Notifications WHERE IsRead = 1 AND UserID = ?",
+        [$userId]
+    );
+
+    return (int) $row->Total;
+}
 }

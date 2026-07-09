@@ -6,6 +6,8 @@ use App\Repositories\Interface\UserRepositoryInterface;
 use App\Repositories\sql\UserRepository;
 use App\Services\AuthService;
 use App\Services\Interface\AuthServiceInterface;
+use App\Services\AccessTokenService;
+use App\Services\RefreshTokenService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -18,17 +20,34 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(AccessTokenService::class, function () {
+            return new AccessTokenService(
+                secret: config('jwt.secret'),
+                ttl: config('jwt.access_ttl'),
+            );
+        });
+
+        $this->app->singleton(RefreshTokenService::class, function () {
+            return new RefreshTokenService(
+                ttl: config('jwt.refresh_ttl'),
+            );
+        });
+
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(
-        \App\Repositories\Interface\CountryRepositoryInterface::class,
-        \App\Repositories\sql\CountryRepository::class
-    );
+            \App\Repositories\Interface\CountryRepositoryInterface::class,
+            \App\Repositories\sql\CountryRepository::class
+        );
 
-    $this->app->bind(
-        \App\Services\Interface\CountryServiceInterface::class,
-        \App\Services\CountryService::class
-    );
+        $this->app->bind(
+            \App\Services\Interface\CountryServiceInterface::class,
+            \App\Services\CountryService::class
+        );
+         $this->app->bind(
+            \App\Services\Interface\UserServiceInterface::class,
+            \App\Services\UserService::class
+        );
     }
 
     /**
@@ -40,5 +59,10 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(2)
                 ->by($request->user()?->id ?: $request->ip());
         });
+        // AppServiceProvider::boot()
+
+RateLimiter::for('auth', function (Request $request) {
+    return Limit::perMinute(5)->by($request->ip());
+});
     }
 }
