@@ -71,7 +71,7 @@ class AuthService implements AuthServiceInterface
 
         if (!$user) {
             throw ValidationException::withMessages([
-                'email' => ['Identifiants invalides.'],
+                'message' => ['Identifiants invalides.'],
             ]);
         }
         if(Hash::check($dto->password, $user->passwordHash))
@@ -79,7 +79,7 @@ class AuthService implements AuthServiceInterface
             return $user;
         }
         throw ValidationException::withMessages([
-            'email' => ['Identifiants invalides.'],
+            'message' => ['Identifiants invalides.'],
         ]);
     }
 

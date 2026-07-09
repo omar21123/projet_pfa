@@ -106,6 +106,7 @@ CREATE PROCEDURE GetLoginInfoByEmail (
 )
 BEGIN
     SELECT 
+         u.UserID as userId,
         u.PublicID,
         u.DisplayName,
         u.PhoneNumber,

@@ -390,7 +390,7 @@ public function CustomerRegisterWeb(CustomerRegisterRequest $request)
         $dto = LoginDto::fromArray($request->validated());
          if (!$this->userService->emailExists($data['email'])) {
           throw ValidationException::withMessages([
-                'email' => ['Identifiants invalides.'],
+                'message' => ['Identifiants invalides.'],
             ]);
          }
         $result = $this->authService->login($dto);
@@ -474,7 +474,7 @@ public function webLogin(LoginRequest $request)
 
     if (!$this->userService->emailExists($data['email'])) {
         throw ValidationException::withMessages([
-            'email' => ['Identifiants invalides.'],
+            'message' => ['Identifiants invalides.'],
         ]);
     }
 
