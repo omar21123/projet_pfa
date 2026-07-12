@@ -6,5 +6,11 @@ use App\DTOs\Admin\CreateAdminDto;
 
 interface AdminRepositoryInterface
 {
-    public function createAdmin(CreateAdminDto $dto): object|null;
+    public function createAdminUser(
+    CreateAdminDto $dto,
+    string $passwordHash,
+    string $tokenHash,
+    ?string $ipAddress,
+    int $ttl
+): string;
 }

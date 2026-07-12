@@ -9,28 +9,47 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminRepository implements AdminRepositoryInterface
 {
-    public function createAdmin(CreateAdminDto $dto): object|null
-    {
-        return DB::transaction(function () use ($dto) {
-            // Insertion de l'utilisateur avec le privilège Admin en SQL Brut
-            DB::insert("
-                INSERT INTO users (FirstName, LastName, Email, Password, PhoneNumber, Role, IsActive, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-            ", [
+public function createAdminUser(
+    CreateAdminDto $dto,
+    string $passwordHash,
+    string $tokenHash,
+    ?string $ipAddress,
+    int $ttl
+): string
+{
+    try {
+
+        $result = DB::select(
+            'CALL SP_CreateAdminUser(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
                 $dto->firstName,
                 $dto->lastName,
+                $dto->birthDate,
+                $dto->gender,
                 $dto->email,
-                Hash::make($dto->password), // Chiffrement du mot de passe
                 $dto->phoneNumber,
-                'admin', // Assigne directement le rôle requis capté par ton middleware
-                now(),
-                now()
-            ]);
+                $dto->cin,
+                $dto->employeeNumber,
+                $dto->position,
+                $passwordHash,
+                $dto->hireDate,
+                $dto->identityVerified ? 1 : 0,
+                $dto->avatarUrl,
+                $tokenHash,
+                $ipAddress,
+                $ttl,
+            ]
+        );
 
-            $adminId = DB::getPdo()->lastInsertId();
+        return $result[0]->PublicID;
 
-            $result = DB::select("SELECT UserID, FirstName, LastName, Email, Role FROM users WHERE UserID = ? LIMIT 1", [$adminId]);
-            return !empty($result) ? $result[0] : null;
-        });
+    } catch (\Throwable $e) {
+
+        throw new \Exception(
+            'Failed to create admin user. ' . $e->getMessage(),
+            0,
+            $e
+        );
     }
+}
 }

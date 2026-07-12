@@ -41,7 +41,7 @@ Route::prefix('categories')->group(function () {
     Route::get('/{id}', [CategoryController::class, 'show']);
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
-    Route::middleware(['jwt.admin', 'role:ADMIN'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/', [CategoryController::class, 'store']);
         //Route::put('/{id}', [CategoryController::class, 'update']);
         Route::put('/{id}/status', [CategoryController::class, 'updateStatus']);
@@ -50,7 +50,7 @@ Route::prefix('categories')->group(function () {
 
 });
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
-    Route::post('/users', [AdminController::class, 'store']); // Ajouter un nouvel admin
+    Route::post('/register', [AdminController::class, 'store']); // Ajouter un nouvel admin
 });
 
 Route::get('/countries', [CountryController::class, 'index']);

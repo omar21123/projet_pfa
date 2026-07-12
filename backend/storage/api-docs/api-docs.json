@@ -7,19 +7,22 @@
     },
     "servers": [
         {
-            "url": "http://127.0.0.1:8000",
+            "url": "http://localhost",
             "description": "Serveur local"
+        },
+        {
+            "url": "http://127.0.0.1:8000"
         }
     ],
     "paths": {
-        "/api/admin/users": {
+        "/api/admin/register": {
             "post": {
                 "tags": [
                     "Administration"
                 ],
                 "summary": "Ajouter un nouvel administrateur",
-                "description": "Permet à un admin existant de créer un nouveau compte administrateur.",
-                "operationId": "93210dfded45ed7253ec243765ec447c",
+                "description": "Permet à un admin existant de créer un nouveau compte administrateur. Le hash du mot de passe, le token de rafraîchissement, l'adresse IP et la durée de vie (TTL) sont générés/déterminés côté serveur et ne font pas partie du corps de la requête.",
+                "operationId": "fa0ee56a9baa88b782a16c45ae2fbd26",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -34,25 +37,74 @@
                                 "properties": {
                                     "first_name": {
                                         "type": "string",
-                                        "example": "Jean"
+                                        "example": "Jean",
+                                        "maxLength": 100
                                     },
                                     "last_name": {
                                         "type": "string",
-                                        "example": "Dupont"
+                                        "example": "Dupont",
+                                        "maxLength": 100
                                     },
                                     "email": {
                                         "type": "string",
                                         "format": "email",
-                                        "example": "j.dupont@company.com"
+                                        "example": "j.dupont@company.com",
+                                        "maxLength": 255
                                     },
                                     "password": {
                                         "type": "string",
                                         "format": "password",
-                                        "example": "Secret123*"
+                                        "example": "Secret123*",
+                                        "minLength": 8
                                     },
                                     "phone_number": {
                                         "type": "string",
-                                        "example": "+33612345678"
+                                        "example": "+33612345678",
+                                        "nullable": true,
+                                        "maxLength": 30
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "1990-04-12",
+                                        "nullable": true
+                                    },
+                                    "gender": {
+                                        "description": "1: Male, 2: Female",
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "cin": {
+                                        "description": "Carte d'identité nationale",
+                                        "type": "string",
+                                        "example": "AB123456",
+                                        "nullable": true,
+                                        "maxLength": 30
+                                    },
+                                    "employee_number": {
+                                        "type": "string",
+                                        "example": "EMP-0042",
+                                        "nullable": true,
+                                        "maxLength": 30
+                                    },
+                                    "position": {
+                                        "type": "string",
+                                        "example": "Support Manager",
+                                        "nullable": true,
+                                        "maxLength": 30
+                                    },
+                                    "hire_date": {
+                                        "description": "Défaut : date/heure actuelle si non fournie.",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-07-12 09:00:00",
+                                        "nullable": true
+                                    },
+                                    "avatar_url": {
+                                        "type": "string",
+                                        "example": "https://example.com/avatar.png",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -62,16 +114,115 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Nouvel administrateur créé avec succès"
+                        "description": "Nouvel administrateur créé avec succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Administrateur créé avec succès."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "refresh_token": {
+                                            "type": "string",
+                                            "example": "c8f5a2d4ae9b12..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Jean Dupont"
+                                        },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "ADMIN"
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "401": {
-                        "description": "Non authentifié"
+                        "description": "Non authentifié.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "403": {
-                        "description": "Accès interdit - Droits Admin requis"
+                        "description": "Accès interdit - Droits Admin requis.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès interdit."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Données de validation invalides (ex: Email déjà pris)"
+                        "description": "Erreur de validation (ex: Email ou téléphone déjà pris).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Cet email existe déjà."
+                                                ],
+                                                "phone_number": [
+                                                    "Ce numéro existe déjà."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur serveur lors de la création du compte administrateur.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Impossible de créer le compte administrateur."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [

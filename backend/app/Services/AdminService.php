@@ -4,6 +4,8 @@ namespace App\Services;
 use App\Services\Interface\AdminServiceInterface;
 use App\Repositories\Interface\AdminRepositoryInterface;
 use App\DTOs\Admin\CreateAdminDto;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Exception;
 
 class AdminService implements AdminServiceInterface
@@ -13,14 +15,22 @@ class AdminService implements AdminServiceInterface
     ) {
     }
 
-    public function registerAdmin(CreateAdminDto $dto): object
-    {
-        $admin = $this->adminRepository->createAdmin($dto);
+   public function registerAdmin(CreateAdminDto $dto, string $tokenHash, ?string $ipAddress, int $ttl): string
+{
+    $passwordHash = Hash::make($dto->password);
 
-        if (!$admin) {
-            throw new Exception("Impossible de créer le compte administrateur.");
-        }
+    $publicId = $this->adminRepository->createAdminUser(
+        $dto,
+        $passwordHash,
+        $tokenHash,
+        $ipAddress,
+        $ttl
+    );
 
-        return $admin;
+    if (!$publicId) {
+        throw new \Exception("Impossible de créer le compte administrateur.");
     }
+
+    return $publicId;
+}
 }

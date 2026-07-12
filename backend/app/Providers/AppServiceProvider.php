@@ -66,7 +66,11 @@ class AppServiceProvider extends ServiceProvider
 $this->app->bind(
     AdminServiceInterface::class,
     AdminService::class
-);    }
+);    
+
+
+
+}
 
     /**
      * Bootstrap any application services.

@@ -13,7 +13,7 @@ use OpenApi\Attributes as OA;
     description: "API du marketplace"
 )]
 #[OA\Server(
-    url: "http://127.0.0.1:8000",
+    url: "http://localhost",
     description: "Serveur local"
 )]
 #[OA\SecurityScheme(

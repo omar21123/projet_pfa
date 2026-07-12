@@ -15,7 +15,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'jwt.custom' => \App\Http\Middleware\JwtAuthMiddleware::class,
-            'jwt.admin' => \App\Http\Middleware\JwtAuthMiddleware::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
 
         ]);
