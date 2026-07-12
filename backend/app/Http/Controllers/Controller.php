@@ -12,11 +12,16 @@ use OpenApi\Attributes as OA;
     version: "1.0.0",
     description: "API du marketplace"
 )]
+#[OA\Server(
+    url: "http://127.0.0.1:8000",
+    description: "Serveur local"
+)]
 #[OA\SecurityScheme(
-    securityScheme: "sanctum",
-    type: "apiKey",
-    in: "header",
-    name: "Authorization"
+    securityScheme: "bearerAuth",
+    type: "http",
+    scheme: "bearer",
+    bearerFormat: "JWT",
+    description: "Entrer uniquement le JWT"
 )]
 class Controller extends BaseController
 {

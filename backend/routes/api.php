@@ -4,9 +4,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\AdminController;
 
 
-Route::middleware(['jwt.custom' , 'role:CUSTOMER'])->group(function () {
+
+Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
     Route::get('/test', [TestController::class, 'ping']);
 
@@ -31,5 +34,23 @@ Route::prefix('auth')->group(function () {
 
 });
 
+Route::prefix('categories')->group(function () {
+
+    // 🔓 Route Publique : Tout le monde peut voir l'arbre des catégories
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::get('/{id}', [CategoryController::class, 'show']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.admin', 'role:ADMIN'])->group(function () {
+        Route::post('/', [CategoryController::class, 'store']);
+        //Route::put('/{id}', [CategoryController::class, 'update']);
+        Route::put('/{id}/status', [CategoryController::class, 'updateStatus']);
+        Route::delete('/{id}', [CategoryController::class, 'destroy']);
+    });
+
+});
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
+    Route::post('/users', [AdminController::class, 'store']); // Ajouter un nouvel admin
+});
 
 Route::get('/countries', [CountryController::class, 'index']);

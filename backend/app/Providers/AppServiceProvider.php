@@ -2,13 +2,22 @@
 
 namespace App\Providers;
 
+use App\Repositories\Interface\CategoryRepositoryInterface;
 use App\Repositories\Interface\UserRepositoryInterface;
+use App\Repositories\sql\CategoryRepository;
 use App\Repositories\sql\UserRepository;
+use App\Services\Interface\CategoryServiceInterface;
+use App\Repositories\Interface\AdminRepositoryInterface; // 💡 Ajouté
+
 use App\Repositories\Interface\RefreshTokenRepositoryInterface;
 use App\Repositories\sql\RefreshTokenRepository;
+use App\Repositories\sql\AdminRepository;
 use App\Services\AuthService;
 use App\Services\Interface\AuthServiceInterface;
+use App\Services\Interface\AdminServiceInterface; // 💡 Ajouté
+use App\Services\CategoryService;
 use App\Services\AccessTokenService;
+use App\Services\AdminService;
 use App\Services\RefreshTokenService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
+        $this->app->bind(CategoryRepositoryInterface::class, CategoryRepository::class);
+        $this->app->bind(CategoryServiceInterface::class, CategoryService::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(RefreshTokenRepositoryInterface::class, RefreshTokenRepository::class);
         $this->app->bind(
@@ -47,11 +58,15 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\CountryServiceInterface::class,
             \App\Services\CountryService::class
         );
-         $this->app->bind(
+        $this->app->bind(
             \App\Services\Interface\UserServiceInterface::class,
             \App\Services\UserService::class
         );
-    }
+        $this->app->bind(AdminRepositoryInterface::class, AdminRepository::class);
+$this->app->bind(
+    AdminServiceInterface::class,
+    AdminService::class
+);    }
 
     /**
      * Bootstrap any application services.
@@ -64,8 +79,8 @@ class AppServiceProvider extends ServiceProvider
         });
         // AppServiceProvider::boot()
 
-RateLimiter::for('auth', function (Request $request) {
-    return Limit::perMinute(5)->by($request->ip());
-});
+        RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }
