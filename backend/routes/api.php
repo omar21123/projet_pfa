@@ -27,6 +27,7 @@ Route::prefix('auth')->group(function () {
         Route::post('/web/refresh', [AuthController::class, 'webRefresh']);
         Route::post('/mobile/logout', [AuthController::class, 'logout']);
         Route::post('/web/logout', [AuthController::class, 'webLogout']);
+        Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
     });
 
     // TODO — pas encore implémentés

@@ -67,7 +67,10 @@ $this->app->bind(
     AdminServiceInterface::class,
     AdminService::class
 );    
-
+$this->app->bind(
+        \App\Services\Interface\FileUploadServiceInterface::class,
+        \App\Services\FileUploadService::class
+    );
 
 
 }

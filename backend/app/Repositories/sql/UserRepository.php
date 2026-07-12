@@ -6,6 +6,7 @@ use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\UserDto;
 use App\DTOs\Auth\UserStandardInfoDto;
+use App\DTOs\Auth\VendorRegisterDto;
 use App\Repositories\Interface\UserRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -235,5 +236,35 @@ public function getUserStandardInformation(int $userId): ?UserStandardInfoDto
     );
  
     return $row ? UserStandardInfoDto::fromDbRow($row) : null;
+}
+public function createVendor(
+    VendorRegisterDto $dto,
+    string $passwordHash,
+    string $tokenHash,
+    string $ipAddress,
+    int $ttlDays
+): array {
+    $result = DB::select('CALL SP_CreateVendorUser(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+        $dto->firstName,
+        $dto->lastName,
+        $dto->birthDate,
+        $dto->gender,
+        $dto->email,
+        $dto->phoneNumber,
+        $passwordHash,
+        $dto->avatarUrl,
+        $tokenHash,
+        $ipAddress,
+        $ttlDays,
+        $dto->storeName,
+        $dto->description,
+    ]);
+
+    $row = $result[0];
+
+    return [
+        'user_id'   => $row->UserID,
+        'public_id' => $row->PublicID,
+    ];
 }
 }

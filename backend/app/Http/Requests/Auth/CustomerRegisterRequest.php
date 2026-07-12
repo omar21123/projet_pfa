@@ -55,11 +55,8 @@ class CustomerRegisterRequest extends FormRequest
                 'integer'
             ],
 
-            'avatar_url' => [
-                'nullable',
-                'string',
-                'max:500'
-            ]
+          'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048', // 2MB
+
         ];
     }
 }

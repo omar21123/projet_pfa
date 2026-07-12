@@ -265,3 +265,150 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS SP_CreateVendorUser$$
+
+CREATE PROCEDURE SP_CreateVendorUser
+(
+    IN p_FirstName VARCHAR(100),
+    IN p_LastName VARCHAR(100),
+    IN p_BirthDate DATE,
+    IN p_Gender TINYINT,
+    IN p_Email VARCHAR(255),
+    IN p_PhoneNumber VARCHAR(30),
+    IN p_PasswordHash TEXT,
+    IN p_AvatarURL VARCHAR(500),
+    IN p_TokenHash VARCHAR(255),
+    IN p_IPAddress VARCHAR(45),
+    IN p_TTL INT,
+
+    -- Store information
+    IN p_StoreName VARCHAR(150),
+    IN p_Description TEXT
+)
+BEGIN
+    DECLARE v_ID INT;
+    DECLARE v_PublicID CHAR(36);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    SET v_PublicID = UUID();
+
+    INSERT INTO Users
+    (
+        PublicID,
+        FirstName,
+        LastName,
+        DisplayName,
+        BirthDate,
+        Gender,
+        Email,
+        PhoneNumber,
+        PasswordHash,
+        AvatarURL
+    )
+    VALUES
+    (
+        v_PublicID,
+        p_FirstName,
+        p_LastName,
+        CONCAT(p_FirstName, ' ', p_LastName),
+        p_BirthDate,
+        p_Gender,
+        p_Email,
+        p_PhoneNumber,
+        p_PasswordHash,
+        p_AvatarURL
+    );
+
+    SET v_ID = LAST_INSERT_ID();
+
+    INSERT INTO VendorProfiles
+    (
+        UserID,
+        StoreName,
+        Description,
+        LogoURL,
+        BannerURL,
+        Rating,
+        ReviewCount,
+        IdentityVerified,
+        BusinessVerified,
+        BankVerified,
+        VerificationStatus,
+        IsApproved,
+        IsSuspended,
+        SuspendedAt,
+        ApprovedAt
+    )
+    VALUES
+    (
+        v_ID,
+        p_StoreName,
+        p_Description,
+        NULL,
+        NULL,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        NULL,
+        NULL
+    );
+
+    INSERT INTO UserRoles
+    (
+        UserID,
+        RoleID,
+        AssignedBy
+    )
+    VALUES
+    (
+        v_ID,
+        2,
+        NULL
+    );
+
+    INSERT INTO UserRefreshTokens
+    (
+        UserID,
+        UserDeviceID,
+        TokenHash,
+        IPAddress,
+        ExpiresAt,
+        IsRevoked,
+        RevokedAt,
+        ReplacedByTokenHash
+    )
+    VALUES
+    (
+        v_ID,
+        NULL,
+        p_TokenHash,
+        p_IPAddress,
+        DATE_ADD(UTC_TIMESTAMP(), INTERVAL p_TTL DAY),
+        0,
+        NULL,
+        NULL
+    );
+
+    COMMIT;
+
+    SELECT
+        v_ID AS UserID,
+        v_PublicID AS PublicID;
+END$$
+
+DELIMITER ;

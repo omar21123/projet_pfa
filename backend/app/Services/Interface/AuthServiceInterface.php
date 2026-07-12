@@ -6,6 +6,7 @@ use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\TokenResponseDto;
+use App\DTOs\Auth\VendorRegisterDto;
 
 interface AuthServiceInterface
 {
@@ -17,5 +18,11 @@ interface AuthServiceInterface
     string $tokenHash,
     ?string $ipAddress,
     int $ttl
+): string;
+public function createVendor(
+    VendorRegisterDto $dto,
+    string $tokenHash,
+    string $ipAddress,
+    int $ttlDays
 ): string;
 }

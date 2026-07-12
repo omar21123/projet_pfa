@@ -7,6 +7,7 @@ use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\TokenResponseDto;
 use App\DTOs\Auth\UserDto;
+use App\DTOs\Auth\VendorRegisterDto;
 use App\Repositories\Interface\UserRepositoryInterface;
 use App\Services\Interface\AuthServiceInterface;
 use Firebase\JWT\JWT;
@@ -95,4 +96,16 @@ class AuthService implements AuthServiceInterface
 
         return JWT::encode($payload, config('app.jwt_secret'), 'HS256');
     }
+   public function createVendor(
+    VendorRegisterDto $dto,
+    string $tokenHash,
+    string $ipAddress,
+    int $ttlDays
+): string {
+    $passwordHash = Hash::make($dto->password);
+
+    $result = $this->userRepository->createVendor($dto, $passwordHash, $tokenHash, $ipAddress, $ttlDays);
+
+    return $result['public_id'];
+}
 }

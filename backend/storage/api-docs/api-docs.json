@@ -243,7 +243,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "required": [
                                     "first_name",
@@ -287,9 +287,10 @@
                                         "example": 1,
                                         "nullable": true
                                     },
-                                    "avatar_url": {
+                                    "avatar": {
+                                        "description": "Image du profil (jpg, jpeg, png, webp — max 2Mo)",
                                         "type": "string",
-                                        "example": "https://example.com/avatar.png",
+                                        "format": "binary",
                                         "nullable": true
                                     }
                                 },
@@ -377,7 +378,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "required": [
                                     "first_name",
@@ -421,9 +422,10 @@
                                         "example": 1,
                                         "nullable": true
                                     },
-                                    "avatar_url": {
+                                    "avatar": {
+                                        "description": "Image du profil (jpg, jpeg, png, webp — max 2Mo)",
                                         "type": "string",
-                                        "example": "https://example.com/avatar.png",
+                                        "format": "binary",
                                         "nullable": true
                                     }
                                 },
@@ -1067,6 +1069,149 @@
                         "cookieAuth": []
                     }
                 ]
+            }
+        },
+        "/api/auth/web/vendor/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Créer un compte vendeur (Web)",
+                "description": "Création d'un compte vendeur. Le refresh token est stocké dans un cookie HttpOnly sécurisé et n'est pas retourné dans le corps de la réponse.",
+                "operationId": "2ec72efb101fce23c7fc519fa4f19019",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "first_name",
+                                    "last_name",
+                                    "email",
+                                    "password",
+                                    "store_name"
+                                ],
+                                "properties": {
+                                    "first_name": {
+                                        "type": "string",
+                                        "example": "Mohammed"
+                                    },
+                                    "last_name": {
+                                        "type": "string",
+                                        "example": "Bourass"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "vendor@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Password123!"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "+212612345678",
+                                        "nullable": true
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "1995-05-15",
+                                        "nullable": true
+                                    },
+                                    "gender": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    },
+                                    "store_name": {
+                                        "type": "string",
+                                        "example": "eByte Store"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Compte vendeur créé avec succès. Le refresh token est défini via un cookie HttpOnly.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Cookie HttpOnly, Secure, SameSite=Strict contenant le refresh token.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "refresh_token=c8f5a2d4ae9b12...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte vendeur créé avec succès."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "VENDOR"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Cet email existe déjà."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/categories": {
