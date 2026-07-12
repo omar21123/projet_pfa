@@ -1,10 +1,9 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
-import 'package:connectia/Core/Navigations/CustomNavigator.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
-import 'package:connectia/Features/main/Widgets/FirstIntroduction.dart';
-import 'package:connectia/Features/main/Widgets/FourthIntroduction.dart';
-import 'package:connectia/Features/main/Widgets/secondIntroduction.dart';
-import 'package:connectia/Features/main/Widgets/thirdIntroduction.dart';
+import 'package:connectia/Features/Onboarding/widgets/FirstIntroduction.dart';
+import 'package:connectia/Features/Onboarding/widgets/FourthIntroduction.dart';
+import 'package:connectia/Features/Onboarding/widgets/secondIntroduction.dart';
+import 'package:connectia/Features/Onboarding/widgets/thirdIntroduction.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
