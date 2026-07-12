@@ -1,4 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Features/Onboarding/widgets/FirstIntroduction.dart';
 import 'package:connectia/Features/Onboarding/widgets/FourthIntroduction.dart';
@@ -36,7 +39,12 @@ class _IntroductionviewState extends State<Introductionview> {
     }
   }
 
-  void _goToLoginPage() {}
+  void _goToLoginPage() {
+    var refer = locator<AppPreferencesService>();
+    refer.setHasSeenOnboarding(); // Set onboarding as completed
+    // Navigate to the login page
+    CustomNavigator.safeNavigateToLogin();
+  }
 
   @override
   Widget build(BuildContext context) {

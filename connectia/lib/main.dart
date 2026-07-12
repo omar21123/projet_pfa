@@ -6,6 +6,7 @@ import 'package:connectia/Core/DI/locator.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initLocator();
+  
   runApp(const ConnectiaApp());
 }
 
