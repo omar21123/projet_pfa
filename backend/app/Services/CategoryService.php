@@ -1,6 +1,8 @@
 <?php
+
 namespace App\Services;
 
+use App\DTOs\Category\CategoryFilterDto;
 use App\Services\Interface\CategoryServiceInterface;
 use App\Repositories\Interface\CategoryRepositoryInterface;
 use App\DTOs\Category\CreateCategoryDto;
@@ -8,12 +10,13 @@ use App\DTOs\Category\CategoryResponseDto;
 use App\DTOs\Category\CategoryTreeResponseDto;
 use Illuminate\Support\Collection;
 use App\DTOs\Category\UpdateCategoryDto;
+use App\Exceptions\BusinessValidationException;
+
 class CategoryService implements CategoryServiceInterface
 {
     public function __construct(
         protected CategoryRepositoryInterface $categoryRepository
-    ) {
-    }
+    ) {}
 
     public function createCategory(CreateCategoryDto $dto): CategoryResponseDto
     {
@@ -21,52 +24,58 @@ class CategoryService implements CategoryServiceInterface
         return CategoryResponseDto::fromModel($category);
     }
     public function categoryExists(int $id): bool
-{
-    return $this->categoryRepository->existsById($id);
-}
+    {
+        return $this->categoryRepository->existsById($id);
+    }
 
     public function categoryExistsByName(string $name): bool
     {
         return $this->categoryRepository->existsByName($name);
     }
-
-    public function getCategoryTree(): Collection
+    public function getRootCategories(CategoryFilterDto $filters): array
     {
-        $categories = $this->categoryRepository->getAllTree();
-        return $categories->map(fn($cat) => CategoryResponseDto::fromModel($cat));
+        $result = $this->categoryRepository->getRootCategories(
+            $filters->toArray(),
+            $filters->page,
+            $filters->perPage
+        );
+
+        $result['data'] = collect($result['data'])
+            ->map(fn($cat) => CategoryTreeResponseDto::fromModel($cat))
+            ->all();
+
+        return $result;
     }
 
-    /**
-     * Reconstruit l'arborescence complète (Catégories -> Sous-catégories)
-     */
-    public function getCategoryTreeNested(): array
+    public function getChildren(int $parentId, CategoryFilterDto $filters): array
     {
-        // 1. Récupération de toutes les catégories (via ton Repository)
-        $flatCategories = $this->categoryRepository->getAllTree();
-
-        $dictionary = [];
-        $tree = [];
-
-        // 2. On transforme chaque modèle en DTO de type "Arbre" indexé par son ID
-        foreach ($flatCategories as $category) {
-            $dictionary[$category->CategoryID] = CategoryTreeResponseDto::fromModel($category);
+        if (!$this->categoryRepository->existsById($parentId)) {
+            throw new \App\Exceptions\BusinessValidationException('Catégorie parente introuvable.', 404);
         }
 
-        // 3. On distribue les enfants chez leurs parents respectifs
-        foreach ($dictionary as $id => $dto) {
-            if ($dto->parentCategoryID === null) {
-                // C'est une catégorie racine (Parent de premier niveau)
-                $tree[] = $dto;
-            } else {
-                // C'est une sous-catégorie, on la pousse dans le tableau 'children' de son parent
-                if (isset($dictionary[$dto->parentCategoryID])) {
-                    $dictionary[$dto->parentCategoryID]->children[] = $dto;
-                }
-            }
-        }
+        $result = $this->categoryRepository->getChildren(
+            $parentId,
+            $filters->toArray(),
+            $filters->page,
+            $filters->perPage
+        );
 
-        return $tree;
+        $result['data'] = collect($result['data'])
+            ->map(fn($cat) => CategoryTreeResponseDto::fromModel($cat))
+            ->all();
+
+        return $result;
     }
+    public function deactivateSubtree(int $id): bool
+    {
+        if (!$this->categoryRepository->existsById($id)) {
+            throw new BusinessValidationException('Catégorie introuvable.', 404);
+        }
+
+        return $this->categoryRepository->propagateInactivation($id);
+    }
+
+
     public function updateCategory(int $id, UpdateCategoryDto $dto): bool
     {
         return $this->categoryRepository->update($id, $dto);
@@ -81,8 +90,16 @@ class CategoryService implements CategoryServiceInterface
     {
         return $this->categoryRepository->delete($id);
     }
-        public function findById(int $id): object|null{
-            return $this->categoryRepository->findById($id);
+    public function findById(int $id): object|null
+    {
+        return $this->categoryRepository->findById($id);
+    }
+    public function activateCategory(int $id): bool
+    {
+        if (!$this->categoryRepository->existsById($id)) {
+            throw new BusinessValidationException('Catégorie introuvable.', 404);
         }
 
+        return $this->categoryRepository->activate($id);
+    }
 }

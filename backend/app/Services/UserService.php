@@ -65,4 +65,5 @@ class UserService implements UserServiceInterface
     {
         return $this->refreshTokenRepository->revokeByTokenHash($tokenHash, $replacedByTokenHash);
     }
+    
 }

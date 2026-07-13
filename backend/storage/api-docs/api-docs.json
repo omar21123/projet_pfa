@@ -1655,8 +1655,76 @@
                 "tags": [
                     "Categories"
                 ],
-                "summary": "Liste des catégories",
+                "summary": "Liste des catégories racines (avec filtres, recherche, pagination)",
                 "operationId": "3f5817a34833d0a1f4af4548dd3aeaba",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "hasProducts",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "isEmpty",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "CreatedAt",
+                                "UpdatedAt",
+                                "DisplayOrder"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Succès"
@@ -1664,13 +1732,82 @@
                 }
             }
         },
-        "/api/categories/{id}": {
+        "/api/categories/{id}/children": {
             "get": {
                 "tags": [
                     "Categories"
                 ],
-                "summary": "Afficher une catégorie",
-                "operationId": "c68e76d323c008827a9e47398b1583de",
+                "summary": "Sous-catégories directes (avec filtres, recherche, pagination)",
+                "operationId": "38ff041ea8914edba5671467cd02ef13",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "404": {
+                        "description": "Catégorie introuvable"
+                    }
+                }
+            }
+        },
+        "/api/categories/{id}/deactivate-subtree": {
+            "put": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Désactiver une catégorie et tout son arbre de sous-catégories",
+                "operationId": "e452ad4c934ee61fd19eef08d583066c",
                 "parameters": [
                     {
                         "name": "id",
@@ -1688,55 +1825,6 @@
                     "404": {
                         "description": "Catégorie introuvable"
                     }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Categories"
-                ],
-                "summary": "Modifier une catégorie",
-                "operationId": "0e686b2748211cc688333ed705dc111f",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Succès"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Categories"
-                ],
-                "summary": "Supprimer une catégorie",
-                "operationId": "4c12e22a7f8c617bd83bfa1fdc05428d",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Succès"
-                    }
                 },
                 "security": [
                     {
@@ -1745,13 +1833,13 @@
                 ]
             }
         },
-        "/api/categories/{id}/status": {
+        "/api/categories/{id}/activate": {
             "put": {
                 "tags": [
                     "Categories"
                 ],
-                "summary": "Activer/Désactiver une catégorie",
-                "operationId": "ac29bcba75da8b9dc19fcb37c0c31ec8",
+                "summary": "Activer une catégorie",
+                "operationId": "7b0d7ba83314e7722e6401d1f5df49d1",
                 "parameters": [
                     {
                         "name": "id",
@@ -1765,6 +1853,9 @@
                 "responses": {
                     "200": {
                         "description": "Succès"
+                    },
+                    "404": {
+                        "description": "Catégorie introuvable"
                     }
                 },
                 "security": [

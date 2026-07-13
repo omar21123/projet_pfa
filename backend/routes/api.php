@@ -37,16 +37,16 @@ Route::prefix('auth')->group(function () {
 Route::prefix('categories')->group(function () {
 
     // 🔓 Route Publique : Tout le monde peut voir l'arbre des catégories
-    Route::get('/', [CategoryController::class, 'index']);
-    Route::get('/{id}', [CategoryController::class, 'show']);
-
+    
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/', [CategoryController::class, 'index']);
         Route::post('/create', [CategoryController::class, 'store']);
-        //Route::put('/{id}', [CategoryController::class, 'update']);
-        Route::put('/{id}/status', [CategoryController::class, 'updateStatus']);
-        Route::delete('/{id}', [CategoryController::class, 'destroy']);
-        Route::get('/admin/vendors', [AdminVendorController::class, 'AdminGetAll']);
+        Route::get('/{id}/children', [CategoryController::class, 'children']);
+        Route::put('/{id}/deactivate-subtree', [CategoryController::class, 'deactivateSubtree']);
+        Route::put('/{id}/activate', [CategoryController::class, 'activate']);
+
+
     });
 
 });

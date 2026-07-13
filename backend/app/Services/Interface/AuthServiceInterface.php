@@ -10,7 +10,6 @@ use App\DTOs\Auth\VendorRegisterDto;
 
 interface AuthServiceInterface
 {
-    public function register(RegisterDto $dto): TokenResponseDto;
     public function login(LoginDto $dto): LoginInfoDto;
   
      public function createCustomer(

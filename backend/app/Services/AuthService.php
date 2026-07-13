@@ -37,34 +37,6 @@ class AuthService implements AuthServiceInterface
         $ttl
     );
 }
-    public function register(RegisterDto $dto): TokenResponseDto
-    {
-        return DB::transaction(function () use ($dto) {
-            $passwordHash = Hash::make($dto->password);
-
-            $userId = $this->userRepository->createUser($dto, $passwordHash);
-
-            $roleId = $this->userRepository->getRoleIdByCode($dto->accountType);
-
-            if (!$roleId) {
-                throw ValidationException::withMessages([
-                    'account_type' => ["Le rôle '{$dto->accountType}' n'existe pas dans la table Roles."],
-                ]);
-            }
-
-            $this->userRepository->assignRole($userId, $roleId);
-
-            if ($dto->accountType === 'vendor') {
-                $this->userRepository->createVendorProfile($userId, $dto->storeName, $dto->storeDescription);
-            } else {
-                $this->userRepository->createCustomerProfile($userId);
-            }
-
-            $user = $this->userRepository->findById($userId);
-
-            return new TokenResponseDto($user, $this->generateToken($user));
-        });
-    }
 
     public function login(LoginDto $dto): LoginInfoDto
     {
@@ -84,18 +56,6 @@ class AuthService implements AuthServiceInterface
         ]);
     }
 
-    private function generateToken(UserDto $user): string
-    {
-        $payload = [
-            'iss' => config('app.url'),
-            'sub' => $user->id,
-            'roles' => $user->roles,
-            'iat' => time(),
-            'exp' => time() + 60 * 60 * 24, // 24h — ajuste selon ton besoin
-        ];
-
-        return JWT::encode($payload, config('app.jwt_secret'), 'HS256');
-    }
    public function createVendor(
     VendorRegisterDto $dto,
     string $tokenHash,
