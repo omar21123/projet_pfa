@@ -237,6 +237,21 @@ public function getUserStandardInformation(int $userId): ?UserStandardInfoDto
  
     return $row ? UserStandardInfoDto::fromDbRow($row) : null;
 }
+public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto
+{
+    $row = DB::selectOne(
+        "SELECT
+            UserID, PublicID, FirstName, LastName, DisplayName, BirthDate, Gender,
+            Email, PhoneNumber, AvatarURL, HasPassword, EmailVerified, PhoneVerified,
+            IsActive, LastLoginAt, CreatedAt, UpdatedAt
+         FROM Users
+         WHERE PublicID = ?
+           AND IsDeleted = 0",
+        [$publicID]
+    );
+ 
+    return $row ? UserStandardInfoDto::fromDbRow($row) : null;
+}
 public function createVendor(
     VendorRegisterDto $dto,
     string $passwordHash,

@@ -412,3 +412,224 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+--Not SP but ALTER TABLE VendorProfiles to add new columns for verification and suspension information
+ALTER TABLE VendorProfiles ADD COLUMN VerifiedBy INT NULL;       -- FK Users (admin who verified)
+ALTER TABLE VendorProfiles ADD COLUMN VerificationNotes NVARCHAR(500) NULL;
+ALTER TABLE VendorProfiles ADD COLUMN RejectionNotes NVARCHAR(500) NULL;
+ALTER TABLE VendorProfiles ADD COLUMN SuspendedBy INT NULL;          -- FK Users (admin who suspended)
+ALTER TABLE VendorProfiles ADD COLUMN SuspensionNotes NVARCHAR(500) NULL;
+DELIMITER $$
+DROP PROCEDURE IF EXISTS SP_GetVendorsList$$
+CREATE PROCEDURE SP_GetVendorsList
+(
+    IN p_Search VARCHAR(255),
+    IN p_VerificationStatus TINYINT,
+    IN p_IsSuspended TINYINT,
+    IN p_PageNumber INT,
+    IN p_PageSize INT
+)
+BEGIN
+    DECLARE v_Offset INT;
+
+    SET p_PageNumber = IFNULL(p_PageNumber, 1);
+    SET p_PageSize = IFNULL(p_PageSize, 10);
+
+    SET v_Offset = GREATEST((p_PageNumber - 1) * p_PageSize, 0);
+
+    SELECT
+        vp.VendorProfileID,
+        vp.UserID,
+        vp.StoreName,
+        vp.LogoURL,
+
+        u.FirstName,
+        u.LastName,
+        u.Email,
+        u.PhoneNumber,
+        u.LastLoginAt,
+        u.IsActive,
+
+        CASE vp.VerificationStatus
+            WHEN 0 THEN 'Pending'
+            WHEN 1 THEN 'Verified'
+            WHEN 2 THEN 'Rejected'
+            ELSE 'Unknown'
+        END AS VerificationStatus,
+
+        vp.IdentityVerified,
+        vp.BusinessVerified,
+        vp.BankVerified,
+
+        vp.IsApproved,
+        vp.IsSuspended,
+        vp.SuspendedAt,
+
+        vp.Rating,
+        vp.ReviewCount,
+        vp.CreatedAt,
+
+        (
+            SELECT COUNT(*)
+            FROM Products p
+            WHERE p.VendorID = vp.UserID
+        ) AS TotalProducts,
+
+        (
+            SELECT COUNT(*)
+            FROM Products p
+            WHERE p.VendorID = vp.UserID
+              AND p.Status = 'Accepted'
+              AND p.IsActive = 1
+        ) AS ActiveProducts,
+
+        (
+            SELECT COUNT(*)
+            FROM Products p
+            WHERE p.VendorID = vp.UserID
+              AND p.Status IN ('Draft','Validated')
+        ) AS PendingProducts,
+
+        (
+            SELECT COUNT(DISTINCT oi.OrderID)
+            FROM OrderItems oi
+            WHERE oi.VendorProfileID = vp.VendorProfileID
+        ) AS TotalOrders,
+
+        (
+            SELECT COALESCE(SUM(oi.Total), 0)
+            FROM OrderItems oi
+            WHERE oi.VendorProfileID = vp.VendorProfileID
+        ) AS TotalRevenue,
+
+        COALESCE(ba.WithdrawableBalance, 0) AS WithdrawableBalance
+
+    FROM VendorProfiles vp
+    INNER JOIN Users u
+        ON u.UserID = vp.UserID
+
+    LEFT JOIN BankAccounts ba
+        ON ba.VendorProfileID = vp.VendorProfileID
+
+    WHERE
+        u.IsDeleted = 0
+        AND (
+            p_Search IS NULL
+            OR p_Search = ''
+            OR vp.StoreName LIKE CONCAT('%', p_Search, '%')
+            OR u.FirstName LIKE CONCAT('%', p_Search, '%')
+            OR u.LastName LIKE CONCAT('%', p_Search, '%')
+            OR u.Email LIKE CONCAT('%', p_Search, '%')
+            OR u.PhoneNumber LIKE CONCAT('%', p_Search, '%')
+        )
+        AND (
+            p_VerificationStatus IS NULL
+            OR vp.VerificationStatus = p_VerificationStatus
+        )
+        AND (
+            p_IsSuspended IS NULL
+            OR vp.IsSuspended = p_IsSuspended
+        )
+
+    ORDER BY vp.CreatedAt DESC
+
+    LIMIT p_PageSize OFFSET v_Offset;
+
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS SP_ApproveVendor$$
+CREATE PROCEDURE SP_ApproveVendor
+(
+    IN p_VendorProfileID INT,
+    IN p_VerifiedBy INT,
+    IN p_VerificationNotes VARCHAR(500)
+)
+BEGIN
+   /* DECLARE v_IdentityVerified TINYINT(1);
+    DECLARE v_BusinessVerified TINYINT(1);
+    DECLARE v_BankVerified TINYINT(1);*/
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+   /* SELECT IdentityVerified, BusinessVerified, BankVerified
+    INTO v_IdentityVerified, v_BusinessVerified, v_BankVerified
+    FROM VendorProfiles
+    WHERE VendorProfileID = p_VendorProfileID
+    FOR UPDATE;
+
+    IF v_IdentityVerified = 0 OR v_BusinessVerified = 0 OR v_BankVerified = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cannot approve vendor: identity, business, and bank must all be verified first.';
+    END IF;*/
+
+    UPDATE VendorProfiles
+    SET
+        VerificationStatus = 1,          -- Verified
+        IsApproved         = 1,
+        ApprovedAt         = UTC_TIMESTAMP(),
+        VerifiedBy         = p_VerifiedBy,
+        VerificationNotes  = p_VerificationNotes,
+        RejectionNotes     = NULL,
+        UpdatedAt          = UTC_TIMESTAMP()
+    WHERE VendorProfileID = p_VendorProfileID;
+
+    COMMIT;
+
+    SELECT
+        VendorProfileID,
+        VerificationStatus,
+        IsApproved,
+        ApprovedAt,
+        VerifiedBy,
+        VerificationNotes
+    FROM VendorProfiles
+    WHERE VendorProfileID = p_VendorProfileID;
+END$$
+DELIMITER ;
+DELIMITER $$
+DROP PROCEDURE IF EXISTS SP_RejectVendor$$
+CREATE PROCEDURE SP_RejectVendor
+(
+    IN p_VendorProfileID INT,
+    IN p_VerifiedBy INT,
+    IN p_RejectionNotes VARCHAR(500)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    UPDATE VendorProfiles
+    SET
+        VerificationStatus = 2,          -- Rejected
+        IsApproved         = 0,
+        VerifiedBy         = p_VerifiedBy,
+        RejectionNotes     = p_RejectionNotes,
+        UpdatedAt          = UTC_TIMESTAMP()
+    WHERE VendorProfileID = p_VendorProfileID;
+
+    COMMIT;
+
+    SELECT
+        VendorProfileID,
+        VerificationStatus,
+        IsApproved,
+        VerifiedBy,
+        RejectionNotes
+    FROM VendorProfiles
+    WHERE VendorProfileID = p_VendorProfileID;
+END$$
+DELIMITER ;

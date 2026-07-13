@@ -53,6 +53,6 @@ public function createVendor(
     string $ipAddress,
     int $ttlDays
 ): array;
-
+public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
 
 }

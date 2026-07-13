@@ -6,8 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AdminController;
-
-
+use App\Http\Controllers\AdminVendorController;
 
 Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
@@ -47,11 +46,19 @@ Route::prefix('categories')->group(function () {
         //Route::put('/{id}', [CategoryController::class, 'update']);
         Route::put('/{id}/status', [CategoryController::class, 'updateStatus']);
         Route::delete('/{id}', [CategoryController::class, 'destroy']);
+        Route::get('/admin/vendors', [AdminVendorController::class, 'AdminGetAll']);
     });
 
 });
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
-    Route::post('/register', [AdminController::class, 'store']); // Ajouter un nouvel admin
+    Route::post('/register', [AdminController::class, 'store']); 
+     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
+        Route::post('/vendors/{vendorProfileId}/verify-identity', [AdminVendorController::class, 'AdminVerifyIdentity']);
+        Route::post('/vendors/{vendorProfileId}/approve', [AdminVendorController::class, 'AdminApproveVendor']);
+        Route::post('/vendors/{vendorProfileId}/reject', [AdminVendorController::class, 'AdminRejectVendor']);
+        Route::post('/vendors/{vendorProfileId}/reset-to-pending', [AdminVendorController::class, 'AdminResetVendorToPending']);
+    });// Ajouter un nouvel admin
 });
 
 Route::get('/countries', [CountryController::class, 'index']);

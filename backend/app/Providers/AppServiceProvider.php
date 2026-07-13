@@ -72,7 +72,17 @@ $this->app->bind(
         \App\Services\FileUploadService::class
     );
 
+// App\Providers\AppServiceProvider
 
+$this->app->bind(
+    \App\Repositories\Interface\AdminVendorRepositoryInterface::class,
+    \App\Repositories\sql\AdminVendorRepository::class
+);
+
+$this->app->bind(
+    \App\Services\Interface\AdminVendorServiceInterface::class,
+    \App\Services\AdminVendorService::class
+);
 }
 
     /**
