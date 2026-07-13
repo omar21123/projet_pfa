@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  jenkins:
+    build: ./jenkins
+    container_name: jenkins
+    restart: unless-stopped
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - devsecops-net
+
+  trivy:
+    image: aquasec/trivy:0.53.0
+    container_name: trivy
+    restart: unless-stopped
+    command: ["server", "--listen", "0.0.0.0:4954"]
+    volumes:
+      - trivy_cache:/root/.cache
+    networks:
+      - devsecops-net
+
+  zap:
+    image: zaproxy/zap-stable:2.15.0
+    container_name: zap
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+    networks:
+      - devsecops-net
+
+networks:
+  devsecops-net:
+    external: true
+
+volumes:
+  jenkins_data:
+  trivy_cache:

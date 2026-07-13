@@ -1,0 +1,178 @@
+version: "3.9"
+
+services:
+  # --- Application ---
+  backend:
+    build: ./backend
+    container_name: laravel
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - /var/www/vendor
+      - ./backend:/var/www
+    depends_on:
+      - mysql
+    networks:
+      - devsecops-net
+
+  frontend:
+    build: ./frontend
+    container_name: react
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    networks:
+      - devsecops-net
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./backend:/var/www
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+    networks:
+      - devsecops-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: marketplace_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: devops
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./Database/Tables_Indexes.sql:/docker-entrypoint-initdb.d/1_Tables_Indexes.sql
+      - ./Database/SP.sql:/docker-entrypoint-initdb.d/2_SP.sql
+      - ./Database/insert.sql:/docker-entrypoint-initdb.d/3_insert.sql
+    networks:
+      - devsecops-net
+
+  # --- CI/CD & Security ---
+  jenkins:
+    build: ./jenkins
+    container_name: jenkins
+    restart: unless-stopped
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - devsecops-net
+
+  trivy:
+    image: aquasec/trivy:0.53.0
+    container_name: trivy
+    restart: unless-stopped
+    command: ["server", "--listen", "0.0.0.0:4954"]
+    volumes:
+      - trivy_cache:/root/.cache
+    networks:
+      - devsecops-net
+
+  zap:
+    image: zaproxy/zap-stable:2.15.0
+    container_name: zap
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+    networks:
+      - devsecops-net
+
+  # --- Monitoring ---
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - devsecops-net
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - devsecops-net
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    networks:
+      - devsecops-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - devsecops-net
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Interface Web
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail
+    domainname: example.com
+    env_file:
+      - mailserver.env
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./mailserver/mail-data:/var/mail
+      - ./mailserver/mail-state:/var/mail-state
+      - ./mailserver/mail-logs:/var/log/mail
+      - ./mailserver/config:/tmp/docker-mailserver
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+networks:
+  devsecops-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  jenkins_data:
+  prometheus_data:
+  grafana_data:
+  trivy_cache:
