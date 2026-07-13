@@ -20,6 +20,15 @@ class CategoryService implements CategoryServiceInterface
         $category = $this->categoryRepository->create($dto);
         return CategoryResponseDto::fromModel($category);
     }
+    public function categoryExists(int $id): bool
+{
+    return $this->categoryRepository->existsById($id);
+}
+
+    public function categoryExistsByName(string $name): bool
+    {
+        return $this->categoryRepository->existsByName($name);
+    }
 
     public function getCategoryTree(): Collection
     {

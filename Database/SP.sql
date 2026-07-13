@@ -633,3 +633,111 @@ BEGIN
     WHERE VendorProfileID = p_VendorProfileID;
 END$$
 DELIMITER ;
+
+
+
+--NEw SP FROm 13/07/2025
+DELIMITER $$
+DROP PROCEDURE IF EXISTS SP_CreateCategory$$
+CREATE PROCEDURE SP_CreateCategory
+(
+    IN p_ParentCategoryID INT,
+    IN p_Name             VARCHAR(150),
+    IN p_IconURL           VARCHAR(255)
+)
+BEGIN
+    DECLARE v_CategoryID     INT;
+    DECLARE v_Slug           VARCHAR(160);
+    DECLARE v_NormalizedText VARCHAR(255);
+    DECLARE v_ParentExists   INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Build slug from name: lowercase, spaces/underscores -> hyphens, strip non [a-z0-9-]
+    SET v_Slug = LOWER(TRIM(p_Name));
+    SET v_Slug = REPLACE(v_Slug, ' ', '-');
+    SET v_Slug = REPLACE(v_Slug, '_', '-');
+
+    -- Normalized text for search (lowercase, trimmed)
+    SET v_NormalizedText = LOWER(TRIM(p_Name));
+
+    -- Insert the category
+    INSERT INTO Categories
+    (
+        ParentCategoryID,
+        Name,
+        Slug,
+        IconURL,
+        IsActive,
+        DisplayOrder
+    )
+    VALUES
+    (
+        p_ParentCategoryID,
+        p_Name,
+        v_Slug,
+        p_IconURL,
+        1,
+        1
+    );
+
+    SET v_CategoryID = LAST_INSERT_ID();
+
+    -- Closure table: self-reference (depth 0)
+    INSERT INTO CategoryClosure (AncestorID, DescendantID, Depth)
+    VALUES (v_CategoryID, v_CategoryID, 0);
+
+    -- Closure table: inherit all ancestors of the parent, depth + 1
+    IF p_ParentCategoryID IS NOT NULL THEN
+        INSERT INTO CategoryClosure (AncestorID, DescendantID, Depth)
+        SELECT AncestorID, v_CategoryID, Depth + 1
+        FROM CategoryClosure
+        WHERE DescendantID = p_ParentCategoryID;
+    END IF;
+
+    -- Search dictionary entry (SourceType = 1 assumed to mean "Category" - confirm/adjust)
+    INSERT INTO SearchDictionary
+    (
+        DisplayText,
+        NormalizedText,
+        SourceType,
+        SourceID,
+        Score,
+        SearchHitCount,
+        SearchHitCount7d,
+        ResultCount,
+        IsActive
+    )
+    VALUES
+    (
+        p_Name,
+        v_NormalizedText,
+        1,
+        v_CategoryID,
+        0.0000,
+        0,
+        0,
+        0,
+        1
+    );
+
+    COMMIT;
+
+    SELECT
+        CategoryID,
+        ParentCategoryID,
+        Name,
+        Slug,
+        IconURL,
+        IsActive,
+        DisplayOrder
+    FROM Categories
+    WHERE CategoryID = v_CategoryID;
+END$$
+DELIMITER ;

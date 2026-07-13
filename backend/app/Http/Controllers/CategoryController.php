@@ -8,6 +8,7 @@ use App\Http\Requests\Category\UpdateCategoryStatusRequest;
 use App\DTOs\Category\CreateCategoryDto;
 use App\DTOs\Category\UpdateCategoryDto;
 use App\Services\Interface\CategoryServiceInterface;
+use App\Services\Interface\FileUploadServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
@@ -18,69 +19,82 @@ use OpenApi\Attributes as OA;
 class CategoryController extends Controller
 {
     public function __construct(
-        protected CategoryServiceInterface $categoryService
+        protected CategoryServiceInterface $categoryService,
+        private FileUploadServiceInterface $fileUploadService
     ) {
     }
 
-    #[OA\Post(
-        path: "/api/categories",
-        tags: ["Categories"],
-        summary: "Créer une catégorie",
-        description: "Permet de créer une nouvelle catégorie.",
-        security: [["bearerAuth" => []]]
-    )]
-    #[OA\RequestBody(
-        required: true,
-        content: new OA\JsonContent(
-            required: ["name"],
+ #[OA\Post(
+    path: "/api/categories/create",
+    tags: ["Categories"],
+    summary: "Créer une catégorie",
+    description: "Permet de créer une nouvelle catégorie.",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\RequestBody(
+    required: true,
+    content: new OA\MediaType(
+        mediaType: "multipart/form-data",
+        schema: new OA\Schema(
+            required: ["Name"],
             properties: [
+                new OA\Property(property: "Name", type: "string", example: "Électronique"),
+                new OA\Property(property: "ParentCategoryID", type: "integer", nullable: true, example: 1),
                 new OA\Property(
-                    property: "name",
+                    property: "IconURL",
                     type: "string",
-                    example: "Électronique"
-                ),
-                new OA\Property(
-                    property: "parentCategoryID",
-                    type: "integer",
+                    format: "binary",
                     nullable: true,
-                    example: 1
+                    description: "Image de l'icône (jpg, jpeg, png, webp - max 2MB)"
                 ),
-                new OA\Property(
-                    property: "iconURL",
-                    type: "string",
-                    nullable: true,
-                    example: "https://example.com/icon.png"
-                ),
-                new OA\Property(
-                    property: "isActive",
-                    type: "boolean",
-                    nullable: true,
-                    example: true
-                ),
-                new OA\Property(
-                    property: "displayOrder",
-                    type: "integer",
-                    nullable: true,
-                    example: 1
-                )
             ]
         )
-    )]
-    #[OA\Response(response: 201, description: "Catégorie créée")]
-    #[OA\Response(response: 401, description: "Non authentifié")]
-    #[OA\Response(response: 403, description: "Accès refusé")]
-    public function store(CreateCategoryRequest $request): JsonResponse
-    {
-        dd('store exécuté');
+    )
+)]
+#[OA\Response(response: 201, description: "Catégorie créée")]
+#[OA\Response(response: 401, description: "Non authentifié")]
+#[OA\Response(response: 403, description: "Accès refusé")]
+#[OA\Response(response: 422, description: "Règle métier violée (parent introuvable, slug déjà pris, ...)")]
+public function store(CreateCategoryRequest $request): JsonResponse
+{
+    $request->validated();
+   
+    $iconUrl = $request->hasFile('IconURL')
+        ? $this->fileUploadService->storeAvatar($request->file('IconURL'))
+        : null;
 
-        $dto = CreateCategoryDto::fromRequest($request);
-
+    $dto = CreateCategoryDto::fromRequest($request, $iconUrl);
+    $isExistingCategory = $this->categoryService->categoryExistsByName($dto->name);
+    if ($isExistingCategory) {
         return response()->json([
-            'success' => true,
-            'message' => 'Catégorie créée avec succès',
-            'data' => $this->categoryService->createCategory($dto)
-        ], 201);
+            'success' => false,
+            'message' => 'Une catégorie avec ce nom existe déjà.'
+        ], 422);
     }
+    if($dto->parentCategoryID !== null){
+        $IsCategoryExists = $this->categoryService->categoryExists($dto->parentCategoryID);
+        if(!$IsCategoryExists){
+            return response()->json([
+                'success' => false,
+                'message' => 'La catégorie parente spécifiée n\'existe pas.'
+            ], 422);
+        }
+    }
+    try {
+        $category = $this->categoryService->createCategory($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 422);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Catégorie créée avec succès',
+        'data' => $category
+    ], 201);
+}
 
     #[OA\Get(
         path: "/api/categories",

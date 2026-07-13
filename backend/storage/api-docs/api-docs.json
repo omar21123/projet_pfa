@@ -1591,57 +1591,36 @@
                 }
             }
         },
-        "/api/categories": {
-            "get": {
-                "tags": [
-                    "Categories"
-                ],
-                "summary": "Liste des catégories",
-                "operationId": "3f5817a34833d0a1f4af4548dd3aeaba",
-                "responses": {
-                    "200": {
-                        "description": "Succès"
-                    }
-                }
-            },
+        "/api/categories/create": {
             "post": {
                 "tags": [
                     "Categories"
                 ],
                 "summary": "Créer une catégorie",
                 "description": "Permet de créer une nouvelle catégorie.",
-                "operationId": "71fcad552bb0eaba9fb191fd8d8dcab0",
+                "operationId": "5106533bd9798ac7c6c66854eaee0541",
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "name"
+                                    "Name"
                                 ],
                                 "properties": {
-                                    "name": {
+                                    "Name": {
                                         "type": "string",
                                         "example": "Électronique"
                                     },
-                                    "parentCategoryID": {
+                                    "ParentCategoryID": {
                                         "type": "integer",
                                         "example": 1,
                                         "nullable": true
                                     },
-                                    "iconURL": {
+                                    "IconURL": {
+                                        "description": "Image de l'icône (jpg, jpeg, png, webp - max 2MB)",
                                         "type": "string",
-                                        "example": "https://example.com/icon.png",
-                                        "nullable": true
-                                    },
-                                    "isActive": {
-                                        "type": "boolean",
-                                        "example": true,
-                                        "nullable": true
-                                    },
-                                    "displayOrder": {
-                                        "type": "integer",
-                                        "example": 1,
+                                        "format": "binary",
                                         "nullable": true
                                     }
                                 },
@@ -1659,6 +1638,9 @@
                     },
                     "403": {
                         "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Règle métier violée (parent introuvable, slug déjà pris, ...)"
                     }
                 },
                 "security": [
@@ -1666,6 +1648,20 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/categories": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Liste des catégories",
+                "operationId": "3f5817a34833d0a1f4af4548dd3aeaba",
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
             }
         },
         "/api/categories/{id}": {

@@ -11,82 +11,56 @@ use Illuminate\Support\Str;
 
 class CategoryRepository implements CategoryRepositoryInterface
 {
-    public function create(CreateCategoryDto $dto): ?object
+      public function create(CreateCategoryDto $dto): ?object
     {
-        return DB::transaction(function () use ($dto) {
-
-            $slug = Str::slug($dto->name) . '-' . uniqid();
-
-            DB::insert("
-                INSERT INTO Categories
-                (
-                    Name,
-                    Slug,
-                    ParentCategoryID,
-                    IconURL,
-                    IsActive,
-                    DisplayOrder,
-                    Created_at,
-                    Updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ", [
-                $dto->name,
-                $slug,
+        try {
+            $result = DB::select('CALL SP_CreateCategory(?, ?, ?)', [
                 $dto->parentCategoryID,
+                $dto->name,
                 $dto->iconURL,
-                $dto->isActive ? 1 : 0,
-                $dto->displayOrder,
-                now(),
-                now()
             ]);
+        } catch (QueryException $e) {
+            throw $this->translateSqlException($e);
+        }
 
-            $categoryId = DB::getPdo()->lastInsertId();
-
-            DB::insert("
-                INSERT INTO CategoryClosure
-                (
-                    AncestorID,
-                    DescendantID,
-                    Depth
-                )
-                VALUES (?, ?, 0)
-            ", [
-                $categoryId,
-                $categoryId
-            ]);
-
-            if ($dto->parentCategoryID) {
-
-                DB::insert("
-                    INSERT INTO CategoryClosure
-                    (
-                        AncestorID,
-                        DescendantID,
-                        Depth
-                    )
-                    SELECT
-                        AncestorID,
-                        ?,
-                        Depth + 1
-                    FROM CategoryClosure
-                    WHERE DescendantID = ?
-                ", [
-                    $categoryId,
-                    $dto->parentCategoryID
-                ]);
-            }
-
-            $category = DB::select("
-                SELECT *
-                FROM Categories
-                WHERE CategoryID = ?
-            ", [$categoryId]);
-
-            return $category[0] ?? null;
-        });
+        return $result[0] ?? null;
     }
 
+    /**
+     * SP_CreateCategory uses SIGNAL SQLSTATE '45000' for both the
+     * "parent doesn't exist" and "duplicate slug" checks. errorInfo[2]
+     * carries the MESSAGE_TEXT set in the SIGNAL statement.
+     */
+    private function translateSqlException(QueryException $e): \Throwable
+    {
+        $sqlState = $e->errorInfo[0] ?? null;
+
+        if ($sqlState === '45000') {
+            $message = $e->errorInfo[2] ?? 'Une erreur est survenue lors de la création de la catégorie.';
+            return new BusinessValidationException($message, 422, $e);
+        }
+
+        return $e;
+    }
+public function existsById(int $id): bool
+{
+    $result = DB::select("
+        SELECT EXISTS(
+            SELECT 1 FROM Categories WHERE CategoryID = ?
+        ) AS `exists`
+    ", [$id]);
+
+    return (bool) ($result[0]->exists ?? false);
+}
+public function existsByName(string $name): bool
+{
+    $result = DB::select("
+        SELECT EXISTS(
+            SELECT 1 FROM Categories WHERE Name = ?
+        ) AS `exists`
+    ", [$name]);
+    return (bool) ($result[0]->exists ?? false);
+}
     public function getAllTree(): Collection
     {
         return collect(DB::select("

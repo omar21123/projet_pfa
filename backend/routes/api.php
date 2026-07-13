@@ -42,7 +42,7 @@ Route::prefix('categories')->group(function () {
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
-        Route::post('/', [CategoryController::class, 'store']);
+        Route::post('/create', [CategoryController::class, 'store']);
         //Route::put('/{id}', [CategoryController::class, 'update']);
         Route::put('/{id}/status', [CategoryController::class, 'updateStatus']);
         Route::delete('/{id}', [CategoryController::class, 'destroy']);
@@ -50,6 +50,7 @@ Route::prefix('categories')->group(function () {
     });
 
 });
+
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
     Route::post('/register', [AdminController::class, 'store']); 
      Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {

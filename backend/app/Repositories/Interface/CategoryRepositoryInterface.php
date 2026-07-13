@@ -13,4 +13,6 @@ interface CategoryRepositoryInterface
     public function update(int $id, UpdateCategoryDto $dto): bool;
     public function updateStatus(int $id, bool $isActive): bool;
     public function delete(int $id): bool;
+    public function existsById(int $id): bool;
+    public function existsByName(string $name): bool;
 }

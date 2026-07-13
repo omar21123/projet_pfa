@@ -16,5 +16,6 @@ interface CategoryServiceInterface
     public function updateCategoryStatus(int $id, bool $isActive): bool;
     public function deleteCategory(int $id): bool;
     public function findById(int $id): object|null;
-
+    public function categoryExists(int $id): bool;
+    public function categoryExistsByName(string $name): bool;
 }

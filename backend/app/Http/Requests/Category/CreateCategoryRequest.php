@@ -14,11 +14,9 @@ class CreateCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'parentCategoryID' => 'nullable|integer|exists:categories,CategoryID',
-            'iconURL' => 'nullable|url|max:2048',
-            'isActive' => 'nullable|boolean',
-            'displayOrder' => 'nullable|integer',
+            'Name' => 'required|string|max:255',
+            'ParentCategoryID' => 'nullable|integer',
+            'IconURL' => 'nullable|file|image|max:2048', // 2MB max
         ];
     }
 
