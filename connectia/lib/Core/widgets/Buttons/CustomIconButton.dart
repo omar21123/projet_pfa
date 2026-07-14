@@ -7,7 +7,7 @@ class CustomIconButton extends StatelessWidget {
     super.key,
     required this.iconPath,
     required this.title,
-    required this.onPressed,
+    this.onPressed,
     this.backgroundColor,
     this.borderColor,
     this.titleColor,
@@ -17,7 +17,7 @@ class CustomIconButton extends StatelessWidget {
 
   final String iconPath; // path to the SVG asset
   final String title;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color? backgroundColor;
   final Color? borderColor;
   final Color? titleColor;

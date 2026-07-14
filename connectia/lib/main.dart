@@ -1,12 +1,15 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:flutter/material.dart';
 import 'package:connectia/Core/DI/locator.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('fr_FR', null);
   await initLocator();
-  
+  locator<AppPreferencesService>().clearAll();
   runApp(const ConnectiaApp());
 }
 
