@@ -1,5 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomIconButton.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Core/widgets/Texts/CustomTextFormField.dart';
@@ -55,9 +57,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
   Future<void> _handleLogin() async {
     // 1. Validate email/password rules first
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
+    // if (!(_formKey.currentState?.validate() ?? false)) {
+    //   return;
+    // }
 
     setState(() => isLoading = true);
 
@@ -72,6 +74,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       //
       // if (result.isSuccess) {
       //   if (mounted) CustomNavigator.safeNavigateToMainPage();
+      locator<AppPreferencesService>().setHasSeenLogin();
+      CustomNavigator.safeNavigateToMainPage();
+
       // } else {
       //   if (mounted) {
       //     ScaffoldMessenger.of(context).showSnackBar(
@@ -211,7 +216,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed:  isLoading ? null : () => context.push('/forgot-password'),
+                      onPressed: isLoading
+                          ? null
+                          : () => context.push('/forgot-password'),
 
                       child: Text(
                         'Mot de passe oublié ?',

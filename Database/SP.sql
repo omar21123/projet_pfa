@@ -410,7 +410,24 @@ BEGIN
         v_ID AS UserID,
         v_PublicID AS PublicID;
 END$$
+DELIMITER $$
 
+CREATE PROCEDURE `SP_GetVendorsCount`(
+    IN p_Search VARCHAR(255),
+    IN p_VerificationStatus TINYINT,
+    IN p_IsSuspended TINYINT
+)
+BEGIN
+    SELECT COUNT(*) AS TotalCount
+    FROM VendorProfiles vp
+    JOIN Users u ON u.UserID = vp.UserID
+    WHERE (p_Search IS NULL OR vp.StoreName LIKE CONCAT('%', p_Search, '%') OR u.Email LIKE CONCAT('%', p_Search, '%'))
+      AND (p_VerificationStatus IS NULL OR vp.VerificationStatus = p_VerificationStatus)
+      AND (p_IsSuspended IS NULL OR vp.IsSuspended = p_IsSuspended)
+      AND u.IsDeleted = 0;
+END$$
+
+DELIMITER ;
 DELIMITER ;
 
 --Not SP but ALTER TABLE VendorProfiles to add new columns for verification and suspension information
