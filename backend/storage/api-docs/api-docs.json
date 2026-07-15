@@ -1961,6 +1961,31 @@
                     }
                 }
             }
+        },
+        "/api/admin/profile": {
+            "get": {
+                "tags": [
+                    "Admin Profile"
+                ],
+                "summary": "Afficher le profil de l'administrateur connecté",
+                "operationId": "60ee859849316a2ae41fb7485e16e93e",
+                "responses": {
+                    "200": {
+                        "description": "Profil récupéré avec succès"
+                    },
+                    "401": {
+                        "description": "Utilisateur non authentifié"
+                    },
+                    "404": {
+                        "description": "Profil introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -1997,6 +2022,10 @@
         {
             "name": "Test",
             "description": "Test"
+        },
+        {
+            "name": "Admin Profile",
+            "description": "Admin Profile"
         }
     ],
     "security": [

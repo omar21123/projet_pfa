@@ -13,10 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
+        // 🔥 ÉTAPE 1 : Activer le middleware CORS global de Laravel
+        // (Assure-toi que les requêtes API ne cherchent pas de jeton CSRF web)
+        $middleware->validateCsrfTokens(except: [
+            'api/*'
+        ]);
+
         $middleware->alias([
             'jwt.custom' => \App\Http\Middleware\JwtAuthMiddleware::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
-
         ]);
 
     })
