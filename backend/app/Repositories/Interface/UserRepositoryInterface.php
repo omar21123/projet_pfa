@@ -6,6 +6,7 @@ use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\UserDto;
 use App\DTOs\Auth\UserStandardInfoDto;
+use App\DTOs\Auth\VendorRegisterDto;
 
 interface UserRepositoryInterface
 {
@@ -43,4 +44,15 @@ interface UserRepositoryInterface
 ): void;
 public function getReadNotificationsCount(int $userId): int;
 public function getUserStandardInformation(int $userId): ?UserStandardInfoDto;
+// App\Repositories\Interface\AuthRepositoryInterface
+
+public function createVendor(
+    VendorRegisterDto $dto,
+    string $passwordHash,
+    string $tokenHash,
+    string $ipAddress,
+    int $ttlDays
+): array;
+public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
+
 }

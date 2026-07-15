@@ -30,5 +30,8 @@ public function getReadNotificationsCount(int $userId): int;
      * (rotation trail).
      */
     public function revokeByTokenHash(string $tokenHash, ?string $replacedByTokenHash = null): bool;
+    public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
+
+
 
 }
