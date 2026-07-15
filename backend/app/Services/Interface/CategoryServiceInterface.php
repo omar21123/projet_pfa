@@ -21,4 +21,6 @@ interface CategoryServiceInterface
     public function getChildren(int $parentId, CategoryFilterDto $filters): array;
     public function deactivateSubtree(int $id): bool;
     public function activateCategory(int $id): bool;
+    public function  getNavbarCategories(): array;
+
 }

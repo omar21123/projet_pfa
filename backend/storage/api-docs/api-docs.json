@@ -1865,6 +1865,20 @@
                 ]
             }
         },
+        "/api/categories/navbar": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Liste des catégories actives pour le Navbar",
+                "operationId": "c1e92713529de6a6d8adeed4138c5a64",
+                "responses": {
+                    "200": {
+                        "description": "Liste des catégories du Navbar"
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "summary": "Health check",

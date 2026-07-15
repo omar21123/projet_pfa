@@ -16,7 +16,8 @@ class CategoryService implements CategoryServiceInterface
 {
     public function __construct(
         protected CategoryRepositoryInterface $categoryRepository
-    ) {}
+    ) {
+    }
 
     public function createCategory(CreateCategoryDto $dto): CategoryResponseDto
     {
@@ -101,5 +102,9 @@ class CategoryService implements CategoryServiceInterface
         }
 
         return $this->categoryRepository->activate($id);
+    }
+    public function getNavbarCategories(): array
+    {
+        return $this->categoryRepository->getNavbarCategories();
     }
 }

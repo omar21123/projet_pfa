@@ -22,7 +22,8 @@ class CategoryController extends Controller
     public function __construct(
         protected CategoryServiceInterface $categoryService,
         private FileUploadServiceInterface $fileUploadService
-    ) {}
+    ) {
+    }
 
     #[OA\Post(
         path: "/api/categories/create",
@@ -210,6 +211,25 @@ class CategoryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Catégorie activée avec succès',
+        ]);
+    }
+    #[OA\Get(
+        path: "/api/categories/navbar",
+        tags: ["Categories"],
+        summary: "Liste des catégories actives pour le Navbar"
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Liste des catégories du Navbar"
+    )]
+    public function navbar(): JsonResponse
+    {
+        $categories = $this->categoryService->getNavbarCategories();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catégories du navbar récupérées avec succès.',
+            'data' => $categories,
         ]);
     }
 }

@@ -18,4 +18,5 @@ interface CategoryRepositoryInterface
     public function getChildren(int $parentId, array $filters = [], int $page = 1, int $perPage = 50): array;
     public function propagateInactivation(int $id): bool;
     public function activate(int $id): bool;
+    public function  getNavbarCategories(): array;
 }

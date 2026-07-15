@@ -38,7 +38,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('categories')->group(function () {
 
     // 🔓 Route Publique : Tout le monde peut voir l'arbre des catégories
-
+Route::get('/navbar', [CategoryController::class, 'navbar']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/', [CategoryController::class, 'index']);

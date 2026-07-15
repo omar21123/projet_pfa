@@ -319,4 +319,38 @@ class CategoryRepository implements CategoryRepositoryInterface
         $id
     ]) > 0;
 }
+   public function getNavbarCategories(): array
+{
+    $rows = DB::select("CALL SP_GetNavbarCategories()");
+    return $this->buildTree($rows);
+}
+private function buildTree(array $rows): array
+{
+    $nodes = [];
+    $tree = [];
+
+    // Création d'un tableau indexé par CategoryID
+    foreach ($rows as $row) {
+        $row->children = [];
+        $nodes[$row->CategoryID] = $row;
+    }
+
+    // Construction de l'arbre
+    foreach ($nodes as $node) {
+
+        if ($node->ParentCategoryID === null) {
+
+            $tree[] = $node;
+
+        } elseif (isset($nodes[$node->ParentCategoryID])) {
+
+            $nodes[$node->ParentCategoryID]->children[] = $node;
+
+        }
+
+    }
+
+    return $tree;
+}
+
 }
