@@ -2,7 +2,6 @@ import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Core/widgets/Texts/CustomTextFormField.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({
