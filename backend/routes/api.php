@@ -5,9 +5,11 @@ use App\Http\Controllers\TestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\admin\AdminProfileController;
+use App\Http\Controllers\BrandController;
 
 Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
@@ -37,8 +39,8 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('categories')->group(function () {
 
-    // 🔓 Route Publique : Tout le monde peut voir l'arbre des catégories
-Route::get('/navbar', [CategoryController::class, 'navbar']);
+
+    Route::get('/navbar', [CategoryController::class, 'navbar']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/', [CategoryController::class, 'index']);
@@ -52,6 +54,36 @@ Route::get('/navbar', [CategoryController::class, 'navbar']);
 
 });
 
+Route::prefix('tags')->group(function () {
+
+    Route::get('/', [TagController::class, 'index']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::post('/create', [TagController::class, 'store']);
+        Route::post('/create-by-name', [TagController::class, 'storeByName']);
+        Route::post('/{id}/disable', [TagController::class, 'disable']);
+    });
+
+});
+Route::prefix('brands')->group(function () {
+
+    // 🌐 Route Publique
+    Route::get('/', [BrandController::class, 'publicIndex']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/admin', [BrandController::class, 'adminIndex']);
+        Route::get('/exists', [BrandController::class, 'existsByName']);
+        Route::post('/create', [BrandController::class, 'store']);
+        Route::put('/{id}', [BrandController::class, 'update']);
+        Route::put('/{id}/disable', [BrandController::class, 'disable']);
+        Route::put('/{id}/enable', [BrandController::class, 'enable']);
+    });
+
+});
+
+//for admin
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -62,6 +94,7 @@ Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(funct
         Route::post('/vendors/{vendorProfileId}/reset-to-pending', [AdminVendorController::class, 'AdminResetVendorToPending']);
     });// Ajouter un nouvel admin
 });
+
 Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
 
     // Route GET pour récupérer le profil complet de l'administrateur connecté

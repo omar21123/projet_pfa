@@ -11,4 +11,9 @@ class CountryRepository implements CountryRepositoryInterface
     {
         return DB::select('SELECT CountryID ,Name FROM Countries');
     }
+    public function isExistsByID(int $countryID): bool
+{
+    $result = DB::select('SELECT 1 FROM Countries WHERE CountryID = ? LIMIT 1', [$countryID]);
+    return !empty($result);
+}
 }

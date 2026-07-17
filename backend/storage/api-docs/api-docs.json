@@ -1591,6 +1591,417 @@
                 }
             }
         },
+        "/api/brands/create": {
+            "post": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Créer une marque",
+                "description": "Permet de créer une nouvelle marque (réservé aux administrateurs).",
+                "operationId": "443e526c0e3d735f51a608a4b9e9ab6d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Samsung"
+                                    },
+                                    "Website": {
+                                        "type": "string",
+                                        "example": "https://samsung.com",
+                                        "nullable": true
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Fabricant sud-coréen d'électronique",
+                                        "nullable": true
+                                    },
+                                    "CountryID": {
+                                        "type": "integer",
+                                        "example": 12,
+                                        "nullable": true
+                                    },
+                                    "LogoURL": {
+                                        "description": "Logo de la marque (jpg, jpeg, png, webp - max 2MB)",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Marque créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Règle métier violée (nom déjà pris, pays introuvable, ...)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands/exists": {
+            "get": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Vérifier si une marque existe par son nom",
+                "operationId": "5130d1adfb35bd092b70b57d9c349caf",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "exists": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Paramètre 'name' manquant"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands/{id}": {
+            "put": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Mettre à jour une marque",
+                "operationId": "1fac61ef4f1f3db38169272ad0e5ed09",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Samsung"
+                                    },
+                                    "Website": {
+                                        "type": "string",
+                                        "example": "https://samsung.com",
+                                        "nullable": true
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Fabricant sud-coréen d'électronique",
+                                        "nullable": true
+                                    },
+                                    "CountryID": {
+                                        "type": "integer",
+                                        "example": 12,
+                                        "nullable": true
+                                    },
+                                    "LogoURL": {
+                                        "description": "Nouveau logo (optionnel — l'ancien est conservé si absent)",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Marque mise à jour"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Marque introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands/{id}/disable": {
+            "put": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Désactiver une marque",
+                "operationId": "136170ea4c071e9e84c1445d62e36da1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marque désactivée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Marque introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands/{id}/enable": {
+            "put": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Activer une marque",
+                "operationId": "43ff8bc7cc45153a9ea327e7d70aa6ce",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marque activée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Marque introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands/admin": {
+            "get": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Liste des marques pour l'administration (avec filtres, recherche, pagination)",
+                "operationId": "312b834ab40670fb187262195014f9db",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "countryID",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "CreatedAt",
+                                "UpdatedAt",
+                                "IsActive"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/brands": {
+            "get": {
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Liste publique des marques actives (filtre par ID ou nom, wildcard sur le nom)",
+                "operationId": "7eb34b3168635250e48ed69ecc616546",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
+            }
+        },
         "/api/categories/create": {
             "post": {
                 "tags": [
@@ -1959,21 +2370,273 @@
                 }
             }
         },
-        "/api/test": {
+        "/api/tags/create": {
+            "post": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Créer un tag",
+                "description": "Permet de créer un nouveau tag avec nom, couleur et description.",
+                "operationId": "b531dede33b029680edfb5b438c4ef3a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Promotion"
+                                    },
+                                    "Color": {
+                                        "type": "string",
+                                        "example": "#FF5733",
+                                        "nullable": true
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Produits en promotion",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Tag créé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Un tag avec ce nom existe déjà"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tags/create-by-name": {
+            "post": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Créer un tag à partir du nom uniquement",
+                "description": "Crée un tag en ne fournissant que le nom ; Color, Description et IsActive utilisent leurs valeurs par défaut. Retourne l'ID du tag créé.",
+                "operationId": "9cda73135e6a13862044f163cc5c0857",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Nouveauté"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Tag créé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Tag créé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Un tag avec ce nom existe déjà"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tags": {
             "get": {
                 "tags": [
-                    "Test"
+                    "Tags"
                 ],
-                "summary": "Route de test pour vérifier Swagger",
-                "operationId": "4bd555185e754072eb17825b92b4ac9a",
+                "summary": "Liste des tags (avec filtres, recherche, pagination)",
+                "operationId": "4d0f4baf9e6fa992c0d85fbf140ebf17",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "CreatedAt",
+                                "IsActive"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Ça fonctionne"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
+                        "description": "Succès"
                     }
                 }
+            }
+        },
+        "/api/tags/{id}/disable": {
+            "post": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Désactiver un tag",
+                "description": "Met à jour le statut d'un tag existant en le désactivant (IsActive = 0).",
+                "operationId": "b2a7c39ebf4c0f9585a146bfd4618790",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 42
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tag désactivé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Tag désactivé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                },
+                                                "isActive": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Tag introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/admin/profile": {
@@ -2026,16 +2689,20 @@
             "description": "Authentification et création de compte"
         },
         {
+            "name": "Brands",
+            "description": "Gestion des marques"
+        },
+        {
             "name": "Categories",
             "description": "Gestion des catégories"
         },
         {
-            "name": "Countries",
-            "description": "Countries"
+            "name": "Tags",
+            "description": "Gestion des tags"
         },
         {
-            "name": "Test",
-            "description": "Test"
+            "name": "Countries",
+            "description": "Countries"
         },
         {
             "name": "Admin Profile",

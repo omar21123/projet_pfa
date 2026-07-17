@@ -30,6 +30,18 @@ use App\Repositories\sql\AdminProfileRepository;
 use App\Services\Interface\AdminProfileServiceInterface;
 use App\Services\AdminProfileService;
 
+// 🏷️ AJOUT DES IMPORTS POUR LES TAGS (Repository + Service)
+use App\Repositories\Interface\TagRepositoryInterface;
+use App\Repositories\sql\TagRepository;
+use App\Services\Interface\TagServiceInterface;
+use App\Services\TagService;
+
+// 🏭 AJOUT DES IMPORTS POUR LES BRANDS (Repository + Service)
+use App\Repositories\Interface\BrandRepositoryInterface;
+use App\Repositories\sql\BrandRepository;
+use App\Services\Interface\BrandServiceInterface;
+use App\Services\BrandService;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -104,6 +116,32 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             AdminProfileServiceInterface::class, 
             AdminProfileService::class
+        );
+
+        // ==========================================================
+        // 🏷️ AJOUT : Liaisons pour la gestion des Tags
+        // ==========================================================
+        $this->app->bind(
+            TagRepositoryInterface::class,
+            TagRepository::class
+        );
+
+        $this->app->bind(
+            TagServiceInterface::class,
+            TagService::class
+        );
+
+        // ==========================================================
+        // 🏭 AJOUT : Liaisons pour la gestion des Brands
+        // ==========================================================
+        $this->app->bind(
+            BrandRepositoryInterface::class,
+            BrandRepository::class
+        );
+
+        $this->app->bind(
+            BrandServiceInterface::class,
+            BrandService::class
         );
     }
 

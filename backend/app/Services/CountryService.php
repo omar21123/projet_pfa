@@ -21,4 +21,7 @@ class CountryService implements CountryServiceInterface
             $rows
         );
     }
+     public function isExistsByID(int $countryID): bool {
+        return $this->countryRepository->isExistsByID($countryID);
+     }
 }
