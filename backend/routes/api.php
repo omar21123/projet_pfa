@@ -76,7 +76,7 @@ Route::prefix('brands')->group(function () {
         Route::get('/admin', [BrandController::class, 'adminIndex']);
         Route::get('/exists', [BrandController::class, 'existsByName']);
         Route::post('/create', [BrandController::class, 'store']);
-        Route::put('/{id}', [BrandController::class, 'update']);
+        Route::post('/{id}', [BrandController::class, 'update']);
         Route::put('/{id}/disable', [BrandController::class, 'disable']);
         Route::put('/{id}/enable', [BrandController::class, 'enable']);
     });

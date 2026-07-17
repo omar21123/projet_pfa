@@ -11,6 +11,7 @@ use App\Services\Interface\CountryServiceInterface;
 use App\Services\Interface\FileUploadServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log; // <-- add this
 use OpenApi\Attributes as OA;
 
 #[OA\Tag(
@@ -63,12 +64,13 @@ public function store(CreateBrandRequest $request): JsonResponse
 {
     $request->validated();
 
-    if ($request->filled('CountryID')) {
-        $countryExists = $this->CountryService->isExistsByID($request->input('CountryID'));
-        if (!$countryExists) {
+    $countryId = $request->filled('CountryID') ? (int) $request->input('CountryID') : null;
+    if ($countryId !== null) {
+        $countryExists = $this->CountryService->isExistsByID($countryId);
+        if ($countryExists === false) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ce pays n\'existe pas dans notre base de données.'
+                'message' => 'Ce pays n\existe pas dans notre base de données.'
             ], 422);
         }
     }
@@ -180,6 +182,21 @@ public function store(CreateBrandRequest $request): JsonResponse
     {
         $request->validated();
 
+        $countryId = $request->filled('CountryID') ? (int) $request->input('CountryID') : null;
+        if ($countryId !== null) {
+            $countryExists = $this->CountryService->isExistsByID($countryId);
+            if ($countryExists === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce pays n\existe pas dans notre base de données.'
+                ], 422);
+            }
+        }
+        Log::debug('Incoming request', [
+    'input'   => $request->all(),
+    'headers' => $request->headers->all(),
+]);
+
         $existingBrand = $this->brandService->findById($id);
         if (!$existingBrand) {
             return response()->json([
@@ -192,7 +209,7 @@ public function store(CreateBrandRequest $request): JsonResponse
             ? $this->fileUploadService->storeAvatar($request->file('LogoURL'))
             : $existingBrand->LogoURL;
 
-        $dto = UpdateBrandDto::fromRequest($request, $logoUrl);
+        $dto = UpdateBrandDto::fromRequest($request, $logoUrl, $existingBrand);
 
         try {
             $this->brandService->update($id, $dto);

@@ -18,7 +18,7 @@ class CreateBrandRequest extends FormRequest
             'LogoURL'     => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'Website'     => ['nullable', 'string', 'url', 'max:255'],
             'Description' => ['nullable', 'string'],
-            'CountryID'   => ['nullable', 'integer', 'exists:Countries,CountryID'],
+            'CountryID'   => ['nullable', 'integer'],
         ];
     }
 
