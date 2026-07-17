@@ -10,6 +10,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\admin\AdminProfileController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProductModelController;
+use App\Http\Controllers\UnitController;
 
 Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
@@ -82,7 +84,37 @@ Route::prefix('brands')->group(function () {
     });
 
 });
+Route::prefix('models')->group(function () {
 
+    // 🌐 Route Publique
+    Route::get('/', [ProductModelController::class, 'publicIndex']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/admin', [ProductModelController::class, 'adminIndex']);
+        Route::post('/create', [ProductModelController::class, 'store']);
+        Route::put('/{id}', [ProductModelController::class, 'update']);
+        Route::put('/{id}/disable', [ProductModelController::class, 'disable']);
+        Route::put('/{id}/enable', [ProductModelController::class, 'enable']);
+    });
+
+});
+
+Route::prefix('units')->group(function () {
+
+    // 🌐 Route Publique
+    Route::get('/', [UnitController::class, 'publicIndex']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/admin', [UnitController::class, 'adminIndex']);
+        Route::post('/create', [UnitController::class, 'store']);
+        Route::put('/{id}', [UnitController::class, 'update']);
+        Route::put('/{id}/disable', [UnitController::class, 'disable']);
+        Route::put('/{id}/enable', [UnitController::class, 'enable']);
+    });
+
+});
 //for admin
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
     Route::post('/register', [AdminController::class, 'store']);

@@ -2370,6 +2370,360 @@
                 }
             }
         },
+        "/api/models/create": {
+            "post": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Créer un modèle",
+                "description": "Permet de créer un nouveau modèle rattaché à une marque (réservé aux administrateurs).",
+                "operationId": "3340fb3eb495b9399e66168b341b98ef",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "BrandID",
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "BrandID": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Galaxy S24"
+                                    },
+                                    "Code": {
+                                        "type": "string",
+                                        "example": "SM-S921B",
+                                        "nullable": true
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Modèle phare 2024",
+                                        "nullable": true
+                                    },
+                                    "ReleaseYear": {
+                                        "type": "integer",
+                                        "example": 2024,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Modèle créé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Marque introuvable"
+                    },
+                    "422": {
+                        "description": "Un modèle avec ce nom existe déjà pour cette marque"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/models/{id}": {
+            "put": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Mettre à jour les informations d'un modèle",
+                "description": "Met à jour uniquement les informations du modèle (Name, Code, Description, ReleaseYear) — la marque associée n'est pas modifiable via cet endpoint.",
+                "operationId": "1aadf673acdd766fff0f8d5b4a7ea14f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Galaxy S24 Ultra"
+                                    },
+                                    "Code": {
+                                        "type": "string",
+                                        "example": "SM-S928B",
+                                        "nullable": true
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Version Ultra 2024",
+                                        "nullable": true
+                                    },
+                                    "ReleaseYear": {
+                                        "type": "integer",
+                                        "example": 2024,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Modèle mis à jour"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Modèle introuvable"
+                    },
+                    "422": {
+                        "description": "Un modèle avec ce nom existe déjà pour cette marque"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/models/{id}/disable": {
+            "put": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Désactiver un modèle",
+                "operationId": "83f490e6caddb69b3ec863c2b8350401",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Modèle désactivé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Modèle introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/models/{id}/enable": {
+            "put": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Activer un modèle",
+                "operationId": "5513adf58616f3b0de7f17c4383670bc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Modèle activé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Modèle introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/models/admin": {
+            "get": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Liste des modèles pour l'administration (avec filtres, recherche, pagination)",
+                "operationId": "f4872c5817d131fb46ee0ce69f4078de",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "brandID",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "CreatedAt",
+                                "UpdatedAt",
+                                "IsActive",
+                                "ReleaseYear"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/models": {
+            "get": {
+                "tags": [
+                    "Models"
+                ],
+                "summary": "Liste publique des modèles actifs (filtre par ID ou nom, wildcard sur le nom)",
+                "operationId": "a3d19a7d695e6376e99fea918fe2e2d4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -2639,6 +2993,332 @@
                 ]
             }
         },
+        "/api/units/create": {
+            "post": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Créer une unité",
+                "description": "Permet de créer une nouvelle unité de mesure (réservé aux administrateurs).",
+                "operationId": "611649410a56594134c9c480b815005a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name",
+                                    "Symbol"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Kilogramme"
+                                    },
+                                    "Symbol": {
+                                        "type": "string",
+                                        "example": "kg"
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Unité créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Une unité avec ce nom existe déjà"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/units/{id}": {
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Mettre à jour une unité",
+                "operationId": "fd3df76ad7b71132408b72e6efc5a421",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name",
+                                    "Symbol"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Kilogramme"
+                                    },
+                                    "Symbol": {
+                                        "type": "string",
+                                        "example": "kg"
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Unité mise à jour"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Unité introuvable"
+                    },
+                    "422": {
+                        "description": "Une unité avec ce nom existe déjà"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/units/{id}/disable": {
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Désactiver une unité",
+                "operationId": "bceef927625ce8169883fe6f0c4cdb8b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unité désactivée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Unité introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/units/{id}/enable": {
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Activer une unité",
+                "operationId": "f24e7e02fc5a87f952b2f10770509db4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unité activée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Unité introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/units/admin": {
+            "get": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Liste des unités pour l'administration (avec filtres, recherche, pagination)",
+                "operationId": "28e9e748cf04459e086d2a2f0efdc43c",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "IsActive",
+                                "DisplayOrder"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/units": {
+            "get": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Liste publique des unités actives (filtre par ID ou nom)",
+                "operationId": "cd4785856009b9f3c3ea8918154c862a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
+            }
+        },
         "/api/admin/profile": {
             "get": {
                 "tags": [
@@ -2697,8 +3377,16 @@
             "description": "Gestion des catégories"
         },
         {
+            "name": "Models",
+            "description": "Gestion des modèles de produits"
+        },
+        {
             "name": "Tags",
             "description": "Gestion des tags"
+        },
+        {
+            "name": "Units",
+            "description": "Gestion des unités de mesure"
         },
         {
             "name": "Countries",

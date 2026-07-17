@@ -7,14 +7,14 @@ use App\Repositories\Interface\UserRepositoryInterface;
 use App\Repositories\sql\CategoryRepository;
 use App\Repositories\sql\UserRepository;
 use App\Services\Interface\CategoryServiceInterface;
-use App\Repositories\Interface\AdminRepositoryInterface; 
+use App\Repositories\Interface\AdminRepositoryInterface;
 
 use App\Repositories\Interface\RefreshTokenRepositoryInterface;
 use App\Repositories\sql\RefreshTokenRepository;
 use App\Repositories\sql\AdminRepository;
 use App\Services\AuthService;
 use App\Services\Interface\AuthServiceInterface;
-use App\Services\Interface\AdminServiceInterface; 
+use App\Services\Interface\AdminServiceInterface;
 use App\Services\CategoryService;
 use App\Services\AccessTokenService;
 use App\Services\AdminService;
@@ -41,6 +41,20 @@ use App\Repositories\Interface\BrandRepositoryInterface;
 use App\Repositories\sql\BrandRepository;
 use App\Services\Interface\BrandServiceInterface;
 use App\Services\BrandService;
+// ==========================================================
+// 🚘 AJOUT : Liaisons pour la gestion des Models (ProductModel)
+// ==========================================================
+use App\Repositories\Interface\ProductModelRepositoryInterface;
+use App\Repositories\sql\ProductModelRepository;
+use App\Services\Interface\ProductModelServiceInterface;
+use App\Services\ProductModelService;
+// ==========================================================
+// 📏 AJOUT : Liaisons pour la gestion des Units
+// ==========================================================
+use App\Repositories\Interface\UnitRepositoryInterface;
+use App\Repositories\sql\UnitRepository;
+use App\Services\Interface\UnitServiceInterface;
+use App\Services\UnitService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -67,7 +81,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CategoryServiceInterface::class, CategoryService::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(RefreshTokenRepositoryInterface::class, RefreshTokenRepository::class);
-        
+
         $this->app->bind(
             \App\Repositories\Interface\CountryRepositoryInterface::class,
             \App\Repositories\sql\CountryRepository::class
@@ -77,19 +91,19 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\CountryServiceInterface::class,
             \App\Services\CountryService::class
         );
-        
+
         $this->app->bind(
             \App\Services\Interface\UserServiceInterface::class,
             \App\Services\UserService::class
         );
-        
+
         $this->app->bind(AdminRepositoryInterface::class, AdminRepository::class);
-        
+
         $this->app->bind(
             AdminServiceInterface::class,
             AdminService::class
-        );    
-        
+        );
+
         $this->app->bind(
             \App\Services\Interface\FileUploadServiceInterface::class,
             \App\Services\FileUploadService::class
@@ -109,12 +123,12 @@ class AppServiceProvider extends ServiceProvider
         // 🚀 AJOUT : Liaisons pour la gestion du Profil Admin
         // ==========================================================
         $this->app->bind(
-            AdminProfileRepositoryInterface::class, 
+            AdminProfileRepositoryInterface::class,
             AdminProfileRepository::class
         );
 
         $this->app->bind(
-            AdminProfileServiceInterface::class, 
+            AdminProfileServiceInterface::class,
             AdminProfileService::class
         );
 
@@ -142,6 +156,24 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             BrandServiceInterface::class,
             BrandService::class
+        );
+        $this->app->bind(
+            ProductModelRepositoryInterface::class,
+            ProductModelRepository::class
+        );
+
+        $this->app->bind(
+            ProductModelServiceInterface::class,
+            ProductModelService::class
+        );
+        $this->app->bind(
+            UnitRepositoryInterface::class,
+            UnitRepository::class
+        );
+
+        $this->app->bind(
+            UnitServiceInterface::class,
+            UnitService::class
         );
     }
 
