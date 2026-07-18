@@ -12,6 +12,7 @@ use App\Http\Controllers\admin\AdminProfileController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\ProductsConfigAttributeController;
 
 Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
@@ -135,3 +136,19 @@ Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
 });
 
 Route::get('/countries', [CountryController::class, 'index']);
+Route::prefix('products-config-attributes')->group(function () {
+
+    // 🌐 Route Publique (liste légère : ID + Name)
+    Route::get('/', [ProductsConfigAttributeController::class, 'index']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/admin', [ProductsConfigAttributeController::class, 'adminIndex']);
+        Route::get('/exists', [ProductsConfigAttributeController::class, 'existsByName']);
+        Route::post('/create', [ProductsConfigAttributeController::class, 'store']);
+        Route::put('/{id}', [ProductsConfigAttributeController::class, 'update']);
+        Route::put('/{id}/disable', [ProductsConfigAttributeController::class, 'disable']);
+        Route::put('/{id}/enable', [ProductsConfigAttributeController::class, 'enable']);
+    });
+
+});

@@ -55,6 +55,13 @@ use App\Repositories\Interface\UnitRepositoryInterface;
 use App\Repositories\sql\UnitRepository;
 use App\Services\Interface\UnitServiceInterface;
 use App\Services\UnitService;
+// ==========================================================
+// 🧩 AJOUT : Liaisons pour la gestion des ProductsConfigAttribute
+// ==========================================================
+use App\Repositories\Interface\ProductsConfigAttributeRepositoryInterface;
+use App\Repositories\sql\ProductsConfigAttributeRepository;
+use App\Services\Interface\ProductsConfigAttributeServiceInterface;
+use App\Services\ProductsConfigAttributeService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -174,6 +181,18 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             UnitServiceInterface::class,
             UnitService::class
+        );
+         // ==========================================================
+        // 🧩 AJOUT : Liaisons pour la gestion des ProductsConfigAttribute
+        // ==========================================================
+        $this->app->bind(
+            ProductsConfigAttributeRepositoryInterface::class,
+            ProductsConfigAttributeRepository::class
+        );
+
+        $this->app->bind(
+            ProductsConfigAttributeServiceInterface::class,
+            ProductsConfigAttributeService::class
         );
     }
 

@@ -2724,6 +2724,369 @@
                 }
             }
         },
+        "/api/products-config-attributes/create": {
+            "post": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Créer un attribut de configuration produit",
+                "description": "Permet de créer un nouvel attribut (réservé aux administrateurs).",
+                "operationId": "a5e79230d0212fd64e813f2532fc6559",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Couleur"
+                                    },
+                                    "UnitID": {
+                                        "type": "integer",
+                                        "example": 3,
+                                        "nullable": true
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Attribut créé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Règle métier violée (nom déjà pris, unité introuvable, ...)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes/exists": {
+            "get": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Vérifier si un attribut existe par son nom",
+                "operationId": "fbfe0c0c4b2b7203f3eef8618aa57827",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Paramètre 'name' manquant"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes/{id}": {
+            "put": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Mettre à jour un attribut de configuration produit",
+                "operationId": "09b35c4d4941fe0792af7edf2cc0c83d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Couleur"
+                                    },
+                                    "UnitID": {
+                                        "type": "integer",
+                                        "example": 3,
+                                        "nullable": true
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Attribut mis à jour"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Attribut introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes/{id}/disable": {
+            "put": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Désactiver un attribut",
+                "operationId": "62a9fd3e570a746e3d272fd16c15110b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Attribut désactivé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Attribut introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes/{id}/enable": {
+            "put": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Activer un attribut",
+                "operationId": "1b32e68ba8ddf88706a357ac8a32984f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Attribut activé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Attribut introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes/admin": {
+            "get": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Liste des attributs pour l'administration (avec filtres, recherche, pagination)",
+                "operationId": "a551b5e57235f82d240695691520a1c8",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "unitID",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Name",
+                                "CreatedAt",
+                                "UpdatedAt",
+                                "IsActive",
+                                "DisplayOrder"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products-config-attributes": {
+            "get": {
+                "tags": [
+                    "ProductsConfigAttribute"
+                ],
+                "summary": "Liste légère des attributs actifs (ID + Name uniquement, filtre par nom)",
+                "operationId": "be9a5898c0ecd90096d0c29bc1d32c88",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -3379,6 +3742,10 @@
         {
             "name": "Models",
             "description": "Gestion des modèles de produits"
+        },
+        {
+            "name": "ProductsConfigAttribute",
+            "description": "Gestion des attributs de configuration produit"
         },
         {
             "name": "Tags",

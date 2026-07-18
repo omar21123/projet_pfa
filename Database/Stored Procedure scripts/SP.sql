@@ -430,12 +430,6 @@ END$$
 DELIMITER ;
 DELIMITER ;
 
---Not SP but ALTER TABLE VendorProfiles to add new columns for verification and suspension information
-ALTER TABLE VendorProfiles ADD COLUMN VerifiedBy INT NULL;       -- FK Users (admin who verified)
-ALTER TABLE VendorProfiles ADD COLUMN VerificationNotes NVARCHAR(500) NULL;
-ALTER TABLE VendorProfiles ADD COLUMN RejectionNotes NVARCHAR(500) NULL;
-ALTER TABLE VendorProfiles ADD COLUMN SuspendedBy INT NULL;          -- FK Users (admin who suspended)
-ALTER TABLE VendorProfiles ADD COLUMN SuspensionNotes NVARCHAR(500) NULL;
 DELIMITER $$
 DROP PROCEDURE IF EXISTS SP_GetVendorsList$$
 CREATE PROCEDURE SP_GetVendorsList

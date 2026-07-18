@@ -196,6 +196,11 @@ CREATE TABLE VendorProfiles (
     ApprovedAt         DATETIME,
     CreatedAt          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    VerifiedBy INT NULL,
+    VerificationNotes NVARCHAR(500) NULL,
+    RejectionNotes NVARCHAR(500) NULL,
+    SuspendedBy INT NULL,
+    SuspensionNotes NVARCHAR(500) NULL,
     CONSTRAINT FK_VendorProfiles_Users FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY UX_VendorProfiles_UserID (UserID),
     KEY IXF_VendorProfiles_Approved (IsApproved, IsSuspended),
@@ -382,15 +387,19 @@ CREATE TABLE Models (
 
 CREATE TABLE ProductsConfigAttribute (
     AttributeID  INT AUTO_INCREMENT PRIMARY KEY,
-    CategoryID   INT NOT NULL,
     UnitID       INT,
+    IsActive TINYINT(1) NOT NULL DEFAULT 1,
     Name         VARCHAR(150) NOT NULL,
     DisplayOrder INT NOT NULL DEFAULT 0,
-    CONSTRAINT FK_ProductsConfigAttribute_Category FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID) ON DELETE CASCADE ON UPDATE CASCADE,
+     CreatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+     UpdatedAt DATETIME NULL,
     CONSTRAINT FK_ProductsConfigAttribute_Unit FOREIGN KEY (UnitID) REFERENCES Units(UnitID) ON DELETE SET NULL ON UPDATE CASCADE,
-    KEY IX_ProductsConfigAttribute_CategoryID (CategoryID),
     KEY IX_ProductsConfigAttribute_UnitID (UnitID)
+    
 ) ENGINE=InnoDB;
+
+ALTER TABLE ProductsConfigAttribute
+    ADD UNIQUE KEY UQ_ProductsConfigAttribute_Name (Name);
 
 CREATE TABLE ConfigAttributeOptions (
     OptionID                  INT AUTO_INCREMENT PRIMARY KEY,
