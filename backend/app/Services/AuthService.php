@@ -52,7 +52,7 @@ class AuthService implements AuthServiceInterface
             return $user;
         }
         throw ValidationException::withMessages([
-            'message' => ['Identifiants invalides.'],
+            'message' => ["Identifiants invalides."],
         ]);
     }
 

@@ -62,4 +62,8 @@ class ConfigAttributeOptionService implements ConfigAttributeOptionServiceInterf
     {
         return $this->configAttributeOptionRepository->getAll($filters, $page, $perPage);
     }
+    public function getAllOptionsByAttributeID(int $attributeID): array
+    {
+        return $this->configAttributeOptionRepository->getAllOptionsByAttributeID($attributeID);
+    }
 }

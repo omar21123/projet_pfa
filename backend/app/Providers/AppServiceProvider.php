@@ -66,6 +66,17 @@ use App\Repositories\Interface\ConfigAttributeOptionRepositoryInterface;
 use App\Repositories\sql\ConfigAttributeOptionRepository;
 use App\Services\Interface\ConfigAttributeOptionServiceInterface;
 use App\Services\ConfigAttributeOptionService;
+
+use App\Repositories\Interface\ProductRepositoryInterface;
+use App\Repositories\sql\ProductRepository;
+use App\Services\Interface\ProductServiceInterface;
+use App\Services\ProductService;
+
+use App\Repositories\Interface\VendorRepositoryInterface;
+use App\Repositories\sql\VendorRepository;
+use App\Services\Interface\VendorServiceInterface;
+use App\Services\VendorService;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -185,7 +196,7 @@ class AppServiceProvider extends ServiceProvider
             UnitServiceInterface::class,
             UnitService::class
         );
-         // ==========================================================
+        // ==========================================================
         // 🧩 AJOUT : Liaisons pour la gestion des ProductsConfigAttribute
         // ==========================================================
         $this->app->bind(
@@ -205,6 +216,27 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ConfigAttributeOptionServiceInterface::class,
             ConfigAttributeOptionService::class
+        );
+        // ==========================================================
+        // 📦 AJOUT : Liaisons pour la gestion des Products
+        // ==========================================================
+        $this->app->bind(
+            ProductRepositoryInterface::class,
+            ProductRepository::class
+        );
+
+        $this->app->bind(
+            ProductServiceInterface::class,
+            ProductService::class
+        );
+        $this->app->bind(
+            VendorRepositoryInterface::class,
+            VendorRepository::class
+        );
+
+        $this->app->bind(
+            VendorServiceInterface::class,
+            VendorService::class
         );
     }
 

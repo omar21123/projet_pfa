@@ -2685,6 +2685,33 @@
                 }
             }
         },
+        "/api/config-attribute-options/by-attribute/{attributeID}": {
+            "get": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Liste de toutes les options actives d'un attribut donné",
+                "operationId": "8207892f6f1dc2c208c52061103b0e5f",
+                "parameters": [
+                    {
+                        "name": "attributeID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "404": {
+                        "description": "Attribut introuvable"
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "summary": "Health check",
@@ -2763,6 +2790,348 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/products/create": {
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Créer un produit",
+                "description": "Crée un nouveau produit avec ses ressources (vidéos/images), catégories, attributs de configuration (avec options), tags et modes de paiement autorisés. Le VendorID est résolu automatiquement depuis le token JWT (PublicID -> UserID -> VendorID). Toutes les ressources doivent être envoyées en tant que fichiers via multipart/form-data.",
+                "operationId": "0de1e9e77a5db493469dad2fd9cf486e",
+                "requestBody": {
+                    "description": "Données du produit à créer. Envoyé en multipart/form-data car les ressources contiennent des fichiers binaires (vidéos/images). Le VendorID n'est pas à envoyer, il est déduit du token d'authentification.",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "Name",
+                                    "Barcode",
+                                    "BasePrice",
+                                    "Stock",
+                                    "Ressource",
+                                    "Categories",
+                                    "AllowedPayment"
+                                ],
+                                "properties": {
+                                    "BrandID": {
+                                        "description": "Identifiant de la marque. Facultatif — validé uniquement s'il est renseigné.",
+                                        "type": "integer",
+                                        "example": 5,
+                                        "nullable": true
+                                    },
+                                    "ModelID": {
+                                        "description": "Identifiant du modèle. Facultatif — validé uniquement s'il est renseigné.",
+                                        "type": "integer",
+                                        "example": 124,
+                                        "nullable": true
+                                    },
+                                    "Name": {
+                                        "description": "Nom du produit.",
+                                        "type": "string",
+                                        "example": "Wireless Bluetooth Headphones Pro",
+                                        "maxLength": 255
+                                    },
+                                    "Barcode": {
+                                        "description": "Code-barres unique du produit.",
+                                        "type": "string",
+                                        "example": "8806090123456",
+                                        "maxLength": 100
+                                    },
+                                    "Description": {
+                                        "description": "Description détaillée du produit.",
+                                        "type": "string",
+                                        "example": "High-fidelity over-ear headphones with active noise cancellation and 40-hour battery life.",
+                                        "nullable": true
+                                    },
+                                    "BasePrice": {
+                                        "description": "Prix de base du produit (hors options).",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 149.99,
+                                        "minimum": 0
+                                    },
+                                    "Stock": {
+                                        "description": "Quantité en stock.",
+                                        "type": "integer",
+                                        "example": 250,
+                                        "minimum": 0
+                                    },
+                                    "Ressource": {
+                                        "description": "Liste des ressources média du produit (vidéos, images). Chaque élément doit contenir un fichier binaire.",
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "type": {
+                                                    "description": "Type de la ressource.",
+                                                    "type": "string",
+                                                    "example": "video",
+                                                    "enum": [
+                                                        "video",
+                                                        "Video",
+                                                        "image",
+                                                        "Image"
+                                                    ]
+                                                },
+                                                "Role": {
+                                                    "description": "Rôle de la ressource (ex: 1 = principale, 2 = miniature). Doit exister dans ResourcesRoles.",
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "file": {
+                                                    "description": "Fichier binaire (vidéo ou image, max 50MB).",
+                                                    "type": "string",
+                                                    "format": "binary"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "Categories": {
+                                        "description": "Liste des identifiants de catégories associées au produit.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            10,
+                                            5,
+                                            100
+                                        ]
+                                    },
+                                    "Attribute": {
+                                        "description": "Liste des attributs de configuration du produit (ex: Couleur, Taille), chacun avec ses options possibles.",
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "ConfigName": {
+                                                    "description": "Nom de l'attribut de configuration.",
+                                                    "type": "string",
+                                                    "example": "Color",
+                                                    "maxLength": 150
+                                                },
+                                                "ConfigOptions": {
+                                                    "description": "Options disponibles pour cet attribut.",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "Name": {
+                                                                "description": "Nom/valeur de l'option.",
+                                                                "type": "string",
+                                                                "example": "Red",
+                                                                "maxLength": 150
+                                                            },
+                                                            "IsDefault": {
+                                                                "description": "Indique si cette option est la valeur par défaut pour l'attribut.",
+                                                                "type": "boolean",
+                                                                "example": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "Tags": {
+                                        "description": "Liste de tags libres associés au produit (utilisés pour la recherche).",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "clothes",
+                                            "T-Shirt",
+                                            "all Sized"
+                                        ]
+                                    },
+                                    "AllowedPayment": {
+                                        "description": "Liste des identifiants de modes de paiement autorisés pour ce produit.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Produit créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit créé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "ID": {
+                                                    "type": "integer",
+                                                    "example": 452
+                                                },
+                                                "VendorID": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "BrandID": {
+                                                    "type": "integer",
+                                                    "example": 5,
+                                                    "nullable": true
+                                                },
+                                                "ModelID": {
+                                                    "type": "integer",
+                                                    "example": 124,
+                                                    "nullable": true
+                                                },
+                                                "Name": {
+                                                    "type": "string",
+                                                    "example": "Wireless Bluetooth Headphones Pro"
+                                                },
+                                                "Barcode": {
+                                                    "type": "string",
+                                                    "example": "8806090123456"
+                                                },
+                                                "Description": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "BasePrice": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 149.99
+                                                },
+                                                "Stock": {
+                                                    "type": "integer",
+                                                    "example": 250
+                                                },
+                                                "Status": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "IsActive": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "CreatedAt": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "UpdatedAt": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès refusé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou profil vendeur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profil vendeur introuvable pour cet utilisateur."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (marque/modèle introuvable, code-barres déjà utilisé, catégorie/rôle/type de ressource invalide, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce code-barres est déjà utilisé par un autre produit."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/models/create": {
@@ -4137,6 +4506,10 @@
         {
             "name": "ConfigAttributeOptions",
             "description": "Gestion des options des attributs de configuration produit"
+        },
+        {
+            "name": "Products",
+            "description": "Gestion des produits"
         },
         {
             "name": "Models",

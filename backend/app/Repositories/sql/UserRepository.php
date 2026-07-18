@@ -47,74 +47,72 @@ class UserRepository implements UserRepositoryInterface
 
         return (int) $result[0]->UserID;
     }
-     
+
     public function createCustomerUser(
-    RegisterDto $dto,
-    string $passwordHash,
-    string $tokenHash,
-    ?string $ipAddress,
-    int $ttl
-): string
-{
-    try {
+        RegisterDto $dto,
+        string $passwordHash,
+        string $tokenHash,
+        ?string $ipAddress,
+        int $ttl
+    ): string {
+        try {
 
-        $result = DB::select(
-            'CALL sp_CreateCustomerUser(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                $dto->firstName,
-                $dto->lastName,
-                $dto->birthDate,
-                $dto->gender,
-                $dto->email,
-                $dto->phoneNumber,
-                $passwordHash,
-                $dto->avatarUrl,
-                $tokenHash,
-                $ipAddress,
-                $ttl,
-            ]
-        );
+            $result = DB::select(
+                'CALL sp_CreateCustomerUser(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $dto->firstName,
+                    $dto->lastName,
+                    $dto->birthDate,
+                    $dto->gender,
+                    $dto->email,
+                    $dto->phoneNumber,
+                    $passwordHash,
+                    $dto->avatarUrl,
+                    $tokenHash,
+                    $ipAddress,
+                    $ttl,
+                ]
+            );
 
-        return $result[0]->PublicID;
+            return $result[0]->PublicID;
+        } catch (\Throwable $e) {
 
-    } catch (\Throwable $e) {
-
-        throw new \Exception(
-            'Failed to create customer user. ' . $e->getMessage(),
-            0,
-            $e
-        );
+            throw new \Exception(
+                'Failed to create customer user. ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
     }
-}
     public function emailExists(string $email): bool
-{
-    $result = DB::selectOne(
-        "SELECT EXISTS(
+    {
+        $result = DB::selectOne(
+            "SELECT EXISTS(
             SELECT 1
             FROM Users
             WHERE Email = ?
               AND IsDeleted = 0
         ) AS ExistsFlag",
-        [$email]
-    );
+            [$email]
+        );
 
-    return (bool) $result->ExistsFlag;
-}
+        return (bool) $result->ExistsFlag;
+    }
 
-public function phoneNumberExists(string $phoneNumber): bool
-{
-    $result = DB::selectOne(
-        "SELECT EXISTS(
+    public function phoneNumberExists(string $phoneNumber): bool
+    {
+        $result = DB::selectOne(
+            "SELECT EXISTS(
             SELECT 1
             FROM Users
             WHERE PhoneNumber = ?
               AND IsDeleted = 0
         ) AS ExistsFlag",
-        [$phoneNumber]
-    );
+            [$phoneNumber]
+        );
 
-    return (bool) $result->ExistsFlag;
-}
+        return (bool) $result->ExistsFlag;
+    }
     public function getRoleIdByCode(string $code): ?int
     {
         $row = DB::selectOne("SELECT RoleID FROM Roles WHERE Code = ?", [$code]);
@@ -163,15 +161,15 @@ public function phoneNumberExists(string $phoneNumber): bool
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
     public function getLoginInfoByEmail(string $email): ?LoginInfoDto
-{
-    $rows = DB::select('CALL GetLoginInfoByEmail(?)', [$email]);
+    {
+        $rows = DB::select('CALL GetLoginInfoByEmail(?)', [$email]);
 
-    if (empty($rows)) {
-        return null;
+        if (empty($rows)) {
+            return null;
+        }
+
+        return LoginInfoDto::fromDbRows($rows);
     }
-
-    return LoginInfoDto::fromDbRows($rows);
-}
     public function findById(int $id): ?UserDto
     {
         $row = DB::selectOne("SELECT * FROM Users WHERE UserID = ?", [$id]);
@@ -179,107 +177,107 @@ public function phoneNumberExists(string $phoneNumber): bool
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
 
-   public function getRoleForUser(int $userId): string
-{
-    $result = DB::selectOne(
-        "SELECT r.Code
+    public function getRoleForUser(int $userId): string
+    {
+        $result = DB::selectOne(
+            "SELECT r.Code
          FROM UserRoles ur
          INNER JOIN Roles r ON r.RoleID = ur.RoleID
          WHERE ur.UserID = ?
          ORDER BY ur.AssignedAt DESC
          LIMIT 1",
-        [$userId]
-    );
+            [$userId]
+        );
 
-    return $result?->Code;
-}
+        return $result?->Code;
+    }
 
     public function updateLastLogin(int $id): void
-{
-    DB::update(
-        "UPDATE Users SET LastLoginAt = ? WHERE UserID = ?",
-        [now()->format('Y-m-d H:i:s'), $id]
-    );
-}
+    {
+        DB::update(
+            "UPDATE Users SET LastLoginAt = ? WHERE UserID = ?",
+            [now()->format('Y-m-d H:i:s'), $id]
+        );
+    }
 
-public function createRefreshToken(
-    int $userId,
-    string $tokenHash,
-    ?string $ipAddress,
-    int $ttl
-): void {
-    DB::insert(
-        'CALL sp_CreateRefreshToken(?, ?, ?, ?)',
-        [$userId, $tokenHash, $ipAddress, $ttl]
-    );
-}
-public function getReadNotificationsCount(int $userId): int
-{
-    $row = DB::selectOne(
-        "SELECT COUNT(*) AS Total FROM Notifications WHERE IsRead = 1 AND UserID = ?",
-        [$userId]
-    );
+    public function createRefreshToken(
+        int $userId,
+        string $tokenHash,
+        ?string $ipAddress,
+        int $ttl
+    ): void {
+        DB::insert(
+            'CALL sp_CreateRefreshToken(?, ?, ?, ?)',
+            [$userId, $tokenHash, $ipAddress, $ttl]
+        );
+    }
+    public function getReadNotificationsCount(int $userId): int
+    {
+        $row = DB::selectOne(
+            "SELECT COUNT(*) AS Total FROM Notifications WHERE IsRead = 1 AND UserID = ?",
+            [$userId]
+        );
 
-    return (int) $row->Total;
-}
-public function getUserStandardInformation(int $userId): ?UserStandardInfoDto
-{
-    $row = DB::selectOne(
-        "SELECT
+        return (int) $row->Total;
+    }
+    public function getUserStandardInformation(int $userId): ?UserStandardInfoDto
+    {
+        $row = DB::selectOne(
+            "SELECT
             UserID, PublicID, FirstName, LastName, DisplayName, BirthDate, Gender,
             Email, PhoneNumber, AvatarURL, HasPassword, EmailVerified, PhoneVerified,
             IsActive, LastLoginAt, CreatedAt, UpdatedAt
          FROM Users
          WHERE UserID = ?
            AND IsDeleted = 0",
-        [$userId]
-    );
- 
-    return $row ? UserStandardInfoDto::fromDbRow($row) : null;
-}
-public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto
-{
-    $row = DB::selectOne(
-        "SELECT
+            [$userId]
+        );
+
+        return $row ? UserStandardInfoDto::fromDbRow($row) : null;
+    }
+    public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto
+    {
+        $row = DB::selectOne(
+            "SELECT
             UserID, PublicID, FirstName, LastName, DisplayName, BirthDate, Gender,
             Email, PhoneNumber, AvatarURL, HasPassword, EmailVerified, PhoneVerified,
             IsActive, LastLoginAt, CreatedAt, UpdatedAt
          FROM Users
          WHERE PublicID = ?
            AND IsDeleted = 0",
-        [$publicID]
-    );
- 
-    return $row ? UserStandardInfoDto::fromDbRow($row) : null;
-}
-public function createVendor(
-    VendorRegisterDto $dto,
-    string $passwordHash,
-    string $tokenHash,
-    string $ipAddress,
-    int $ttlDays
-): array {
-    $result = DB::select('CALL SP_CreateVendorUser(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
-        $dto->firstName,
-        $dto->lastName,
-        $dto->birthDate,
-        $dto->gender,
-        $dto->email,
-        $dto->phoneNumber,
-        $passwordHash,
-        $dto->avatarUrl,
-        $tokenHash,
-        $ipAddress,
-        $ttlDays,
-        $dto->storeName,
-        $dto->description,
-    ]);
+            [$publicID]
+        );
 
-    $row = $result[0];
+        return $row ? UserStandardInfoDto::fromDbRow($row) : null;
+    }
+    public function createVendor(
+        VendorRegisterDto $dto,
+        string $passwordHash,
+        string $tokenHash,
+        string $ipAddress,
+        int $ttlDays
+    ): array {
+        $result = DB::select('CALL SP_CreateVendorUser(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            $dto->firstName,
+            $dto->lastName,
+            $dto->birthDate,
+            $dto->gender,
+            $dto->email,
+            $dto->phoneNumber,
+            $passwordHash,
+            $dto->avatarUrl,
+            $tokenHash,
+            $ipAddress,
+            $ttlDays,
+            $dto->storeName,
+            $dto->description,
+        ]);
 
-    return [
-        'user_id'   => $row->UserID,
-        'public_id' => $row->PublicID,
-    ];
-}
+        $row = $result[0];
+
+        return [
+            'user_id'   => $row->UserID,
+            'public_id' => $row->PublicID,
+        ];
+    }
 }

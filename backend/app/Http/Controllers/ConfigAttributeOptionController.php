@@ -316,4 +316,29 @@ class ConfigAttributeOptionController extends Controller
             ],
         ]);
     }
+    #[OA\Get(
+        path: "/api/config-attribute-options/by-attribute/{attributeID}",
+        tags: ["ConfigAttributeOptions"],
+        summary: "Liste de toutes les options actives d'un attribut donné"
+    )]
+    #[OA\Parameter(name: "attributeID", in: "path", required: true, schema: new OA\Schema(type: "integer"))]
+    #[OA\Response(response: 200, description: "Succès")]
+    #[OA\Response(response: 404, description: "Attribut introuvable")]
+    public function getAllOptionsByAttributeID(int $attributeID): JsonResponse
+    {
+        if (!$this->productsConfigAttributeService->existsById($attributeID)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Attribut introuvable.',
+            ], 404);
+        }
+
+        $options = $this->configAttributeOptionService->getAllOptionsByAttributeID($attributeID);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Options récupérées avec succès',
+            'data' => $options,
+        ]);
+    }
 }

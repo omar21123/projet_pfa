@@ -146,7 +146,7 @@ class ProductsConfigAttributeController extends Controller
 
         $unitId = $request->filled('UnitID') ? (int) $request->input('UnitID') : null;
         if ($unitId !== null) {
-            $unitExists = $this->unitService->isExistsByID($unitId);
+            $unitExists = $this->unitService->existsById($unitId);
             if ($unitExists === false) {
                 return response()->json([
                     'success' => false,

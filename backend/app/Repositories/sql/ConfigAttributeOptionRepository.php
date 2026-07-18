@@ -242,7 +242,20 @@ class ConfigAttributeOptionRepository implements ConfigAttributeOptionRepository
             'lastPage' => (int) ceil($total / $perPage),
         ];
     }
-
+   /**
+     * All active options for one attribute, ordered for display.
+     * Returns full option rows (not just ID+Label) — this is meant
+     * to directly populate an attribute's option list/config UI.
+     */
+    public function getAllOptionsByAttributeID(int $attributeID): array
+    {
+        return DB::select("
+            SELECT o.OptionID, o.OptionLabel, o.OptionValue, o.DisplayOrder, o.IsDefaultForAttribute
+            FROM ConfigAttributeOptions o
+            WHERE o.ProductsConfigAttributeID = ? AND o.IsActive = 1
+            ORDER BY o.DisplayOrder ASC, o.OptionLabel ASC
+        ", [$attributeID]);
+    }
     private function resolveSortColumn(string $sortBy): string
     {
         return match ($sortBy) {

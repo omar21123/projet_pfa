@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\TestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\CategoryController;
@@ -14,13 +13,7 @@ use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
-
-Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
-
-    Route::get('/test', [TestController::class, 'ping']);
-
-});
-
+use App\Http\Controllers\ProductController;
 
 Route::prefix('auth')->group(function () {
 
@@ -160,12 +153,21 @@ Route::prefix('config-attribute-options')->group(function () {
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+            Route::get('/by-attribute/{attributeID}', [ConfigAttributeOptionController::class, 'getAllOptionsByAttributeID']);
         Route::get('/admin', [ConfigAttributeOptionController::class, 'adminIndex']);
         Route::get('/exists', [ConfigAttributeOptionController::class, 'existsByName']);
         Route::post('/create', [ConfigAttributeOptionController::class, 'store']);
         Route::put('/{id}', [ConfigAttributeOptionController::class, 'update']);
         Route::put('/{id}/disable', [ConfigAttributeOptionController::class, 'disable']);
         Route::put('/{id}/enable', [ConfigAttributeOptionController::class, 'enable']);
+    });
+
+});
+Route::prefix('products')->group(function () {
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+        Route::post('/create', [ProductController::class, 'store']);
     });
 
 });

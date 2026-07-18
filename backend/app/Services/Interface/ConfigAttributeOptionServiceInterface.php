@@ -26,4 +26,5 @@ interface ConfigAttributeOptionServiceInterface
     public function getAllForAdmin(array $filters = [], int $page = 1, int $perPage = 20): array;
 
     public function getAll(array $filters = [], int $page = 1, int $perPage = 20): array;
+    public function getAllOptionsByAttributeID(int $attributeID): array;
 }
