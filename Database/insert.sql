@@ -269,11 +269,13 @@ INSERT IGNORE INTO OrderStatus (OrderStatusID, Name, Code, DisplayOrder) VALUES
 (5, 'Cancelled', 'CANCELLED', 5);
 
 -- 4. Payment Methods
-INSERT IGNORE INTO PaymentMethods (PaymentMethodID, Name, Code, WithdrawTax, IsOnline) VALUES
-(1, 'Cash on Delivery', 'COD', 0.00, 0),
-(2, 'Credit Card', 'CARD', 2.50, 1),
-(3, 'PayPal', 'PAYPAL', 3.00, 1);
+-- 1. Le client paie directement lors de la commande (En ligne)
+INSERT IGNORE INTO PaymentMethods (PaymentMethodID, Name, Code, WithdrawTax, IsOnline) 
+VALUES (1, 'Paiement sur la plateforme', 'PLATFORM', 2.50, 1);
 
+-- 2. Le client paie à la réception du colis (Hors ligne)
+INSERT IGNORE INTO PaymentMethods (PaymentMethodID, Name, Code, WithdrawTax, IsOnline) 
+VALUES (2, 'Paiement à la livraison', 'DELIVERY', 0.00, 0);
 -- 5. Categories
 INSERT IGNORE INTO Categories (CategoryID, Name, Slug, DisplayOrder) VALUES
 (1, 'Electronics', 'electronics', 1),
@@ -296,6 +298,20 @@ INSERT IGNORE INTO UserRoles (UserID, RoleID) VALUES
 (1, 1), -- Admin gets Admin role
 (2, 2), -- Vendor gets Vendor role
 (3, 3); -- John gets Customer role
+INSERT INTO ResourcesRoles (Label) 
+VALUES 
+    ('Pour Administrateur'),
+    ('Pour Visiteur');
+    -- Type de ressource pour les documents PDF
+INSERT INTO ResourcesTypes (Name) VALUES ('Pdf');
 
+-- Type de ressource pour les fichiers vidéo
+INSERT INTO ResourcesTypes (Name) VALUES ('Video');
+
+-- Type de ressource pour les images et photos
+INSERT INTO ResourcesTypes (Name) VALUES ('Images');
+
+-- Type de ressource pour les fichiers de données JSON
+INSERT INTO ResourcesTypes (Name) VALUES ('Json');
 -- Turn foreign key checks back on
 SET FOREIGN_KEY_CHECKS = 1;

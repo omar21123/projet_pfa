@@ -411,7 +411,11 @@ CREATE TABLE ConfigAttributeOptions (
     CONSTRAINT FK_ConfigAttributeOptions_Attribute FOREIGN KEY (ProductsConfigAttributeID) REFERENCES ProductsConfigAttribute(AttributeID) ON DELETE CASCADE ON UPDATE CASCADE,
     KEY IX_ConfigAttributeOptions_AttributeID (ProductsConfigAttributeID, DisplayOrder)
 ) ENGINE=InnoDB;
-
+ALTER TABLE ConfigAttributeOptions
+    ADD COLUMN IsActive TINYINT(1) NOT NULL DEFAULT 1,
+    ADD COLUMN CreatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    ADD COLUMN UpdatedAt DATETIME NULL,
+    ADD UNIQUE KEY UQ_ConfigAttributeOptions_Attr_Label (ProductsConfigAttributeID, OptionLabel);
 
 -- =============================================================================
 -- PRODUCTS

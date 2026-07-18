@@ -13,6 +13,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
+use App\Http\Controllers\ConfigAttributeOptionController;
 
 Route::middleware(['jwt.custom', 'role:CUSTOMER'])->group(function () {
 
@@ -149,6 +150,22 @@ Route::prefix('products-config-attributes')->group(function () {
         Route::put('/{id}', [ProductsConfigAttributeController::class, 'update']);
         Route::put('/{id}/disable', [ProductsConfigAttributeController::class, 'disable']);
         Route::put('/{id}/enable', [ProductsConfigAttributeController::class, 'enable']);
+    });
+
+});
+Route::prefix('config-attribute-options')->group(function () {
+
+    // 🌐 Route Publique (liste légère : ID + Label)
+    Route::get('/', [ConfigAttributeOptionController::class, 'index']);
+
+    // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::get('/admin', [ConfigAttributeOptionController::class, 'adminIndex']);
+        Route::get('/exists', [ConfigAttributeOptionController::class, 'existsByName']);
+        Route::post('/create', [ConfigAttributeOptionController::class, 'store']);
+        Route::put('/{id}', [ConfigAttributeOptionController::class, 'update']);
+        Route::put('/{id}/disable', [ConfigAttributeOptionController::class, 'disable']);
+        Route::put('/{id}/enable', [ConfigAttributeOptionController::class, 'enable']);
     });
 
 });

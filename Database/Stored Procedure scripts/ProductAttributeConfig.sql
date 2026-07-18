@@ -126,3 +126,163 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_CreateConfigAttributeOptionByName(
+    IN p_ProductsConfigAttributeID INT,
+    IN p_OptionLabel VARCHAR(150),
+    OUT p_OptionID INT
+)
+BEGIN
+    DECLARE v_AttributeName VARCHAR(150) DEFAULT NULL;
+    DECLARE v_NormalizedLabel VARCHAR(255);
+    DECLARE v_DisplayWithAttribute VARCHAR(255);
+    DECLARE v_NormalizedWithAttribute VARCHAR(255);
+    DECLARE v_ExistingSearchCount INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    SELECT Name INTO v_AttributeName
+    FROM ProductsConfigAttribute
+    WHERE AttributeID = p_ProductsConfigAttributeID;
+
+    IF v_AttributeName IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'L\'attribut spécifié n\'existe pas.';
+    END IF;
+
+    SET v_NormalizedLabel = LOWER(TRIM(p_OptionLabel));
+
+    START TRANSACTION;
+
+    INSERT INTO ConfigAttributeOptions (ProductsConfigAttributeID, OptionLabel, OptionValue, DisplayOrder, IsDefaultForAttribute)
+    VALUES (p_ProductsConfigAttributeID, p_OptionLabel, p_OptionLabel, 0, 0);
+
+    SET p_OptionID = LAST_INSERT_ID();
+
+    -- entry 1: OptionName alone
+    SELECT COUNT(*) INTO v_ExistingSearchCount
+    FROM SearchDictionary
+    WHERE NormalizedText = v_NormalizedLabel;
+
+    IF v_ExistingSearchCount > 0 THEN
+        UPDATE SearchDictionary
+        SET DisplayText = p_OptionLabel, SourceType = 5, SourceID = p_OptionID, IsActive = 1, UpdatedAt = NOW()
+        WHERE NormalizedText = v_NormalizedLabel;
+    ELSE
+        INSERT INTO SearchDictionary (DisplayText, NormalizedText, SourceType, SourceID)
+        VALUES (p_OptionLabel, v_NormalizedLabel, 5, p_OptionID);
+    END IF;
+
+    -- entry 2: AttributeName + OptionName
+    SET v_DisplayWithAttribute = CONCAT(v_AttributeName, ' ', p_OptionLabel);
+    SET v_NormalizedWithAttribute = LOWER(TRIM(v_DisplayWithAttribute));
+
+    SET v_ExistingSearchCount = 0;
+    SELECT COUNT(*) INTO v_ExistingSearchCount
+    FROM SearchDictionary
+    WHERE NormalizedText = v_NormalizedWithAttribute;
+
+    IF v_ExistingSearchCount > 0 THEN
+        UPDATE SearchDictionary
+        SET DisplayText = v_DisplayWithAttribute, SourceType = 5, SourceID = p_OptionID, IsActive = 1, UpdatedAt = NOW()
+        WHERE NormalizedText = v_NormalizedWithAttribute;
+    ELSE
+        INSERT INTO SearchDictionary (DisplayText, NormalizedText, SourceType, SourceID)
+        VALUES (v_DisplayWithAttribute, v_NormalizedWithAttribute, 5, p_OptionID);
+    END IF;
+
+    COMMIT;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_CreateConfigAttributeOption(
+    IN p_ProductsConfigAttributeID INT,
+    IN p_OptionLabel VARCHAR(150),
+    IN p_OptionValue VARCHAR(150),
+    IN p_DisplayOrder INT,
+    IN p_IsDefaultForAttribute TINYINT(1),
+    OUT p_OptionID INT
+)
+BEGIN
+    DECLARE v_AttributeName VARCHAR(150) DEFAULT NULL;
+    DECLARE v_NormalizedLabel VARCHAR(255);
+    DECLARE v_DisplayWithAttribute VARCHAR(255);
+    DECLARE v_NormalizedWithAttribute VARCHAR(255);
+    DECLARE v_ExistingCount INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    SELECT Name INTO v_AttributeName
+    FROM ProductsConfigAttribute
+    WHERE AttributeID = p_ProductsConfigAttributeID;
+
+    IF v_AttributeName IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'L\'attribut spécifié n\'existe pas.';
+    END IF;
+
+    SET v_NormalizedLabel = LOWER(TRIM(p_OptionLabel));
+
+    START TRANSACTION;
+
+    -- only one option per attribute can be the default
+    IF p_IsDefaultForAttribute = 1 THEN
+        UPDATE ConfigAttributeOptions
+        SET IsDefaultForAttribute = 0
+        WHERE ProductsConfigAttributeID = p_ProductsConfigAttributeID;
+    END IF;
+
+    INSERT INTO ConfigAttributeOptions (ProductsConfigAttributeID, OptionLabel, OptionValue, DisplayOrder, IsDefaultForAttribute)
+    VALUES (p_ProductsConfigAttributeID, p_OptionLabel, p_OptionValue, IFNULL(p_DisplayOrder, 0), IFNULL(p_IsDefaultForAttribute, 0));
+
+    SET p_OptionID = LAST_INSERT_ID();
+
+    -- entry 1: OptionName alone
+    SELECT COUNT(*) INTO v_ExistingCount
+    FROM SearchDictionary
+    WHERE NormalizedText = v_NormalizedLabel;
+
+    IF v_ExistingCount > 0 THEN
+        UPDATE SearchDictionary
+        SET DisplayText = p_OptionLabel, SourceType = 5, SourceID = p_OptionID, IsActive = 1, UpdatedAt = NOW()
+        WHERE NormalizedText = v_NormalizedLabel;
+    ELSE
+        INSERT INTO SearchDictionary (DisplayText, NormalizedText, SourceType, SourceID)
+        VALUES (p_OptionLabel, v_NormalizedLabel, 5, p_OptionID);
+    END IF;
+
+    -- entry 2: AttributeName + OptionName
+    SET v_DisplayWithAttribute = CONCAT(v_AttributeName, ' ', p_OptionLabel);
+    SET v_NormalizedWithAttribute = LOWER(TRIM(v_DisplayWithAttribute));
+
+    SET v_ExistingCount = 0;
+    SELECT COUNT(*) INTO v_ExistingCount
+    FROM SearchDictionary
+    WHERE NormalizedText = v_NormalizedWithAttribute;
+
+    IF v_ExistingCount > 0 THEN
+        UPDATE SearchDictionary
+        SET DisplayText = v_DisplayWithAttribute, SourceType = 5, SourceID = p_OptionID, IsActive = 1, UpdatedAt = NOW()
+        WHERE NormalizedText = v_NormalizedWithAttribute;
+    ELSE
+        INSERT INTO SearchDictionary (DisplayText, NormalizedText, SourceType, SourceID)
+        VALUES (v_DisplayWithAttribute, v_NormalizedWithAttribute, 5, p_OptionID);
+    END IF;
+
+    COMMIT;
+END$$
+
+DELIMITER ;

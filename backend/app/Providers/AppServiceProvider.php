@@ -62,7 +62,10 @@ use App\Repositories\Interface\ProductsConfigAttributeRepositoryInterface;
 use App\Repositories\sql\ProductsConfigAttributeRepository;
 use App\Services\Interface\ProductsConfigAttributeServiceInterface;
 use App\Services\ProductsConfigAttributeService;
-
+use App\Repositories\Interface\ConfigAttributeOptionRepositoryInterface;
+use App\Repositories\sql\ConfigAttributeOptionRepository;
+use App\Services\Interface\ConfigAttributeOptionServiceInterface;
+use App\Services\ConfigAttributeOptionService;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -193,6 +196,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductsConfigAttributeServiceInterface::class,
             ProductsConfigAttributeService::class
+        );
+        $this->app->bind(
+            ConfigAttributeOptionRepositoryInterface::class,
+            ConfigAttributeOptionRepository::class
+        );
+
+        $this->app->bind(
+            ConfigAttributeOptionServiceInterface::class,
+            ConfigAttributeOptionService::class
         );
     }
 

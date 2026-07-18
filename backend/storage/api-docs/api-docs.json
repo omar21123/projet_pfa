@@ -2290,6 +2290,401 @@
                 }
             }
         },
+        "/api/config-attribute-options/create": {
+            "post": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Créer une option d'attribut de configuration produit",
+                "operationId": "c25ce8c779d29812a6c3b67a95cf1bd9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ProductsConfigAttributeID",
+                                    "OptionLabel",
+                                    "OptionValue"
+                                ],
+                                "properties": {
+                                    "ProductsConfigAttributeID": {
+                                        "type": "integer",
+                                        "example": 4
+                                    },
+                                    "OptionLabel": {
+                                        "type": "string",
+                                        "example": "Rouge"
+                                    },
+                                    "OptionValue": {
+                                        "type": "string",
+                                        "example": "red"
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "IsDefaultForAttribute": {
+                                        "type": "boolean",
+                                        "example": false,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Option créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Règle métier violée (libellé déjà pris pour cet attribut, attribut introuvable, ...)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options/exists": {
+            "get": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Vérifier si une option existe par son libellé pour un attribut donné",
+                "operationId": "f1894646cfb737b3dd400a421a2d9cb3",
+                "parameters": [
+                    {
+                        "name": "attributeID",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "label",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "422": {
+                        "description": "Paramètres manquants"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options/{id}": {
+            "put": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Mettre à jour une option d'attribut de configuration produit",
+                "operationId": "c8733fd12000e02addc582678b09c8ce",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "ProductsConfigAttributeID": {
+                                        "type": "integer",
+                                        "example": 4
+                                    },
+                                    "OptionLabel": {
+                                        "type": "string",
+                                        "example": "Rouge"
+                                    },
+                                    "OptionValue": {
+                                        "type": "string",
+                                        "example": "red"
+                                    },
+                                    "DisplayOrder": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "IsDefaultForAttribute": {
+                                        "type": "boolean",
+                                        "example": false,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Option mise à jour"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Option introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options/{id}/disable": {
+            "put": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Désactiver une option",
+                "operationId": "ba1bb46d83b1d0c9726c9d9cd090b620",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Option désactivée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Option introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options/{id}/enable": {
+            "put": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Activer une option",
+                "operationId": "96a07086900867ecad68b4608a348b29",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Option activée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Option introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options/admin": {
+            "get": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Liste des options pour l'administration (avec filtres, recherche, pagination)",
+                "operationId": "ad7b0565e2ba8f038f9a217e98c5e169",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "isActive",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "productsConfigAttributeID",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "OptionLabel",
+                                "CreatedAt",
+                                "UpdatedAt",
+                                "IsActive",
+                                "DisplayOrder"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sortDir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/config-attribute-options": {
+            "get": {
+                "tags": [
+                    "ConfigAttributeOptions"
+                ],
+                "summary": "Liste légère des options actives (ID + Label uniquement, filtrable par attribut)",
+                "operationId": "7d314d746b17e208d420cecab53dd4c9",
+                "parameters": [
+                    {
+                        "name": "productsConfigAttributeID",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Succès"
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "summary": "Health check",
@@ -3738,6 +4133,10 @@
         {
             "name": "Categories",
             "description": "Gestion des catégories"
+        },
+        {
+            "name": "ConfigAttributeOptions",
+            "description": "Gestion des options des attributs de configuration produit"
         },
         {
             "name": "Models",
