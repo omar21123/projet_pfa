@@ -168,9 +168,9 @@ const translations: Translations = {
 
   // Stats
   stats_title: {
-    fr: "LBAL en chiffres",
-    en: "LBAL in numbers",
-    ar: "LBAL بالأرقام",
+    fr: "MARCHÉ en chiffres",
+    en: "MARCHÉ in numbers",
+    ar: "MARCHÉ بالأرقام",
   },
   active_users: {
     fr: "Utilisateurs actifs",

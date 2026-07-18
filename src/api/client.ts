@@ -7,5 +7,5 @@
  * - Automatic token refresh on 401 responses
  * - Proper TypeScript typing
  */
-export { default as apiClient } from "./axiosInstance";
-export { setAuthAccessToken, getAuthAccessToken } from "./axiosInstance";
+export { default as apiClient } from "./axiosInstances";
+export { setAuthAccessToken, getAuthAccessToken } from "./axiosInstances";

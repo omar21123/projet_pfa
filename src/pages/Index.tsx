@@ -6,6 +6,7 @@ import FeaturedAds from "@/components/FeaturedAds";
 import AnimatedStats from "@/components/AnimatedStats";
 import Testimonials from "@/components/Testimonials";
 import HowItWorks from "@/components/HowItWorks";
+import FeaturedSellers from "@/components/marketing/FeaturedSellers";
 import FAQ from "@/components/FAQ";
 import ChatBot from "@/components/ChatBot";
 import { motion } from "framer-motion";
@@ -49,6 +50,7 @@ const Index = () => {
       <Navbar />
       <main className="flex-1">
         <HeroSearch />
+        <FeaturedSellers />
 
         {/* Featured Ads Section */}
         <motion.div

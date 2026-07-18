@@ -68,6 +68,23 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+
+        /* ============================================================
+           Brand palette importée d'embrace-emporium.
+           Ces couleurs pointent directement vers des variables CSS en
+           hexa/rgba (pas de hsl() ici), et s'inversent automatiquement
+           entre light et dark mode — voir index.css.
+           ============================================================ */
+        cream: "var(--cream)",
+        ink: "var(--ink)",
+        surface: "var(--surface)",
+        hairline: "var(--hairline)",
+        promo: "var(--promo)",
+        star: "var(--star)",
+        teal: {
+          DEFAULT: "var(--teal)",
+          dark: "var(--teal-dark)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

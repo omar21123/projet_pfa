@@ -1,20 +1,18 @@
+// src/features/auth/useAuthForm.ts
 import axios from "axios";
 import { useState } from "react";
 import { authApi } from "@/api/auth.api";
-import type {
-  AuthResponse,
-  LoginRequest,
-  RegisterRequest,
-  VerifyEmailRequest,
-} from "@/types/user.types";
+import type { LaravelAuthResponse, LoginRequest, RegisterRequestClient } from "@/types/users.types";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthValues {
-  nom: string;
-  prenom: string;
+  first_name: string;
+  last_name: string;
   email: string;
   password: string;
-  telephone: string;
+  phone_number: string;
+  birth_date: string;
+  gender: number | null;
 }
 
 interface UseAuthFormReturn {
@@ -23,21 +21,35 @@ interface UseAuthFormReturn {
   isLoading: boolean;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
-  setNom: (value: string) => void;
-  setPrenom: (value: string) => void;
-  setTelephone: (value: string) => void;
+  setFirstName: (value: string) => void;
+  setLastName: (value: string) => void;
+  setPhoneNumber: (value: string) => void;
+  setBirthDate: (value: string) => void;
+  setGender: (value: number | null) => void;
   setError: (value: string) => void;
   reset: () => void;
-  submitLogin: (credentials: LoginRequest) => Promise<AuthResponse>;
-  submitRegister: (payload: RegisterRequest) => Promise<void>;
-  submitVerifyEmail: (payload: VerifyEmailRequest) => Promise<void>;
+  submitLogin: (credentials: LoginRequest) => Promise<LaravelAuthResponse>;
+  submitRegisterClient: (payload: RegisterRequestClient) => Promise<void>;
+  submitRegisterVendor: (formData: FormData) => Promise<void>;
 }
 
+/**
+ * Extracteur d'erreurs optimisé pour Laravel
+ * Gère les messages classiques et décortique le tableau d'erreurs 422 (Validation Requests)
+ */
 const getErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    const apiMessage =
-      (error.response?.data as { message?: string } | undefined)?.message ?? error.message;
-    return apiMessage || "Une erreur est survenue";
+    const data = error.response?.data;
+
+    // Si Laravel renvoie des erreurs de validation spécifiques (ex: FormRequest Validation)
+    if (data?.errors && typeof data.errors === "object") {
+      const firstErrorArray = Object.values(data.errors)[0];
+      if (Array.isArray(firstErrorArray) && firstErrorArray.length > 0) {
+        return firstErrorArray[0]; // Renvoie le premier message d'erreur précis (ex: "Cet email existe déjà.")
+      }
+    }
+
+    return data?.message ?? error.message ?? "Une erreur est survenue";
   }
 
   if (error instanceof Error) {
@@ -49,11 +61,13 @@ const getErrorMessage = (error: unknown): string => {
 
 export const useAuthForm = (): UseAuthFormReturn => {
   const [values, setValues] = useState<AuthValues>({
-    nom: "",
-    prenom: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
-    telephone: "",
+    phone_number: "",
+    birth_date: "",
+    gender: null,
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -67,31 +81,50 @@ export const useAuthForm = (): UseAuthFormReturn => {
     setValues((prev) => ({ ...prev, password }));
   };
 
-  const setNom = (nom: string) => {
-    setValues((prev) => ({ ...prev, nom }));
+  const setFirstName = (first_name: string) => {
+    setValues((prev) => ({ ...prev, first_name }));
   };
 
-  const setPrenom = (prenom: string) => {
-    setValues((prev) => ({ ...prev, prenom }));
+  const setLastName = (last_name: string) => {
+    setValues((prev) => ({ ...prev, last_name }));
   };
 
-  const setTelephone = (telephone: string) => {
-    setValues((prev) => ({ ...prev, telephone }));
+  const setPhoneNumber = (phone_number: string) => {
+    setValues((prev) => ({ ...prev, phone_number }));
+  };
+
+  const setBirthDate = (birth_date: string) => {
+    setValues((prev) => ({ ...prev, birth_date }));
+  };
+
+  const setGender = (gender: number | null) => {
+    setValues((prev) => ({ ...prev, gender }));
   };
 
   const reset = () => {
-    setValues({ nom: "", prenom: "", email: "", password: "", telephone: "" });
+    setValues({
+      first_name: "",
+      last_name: "",
+      email: "",
+      password: "",
+      phone_number: "",
+      birth_date: "",
+      gender: null,
+    });
     setError("");
   };
 
-  const submitLogin = async (credentials: LoginRequest): Promise<AuthResponse> => {
+  /**
+   * Soumission Connexion
+   */
+  const submitLogin = async (credentials: LoginRequest): Promise<LaravelAuthResponse> => {
     setIsLoading(true);
     setError("");
 
     try {
       const response = await authApi.login(credentials);
       toast({
-        title: "Connexion reussie",
+        title: "Connexion réussie",
         description: response.message ?? "Bienvenue sur votre espace.",
       });
       return response;
@@ -109,15 +142,18 @@ export const useAuthForm = (): UseAuthFormReturn => {
     }
   };
 
-  const submitRegister = async (payload: RegisterRequest): Promise<void> => {
+  /**
+   * Soumission Inscription Client (JSON)
+   */
+  const submitRegisterClient = async (payload: RegisterRequestClient): Promise<void> => {
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await authApi.register(payload);
+      const response = await authApi.registerClient(payload);
       toast({
-        title: "Inscription envoyee",
-        description: response.message ?? "Verifiez votre email pour valider votre compte.",
+        title: "Compte créé avec succès",
+        description: response.message ?? "Votre inscription a bien été enregistrée.",
       });
     } catch (err) {
       const message = getErrorMessage(err);
@@ -133,21 +169,24 @@ export const useAuthForm = (): UseAuthFormReturn => {
     }
   };
 
-  const submitVerifyEmail = async (payload: VerifyEmailRequest): Promise<void> => {
+  /**
+   * Soumission Inscription Fournisseur (FormData / Multipart)
+   */
+  const submitRegisterVendor = async (formData: FormData): Promise<void> => {
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await authApi.verifyEmail(payload);
+      const response = await authApi.registerVendor(formData);
       toast({
-        title: "Email verifie",
-        description: response.message ?? "Votre adresse email a ete verifiee.",
+        title: "Demande partenaire envoyée",
+        description: response.message ?? "Votre compte fournisseur a été créé.",
       });
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
       toast({
-        title: "Erreur de verification",
+        title: "Erreur d'inscription partenaire",
         description: message,
         variant: "destructive",
       });
@@ -163,13 +202,15 @@ export const useAuthForm = (): UseAuthFormReturn => {
     isLoading,
     setEmail,
     setPassword,
-    setNom,
-    setPrenom,
-    setTelephone,
+    setFirstName,
+    setLastName,
+    setPhoneNumber,
+    setBirthDate,
+    setGender,
     setError,
     reset,
     submitLogin,
-    submitRegister,
-    submitVerifyEmail,
+    submitRegisterClient,
+    submitRegisterVendor,
   };
 };

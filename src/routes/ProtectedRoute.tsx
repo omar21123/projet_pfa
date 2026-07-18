@@ -1,4 +1,5 @@
-import { Navigate } from "react-router-dom";
+// src/routes/ProtectedRoute.tsx
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts";
 import type { ReactNode } from "react";
 
@@ -8,6 +9,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated, isBootstrapping } = useAuth();
+  const location = useLocation();
 
   if (isBootstrapping) {
     return (
@@ -18,7 +20,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Garde en mémoire la route privée demandée pour une redirection post-login fluide
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

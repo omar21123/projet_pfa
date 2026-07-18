@@ -25,7 +25,7 @@ import {
   Gem,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useCategories } from "@/hooks/useCategories";
+import { useNavbarCategories, type CategoryNode } from "@/hooks/useCategories";
 
 interface CategoriesProps {
   onFilter: (filters: {
@@ -34,6 +34,13 @@ interface CategoriesProps {
     label: string;
   }) => void;
 }
+
+// Extraction robuste : supporte PascalCase (.NET), snake_case (Laravel) et l'ancien mock (id/nom)
+const getCatId = (cat: CategoryNode): number | undefined =>
+  cat.CategoryID ?? cat.category_id ?? cat.id;
+
+const getCatName = (cat: CategoryNode): string =>
+  cat.Name ?? cat.name ?? cat.nom ?? "";
 
 const getCategoryIcon = (name: string) => {
   const n = name.toLowerCase();
@@ -81,7 +88,8 @@ const getSubCategoryIcon = (name: string) => {
 
 const Categories = ({ onFilter }: CategoriesProps) => {
   const { t } = useTranslation();
-  const { data: categories = [], isLoading } = useCategories();
+  // Hook public (route /api/categories/navbar) : fonctionne pour un visiteur non connecté
+  const { data: categories = [], isLoading } = useNavbarCategories();
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -124,14 +132,18 @@ const Categories = ({ onFilter }: CategoriesProps) => {
       <div ref={containerRef} className="container relative">
         <div className="flex items-center gap-8 h-14 overflow-visible whitespace-nowrap">
           {categories.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            const CategoryIcon = getCategoryIcon(cat.nom);
+            const catId = getCatId(cat);
+            const catName = getCatName(cat);
+            if (!catId) return null;
+
+            const isActive = activeCategory === catId;
+            const CategoryIcon = getCategoryIcon(catName);
 
             return (
-              <div key={cat.id} className="h-full flex items-center shrink-0">
+              <div key={catId} className="h-full flex items-center shrink-0">
                 <button
                   type="button"
-                  onClick={() => toggle(cat.id)}
+                  onClick={() => toggle(catId)}
                   className={`relative h-full px-1 text-base font-medium transition-colors flex items-center gap-2 ${
                     isActive
                       ? "text-foreground after:absolute after:left-0 after:right-0 after:bottom-0 after:h-0.5 after:bg-primary"
@@ -139,7 +151,7 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                   }`}
                 >
                   <CategoryIcon className="h-5 w-5" />
-                  <span>{t(cat.nom)}</span>
+                  <span>{t(catName)}</span>
                 </button>
 
                 <AnimatePresence>
@@ -156,14 +168,14 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                           {/* Bouton "Voir tout" en vedette */}
                           <button
                             type="button"
-                            onClick={() => handleSelection(cat.id, 0, cat.nom)}
+                            onClick={() => handleSelection(catId, 0, catName)}
                             className="group flex items-center gap-3 px-4 py-3 mb-4 w-full rounded-lg bg-primary/10 hover:bg-primary/20 transition-all duration-200"
                           >
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20">
                               <Grid3X3 className="h-5 w-5 text-primary" />
                             </div>
                             <span className="text-base font-semibold text-foreground">
-                              {t("Voir tout")} {t(cat.nom)}
+                              {t("Voir tout")} {t(catName)}
                             </span>
                             <ChevronRight className="h-5 w-5 ml-auto text-primary group-hover:translate-x-1 transition-transform" />
                           </button>
@@ -171,14 +183,18 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                           {/* Grille des sous-catégories */}
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                             {cat.children?.map((sub) => {
-                              const SubIcon = getSubCategoryIcon(sub.nom);
+                              const subId = getCatId(sub);
+                              const subName = getCatName(sub);
+                              if (!subId) return null;
+
+                              const SubIcon = getSubCategoryIcon(subName);
                               const hasChildren = Boolean(sub.children?.length);
 
                               return (
                                 <button
-                                  key={sub.id}
+                                  key={subId}
                                   type="button"
-                                  onClick={() => handleSelection(cat.id, sub.id, sub.nom)}
+                                  onClick={() => handleSelection(catId, subId, subName)}
                                   className="group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 hover:bg-accent hover:scale-[1.02]"
                                 >
                                   <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -186,7 +202,7 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                                      {t(sub.nom)}
+                                      {t(subName)}
                                     </span>
                                   </div>
                                   {hasChildren && (

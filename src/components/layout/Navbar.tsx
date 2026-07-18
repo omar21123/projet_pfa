@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,15 +22,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useUser } from "@/hooks/useUser";
 import { useAuth } from "@/contexts";
 import { useCart } from "@/hooks/useCart";
 import { useLanguage } from "@/contexts/LanguageContext";
 import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Categories from "@/components/Categories";
-import { useProfile } from "@/hooks/useProfile";
 
+/* ──────────────────────────────────────────────
+   SOUS-COMPOSANTS
+   ────────────────────────────────────────────── */
+
+/** Toggle clair/sombre avec persistance localStorage */
 const DarkModeToggle = () => {
   const [isDark, setIsDark] = React.useState(() =>
     document.documentElement.classList.contains("dark"),
@@ -53,228 +55,233 @@ const DarkModeToggle = () => {
   }, []);
 
   return (
-    <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggle}
-        className="text-muted-foreground hover:text-primary hover:bg-secondary/10"
-      >
-        <motion.div
-          key={isDark ? "moon" : "sun"}
-          initial={{ rotate: -90, opacity: 0 }}
-          animate={{ rotate: 0, opacity: 1 }}
-          exit={{ rotate: 90, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </motion.div>
-      </Button>
-    </motion.div>
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={toggle}
+      className="rounded-full h-8 w-8 border-border bg-background text-muted-foreground hover:text-teal hover:border-teal/40 shrink-0 transition-colors"
+    >
+      {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+    </Button>
   );
 };
 
+/** Lien icône avec tooltip réutilisable.
+ *  accent détermine la couleur au survol (teal par défaut, promo pour les favoris) */
+const NavIconLink = ({
+  to,
+  icon: Icon,
+  label,
+  tooltip,
+  accent = "teal",
+}: {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  tooltip: string;
+  accent?: "teal" | "promo";
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Link
+        to={to}
+        className={`relative flex items-center gap-1 text-foreground/90 transition-colors shrink-0 p-1.5 rounded-md hover:bg-muted active:scale-95 ${
+          accent === "promo" ? "hover:text-promo" : "hover:text-teal"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        <span className="hidden xl:inline">{label}</span>
+      </Link>
+    </TooltipTrigger>
+    <TooltipContent side="bottom">
+      <p>{tooltip}</p>
+    </TooltipContent>
+  </Tooltip>
+);
+
+/** Badge compteur pour le panier */
+const CartBadge = ({ count }: { count: number }) => {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -top-1 -right-1 h-4 w-4 bg-promo text-white text-[9px] font-bold flex items-center justify-center rounded-full">
+      {count}
+    </span>
+  );
+};
+
+/* ──────────────────────────────────────────────
+   COMPOSANT PRINCIPAL
+   ────────────────────────────────────────────── */
+
 const Navbar = () => {
-  const { user } = useUser();
   const { isAuthenticated, logout } = useAuth();
-  const { data: profile } = useProfile();
   const { totalItems } = useCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const [searchType, setSearchType] = React.useState<"ads" | "members">("members");
 
-  const displayName =
-    [profile?.nom, profile?.prenom].filter(Boolean).join(" ").trim() || user?.name || "Utilisateur";
-
-  const handleLogout = () => {
-    logout();
-  };
+  const [searchType, setSearchType] = React.useState<"ads" | "members" | "all">("all");
 
   const searchPlaceholder =
-    searchType === "members" ? t("search_members_placeholder") : t("search_ads_placeholder");
+    searchType === "members"
+      ? t("search_members_placeholder")
+      : searchType === "ads"
+        ? t("search_ads_placeholder")
+        : "Rechercher un produit...";
 
+  /* ── Handlers ── */
+  const handleLogout = () => logout();
+
+  const handleCategoryFilter = (filters: { categoryId?: number; subCategoryId?: number }) => {
+    const params = new URLSearchParams();
+    if (filters.categoryId !== undefined) {
+      params.set("category", String(filters.categoryId));
+    }
+    if (filters.subCategoryId !== undefined) {
+      params.set("subCategory", String(filters.subCategoryId));
+    }
+    navigate(`/?${params.toString()}`);
+  };
+
+  /* ── Rendu ── */
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg">
-      <nav className="border-b border-border">
-        <div className="container flex items-center justify-between h-16 gap-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <span className="text-2xl font-heading font-extrabold tracking-tight text-primary">
-              LBAL
-            </span>
-          </Link>
+    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
+      <nav className="mx-auto max-w-7xl px-2 md:px-4 h-14 flex items-center justify-between gap-3">
+        {/* ═══════════════════════════════════════
+            LOGO
+            ═══════════════════════════════════════ */}
+        <Link to="/" className="shrink-0">
+          <span className="text-xl font-black tracking-tight text-teal font-heading">MARCHÉ</span>
+        </Link>
 
-          {/* Mini search */}
-          <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
-            <div className="flex w-full h-10 rounded-xl bg-muted border border-secondary/20 overflow-hidden focus-within:ring-2 focus-within:ring-secondary/40 transition-shadow">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="h-full px-4 text-sm font-medium text-foreground border-r border-secondary/20 hover:bg-background/40 transition-colors flex items-center gap-1.5"
-                  >
-                    {searchType === "members" ? t("search_type_members") : t("search_type_ads")}
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-40">
-                  <DropdownMenuItem onClick={() => setSearchType("ads")}>
-                    {t("search_type_ads")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSearchType("members")}>
-                    {t("search_type_members")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+        {/* ═══════════════════════════════════════
+            BARRE DE RECHERCHE
+            ═══════════════════════════════════════ */}
+        <div className="hidden md:flex flex-1 min-w-[320px] max-w-2xl h-9 border border-border rounded-lg overflow-hidden bg-surface shadow-sm focus-within:ring-1 focus-within:ring-teal transition-all">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="px-3 bg-cream text-xs font-medium text-foreground border-r border-border/60 hover:bg-muted transition-colors flex items-center gap-1 shrink-0"
+              >
+                <span className="truncate max-w-[110px]">
+                  {searchType === "members"
+                    ? t("search_type_members")
+                    : searchType === "ads"
+                      ? t("search_type_ads")
+                      : "Toutes catégories"}
+                </span>
+                <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setSearchType("all")}>
+                Toutes catégories
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSearchType("ads")}>
+                {t("search_type_ads")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSearchType("members")}>
+                {t("search_type_members")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  aria-label={searchPlaceholder}
-                  className="w-full h-full pl-10 pr-4 text-sm bg-transparent placeholder:text-muted-foreground focus:outline-none"
-                />
-              </div>
-            </div>
+          <div className="flex-1 bg-surface min-w-0">
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              className="w-full h-full px-3 text-xs bg-transparent outline-none text-foreground placeholder:text-muted-foreground/60 truncate"
+            />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+          <button
+            type="button"
+            className="bg-teal hover:bg-teal-dark text-cream px-4 text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0"
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden lg:inline">Rechercher</span>
+          </button>
+        </div>
+
+        {/* ═══════════════════════════════════════
+            ZONE ACTIONS (DROITE)
+            Ordre : Dark → Langue → Panier → Login/Compte → Publier
+            ═══════════════════════════════════════ */}
+        <TooltipProvider>
+          <div className="flex items-center gap-2 md:gap-3 text-xs font-medium shrink-0">
+            {/* 1. Thème */}
             <DarkModeToggle />
-            <NotificationDropdown />
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/cart" className="hidden sm:flex">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.2 }}
-                      className="relative"
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("cart")}
-                        className="text-muted-foreground hover:text-primary hover:bg-secondary/10"
-                      >
-                        <ShoppingCart className="h-5 w-5" />
-                      </Button>
-                      {totalItems > 0 && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center"
-                        >
-                          {totalItems}
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>{t("cart")}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* 2. Langue */}
+            <div className="shrink-0">
+              <LanguageSwitcher />
+            </div>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/favorites" className="hidden sm:flex">
-                    <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("favorites")}
-                        className="text-muted-foreground hover:text-primary hover:bg-secondary/10"
-                      >
-                        <Heart className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>{t("favorites")}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* 3. Panier (toujours visible) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/cart"
+                  className="relative flex items-center gap-1 text-foreground/90 hover:text-teal transition-colors shrink-0 p-1.5 rounded-md hover:bg-teal/10 active:scale-95"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  <span className="hidden xl:inline">Panier</span>
+                  <CartBadge count={totalItems} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Voir le panier</p>
+              </TooltipContent>
+            </Tooltip>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/messages" className="hidden sm:flex">
-                    <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("messages")}
-                        className="text-muted-foreground hover:text-primary hover:bg-secondary/10"
-                      >
-                        <MessageCircle className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>{t("messages")}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-              <Link to="/create">
-                <Button className="bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl gap-2 font-semibold">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("publish")}</span>
-                </Button>
-              </Link>
-            </motion.div>
-
-            {/* Conditional buttons based on login status */}
+            {/* 4. Auth : Connecté vs Non-connecté */}
             {isAuthenticated ? (
               <>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link to="/dashboard">
-                        <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="rounded-xl border-secondary/30 hover:bg-secondary/10"
-                          >
-                            <LayoutDashboard className="h-5 w-5" />
-                          </Button>
-                        </motion.div>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("dashboard")}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Favoris — accent promo (rouge) au survol */}
+                <NavIconLink
+                  to="/favorites"
+                  icon={Heart}
+                  label="Favoris"
+                  tooltip="Mes favoris"
+                  accent="promo"
+                />
 
+                {/* Messages */}
+                <NavIconLink
+                  to="/messages"
+                  icon={MessageCircle}
+                  label="Messages"
+                  tooltip="Messagerie"
+                />
+
+                {/* Notifications */}
+                {/* 
+<div className="shrink-0">
+  <NotificationDropdown />
+</div>
+*/}
+
+                {/* Menu Compte */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-xl border-secondary/30 hover:bg-secondary/10"
-                      >
-                        <User className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
+                    <button className="flex items-center gap-1.5 text-foreground/90 hover:text-teal transition-colors focus:outline-none shrink-0 font-semibold p-1.5 rounded-md hover:bg-teal/10 active:scale-95">
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:inline">Mon compte</span>
+                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem disabled className="font-semibold text-sm">
-                      {t("hello")}, {displayName}!
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        {t("dashboard")}
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/profile" className="cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
                         {t("profile")}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/ads" className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        {t("Ads")}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -291,30 +298,36 @@ const Navbar = () => {
                 </DropdownMenu>
               </>
             ) : (
-              <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-                <Link to="/login">
-                  <Button className="bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl font-semibold">
-                    <User className="mr-2 h-4 w-4" />
-                    {t("login")}
-                  </Button>
-                </Link>
-              </motion.div>
+              /* Non connecté : bouton contour teal, tactile (lift + press) */
+              <Link to="/login" className="shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-sm rounded-lg border border-teal text-teal bg-transparent hover:bg-teal hover:text-cream gap-1.5"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  <span>Se connecter</span>
+                </button>
+              </Link>
             )}
+
+            {/* 5. Publier — bouton plein teal, tactile (lift + press + reflet) */}
+            <Link to="/create" className="shrink-0">
+              <button
+                type="button"
+                className="btn btn-sm rounded-lg bg-teal text-cream hover:bg-teal-dark gap-1 shadow-sm"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Publier</span>
+              </button>
+            </Link>
           </div>
-        </div>
+        </TooltipProvider>
       </nav>
-      <Categories
-        onFilter={(filters) => {
-          const params = new URLSearchParams();
-          if (filters.categoryId !== undefined) {
-            params.set("category", String(filters.categoryId));
-          }
-          if (filters.subCategoryId !== undefined) {
-            params.set("subCategory", String(filters.subCategoryId));
-          }
-          navigate(`/?${params.toString()}`);
-        }}
-      />
+
+      {/* ═══════════════════════════════════════
+          CATÉGORIES (sous-navbar)
+          ═══════════════════════════════════════ */}
+      <Categories onFilter={handleCategoryFilter} />
     </header>
   );
 };

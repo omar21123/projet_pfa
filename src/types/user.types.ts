@@ -55,3 +55,25 @@ export interface UserProfile {
   derniereConnexion: string | null;
   isVerified: boolean;
 }
+export interface RegisterRequestVendor {
+  company_name: string; // À la place de store_name
+  description?: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  phone_number?: string;
+  birth_date?: string;
+  gender?: number; // Préférer number à string (1 = Homme, 2 = Femme)
+  avatar?: File;
+}
+export interface RegisterRequestClient {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  phone_number?: string;
+  /** Format "YYYY-MM-DD" */
+  birth_date?: string;
+  gender?: number;
+}

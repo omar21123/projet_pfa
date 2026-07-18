@@ -1,71 +1,80 @@
 // src/api/auth.api.ts
-import { apiClient } from "./client";
+import axiosInstance, { setAuthAccessToken } from "./axiosInstances";
 import {
-  ApiResponse,
   LoginRequest,
-  RegisterRequest,
-  UserProfile,
-  VerifyEmailRequest,
-  AuthResponse,
+  RegisterRequestClient,
+  LaravelAuthResponse,
   ApiMessageResponse,
-} from "../types/user.types";
+  User,
+} from "../types/users.types";
 
-const unwrapApiResponse = <T>(payload: ApiResponse<T>, fallbackMessage: string): T => {
-  if (!payload.success) {
-    throw new Error(payload.message || payload.errors[0] || fallbackMessage);
-  }
-
-  return payload.data;
-};
+const AUTH_EMAIL_KEY = "authEmail"; // non sensible, uniquement pour l'affichage UX
 
 export const authApi = {
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<ApiResponse<{ accessToken: string }>>(
-      "/api/Auth/login",
-      data,
+  /**
+   * Connexion d'un utilisateur (Web)
+   */
+  login: async (data: LoginRequest): Promise<LaravelAuthResponse> => {
+    const response = await axiosInstance.post<LaravelAuthResponse>(
+      "/api/auth/web/login",
+      data
     );
     const payload = response.data;
-    const tokenData = unwrapApiResponse(payload, "Echec de l'authentification.");
 
-    localStorage.setItem("authEmail", data.email);
+    // L'access token reste uniquement en mémoire (jamais en localStorage)
+    setAuthAccessToken(payload.access_token);
+    localStorage.setItem(AUTH_EMAIL_KEY, data.email);
 
-    return {
-      token: tokenData.accessToken,
-      message: payload.message,
-    };
+    return payload;
   },
 
-  register: async (data: RegisterRequest): Promise<ApiMessageResponse> => {
-    const response = await apiClient.post<ApiResponse<string>>("/api/Auth/register", data);
-    const payload = response.data;
-
-    unwrapApiResponse(payload, "Erreur lors de l'inscription.");
-
-    return {
-      message: payload.message,
-    };
+  /**
+   * Inscription d'un compte Client (Web)
+   */
+  registerClient: async (data: RegisterRequestClient): Promise<ApiMessageResponse> => {
+    const response = await axiosInstance.post<ApiMessageResponse>(
+      "/api/auth/web/customer/register",
+      data
+    );
+    return response.data;
   },
 
-  verifyEmail: async (data: VerifyEmailRequest): Promise<ApiMessageResponse> => {
-    const response = await apiClient.post<ApiResponse<null>>("/api/Auth/verify-email", null, {
-      params: data,
-    });
-    const payload = response.data;
-
-    unwrapApiResponse(payload, "Erreur lors de la verification de l'email.");
-
-    return {
-      message: payload.message,
-    };
+  /**
+   * Inscription d'un compte Fournisseur / Partenaire (Web)
+   * Reçoit un FormData (obligatoire pour l'envoi de fichier multipart comme l'avatar)
+   */
+  registerVendor: async (formData: FormData): Promise<ApiMessageResponse> => {
+    const response = await axiosInstance.post<ApiMessageResponse>(
+      "/api/auth/web/vendor/register",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
   },
 
-  getCurrentUserProfile: async (): Promise<UserProfile> => {
-    const response = await apiClient.get<ApiResponse<UserProfile>>("/api/Auth/me");
-    return unwrapApiResponse(response.data, "Impossible de recuperer le profil utilisateur.");
+  /**
+   * Déconnexion complète (Web) - Révoque la session et nettoie le cookie HttpOnly
+   */
+  logout: async (): Promise<ApiMessageResponse> => {
+    try {
+      const response = await axiosInstance.post<ApiMessageResponse>("/api/auth/web/logout");
+      return response.data;
+    } finally {
+      // Nettoyage local peu importe le résultat de la requête réseau
+      setAuthAccessToken(null);
+      localStorage.removeItem(AUTH_EMAIL_KEY);
+    }
   },
 
-  getUserProfile: async (id: number): Promise<UserProfile> => {
-    const response = await apiClient.get<ApiResponse<UserProfile>>(`/api/Auth/${id}`);
-    return unwrapApiResponse(response.data, "Impossible de recuperer le profil utilisateur.");
-  },
+  /**
+   * Récupération des détails de l'utilisateur connecté
+   */
+  getCurrentUserProfile: async (): Promise<User> => {
+    const response = await axiosInstance.get<User>("/api/auth/me");
+    return response.data;
+  }
 };
