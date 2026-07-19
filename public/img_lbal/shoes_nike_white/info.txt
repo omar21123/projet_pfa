@@ -1,0 +1,4 @@
+shoes nike
+▫️taille: 42
+▫️condition: 9,5/10
+white
