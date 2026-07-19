@@ -14,6 +14,9 @@ WORKDIR /var/www
 # 3. Copy your project files
 COPY . .
 
+# 3.5 Ensure bootstrap/cache exists before composer runs artisan hooks
+RUN mkdir -p bootstrap/cache && chmod -R 775 bootstrap/cache
+
 # 4. Install PHP packages
 RUN composer install --no-interaction --optimize-autoloader
 

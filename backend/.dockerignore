@@ -1,0 +1,11 @@
+public/storage
+storage
+bootstrap/cache
+vendor
+node_modules
+.git
+.env
+.env.*
+*.log
+.phpunit.result.cache
+tests
