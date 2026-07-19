@@ -319,7 +319,7 @@ INSERT INTO ResourcesTypes (Name) VALUES ('Json');
 INSERT INTO ProductStatus (Code, Libelle) VALUES
 ('draft', 'Brouillon'),
 ('validated', 'Validé'),
-('accepted', 'Accepté'),
+('Refused', 'refusé'),
 ('blocked', 'Bloqué');
 -- Turn foreign key checks back on
 SET FOREIGN_KEY_CHECKS = 1;

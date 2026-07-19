@@ -173,6 +173,9 @@ Route::prefix('products')->group(function () {
 
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {    
         Route::get('/admin', [ProductController::class, 'index']);
+        Route::get('/{product}', [ProductController::class, 'show']);
+        Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);
+
     });
 
 });

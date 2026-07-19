@@ -3305,6 +3305,376 @@
                 ]
             }
         },
+        "/api/products/{product}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Détails d'un produit",
+                "description": "Retourne les détails complets d'un produit : informations générales, statut, historique de validation/refus/blocage, tags, moyens de paiement autorisés, catégories et attributs de configuration (avec leurs options).",
+                "operationId": "05f6ffcb49f47b4f4fc1a1c21ed60011",
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "description": "Identifiant du produit.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails du produit récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "details": {
+                                                    "properties": {
+                                                        "product_id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "product_name": {
+                                                            "type": "string",
+                                                            "example": "Wireless Bluetooth Headphones Pro"
+                                                        },
+                                                        "full_name": {
+                                                            "type": "string",
+                                                            "example": "Jean Dupont"
+                                                        },
+                                                        "brand_name": {
+                                                            "type": "string",
+                                                            "example": "Sony",
+                                                            "nullable": true
+                                                        },
+                                                        "brand_logo": {
+                                                            "type": "string",
+                                                            "example": "https://cdn.example.com/brands/sony.png",
+                                                            "nullable": true
+                                                        },
+                                                        "model_name": {
+                                                            "type": "string",
+                                                            "example": "WH-1000XM5",
+                                                            "nullable": true
+                                                        },
+                                                        "status": {
+                                                            "type": "string",
+                                                            "example": "En attente de validation"
+                                                        },
+                                                        "barcode": {
+                                                            "type": "string",
+                                                            "example": "8806090123456"
+                                                        },
+                                                        "stock": {
+                                                            "type": "integer",
+                                                            "example": 250
+                                                        },
+                                                        "created_at": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        },
+                                                        "refuse_attempt": {
+                                                            "type": "integer",
+                                                            "example": 0,
+                                                            "nullable": true
+                                                        },
+                                                        "refuse_notes": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "refused_by": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "refuse_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        },
+                                                        "validator_by": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "validation_notes": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "validation_date": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        },
+                                                        "is_active": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "deleted_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        },
+                                                        "is_blocked": {
+                                                            "type": "boolean",
+                                                            "example": false
+                                                        },
+                                                        "blocked_date": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        },
+                                                        "blocked_notes": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "tags": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "example": [
+                                                        "clothes",
+                                                        "T-Shirt"
+                                                    ]
+                                                },
+                                                "allowed_payments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Carte bancaire"
+                                                            },
+                                                            "code": {
+                                                                "type": "string",
+                                                                "example": "CB"
+                                                            },
+                                                            "icon_url": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "categories": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Électronique"
+                                                            },
+                                                            "icon_url": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "is_primary": {
+                                                                "type": "boolean",
+                                                                "example": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "configs": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "attribute": {
+                                                                "type": "string",
+                                                                "example": "Color"
+                                                            },
+                                                            "option": {
+                                                                "type": "string",
+                                                                "example": "Red"
+                                                            },
+                                                            "is_default": {
+                                                                "type": "boolean",
+                                                                "example": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products/{product}/validate": {
+            "patch": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Valider un produit",
+                "description": "Valide un produit en attente : met à jour son statut (Status = 2), enregistre l'administrateur validateur, la date de validation et d'éventuelles notes.",
+                "operationId": "7d9df3a2d2746a47c6107eaba0e9e0db",
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "description": "Identifiant du produit à valider.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 1
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "ValidationNotes": {
+                                        "description": "Notes de l'administrateur concernant la validation.",
+                                        "type": "string",
+                                        "example": "Produit conforme, images vérifiées.",
+                                        "nullable": true,
+                                        "maxLength": 1000
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit validé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit validé avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (produit déjà validé, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce produit est déjà validé."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [

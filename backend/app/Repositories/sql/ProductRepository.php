@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\DB;
 use App\DTOs\Product\GetAllProductsAdminDto;
 use App\DTOs\Product\PaginatedProductAdminResponseDto;
 use App\DTOs\Product\ProductAdminResponseDto;
+use App\DTOs\Product\ProductDetailsDto;
+use App\DTOs\Product\ValidateProductDto;
+
 class ProductRepository implements ProductRepositoryInterface
 {
     public function create(CreateProductDto $dto): ?object
@@ -121,40 +124,111 @@ class ProductRepository implements ProductRepositoryInterface
             return DB::selectOne('SELECT * FROM Products WHERE ProductID = ?', [$productId]);
         });
     }
-     
+
     public function getAllProductsAdmin(GetAllProductsAdminDto $dto): PaginatedProductAdminResponseDto
-{
-    $rows = DB::select(
-        'CALL SP_GetAllProductsAdmin(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
-        [
-            $dto->status,
-            $dto->vendorId,
-            $dto->brandId,
-            $dto->modelId,
-            $dto->search,
-            $dto->isActive === null ? null : (int) $dto->isActive,
-            $dto->isBlocked === null ? null : (int) $dto->isBlocked,
-            $dto->dateFrom,
-            $dto->dateTo,
-            $dto->pageNumber,
-            $dto->pageSize,
-        ]
-    );
+    {
+        $rows = DB::select(
+            'CALL SP_GetAllProductsAdmin(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
+            [
+                $dto->status,
+                $dto->vendorId,
+                $dto->brandId,
+                $dto->modelId,
+                $dto->search,
+                $dto->isActive === null ? null : (int) $dto->isActive,
+                $dto->isBlocked === null ? null : (int) $dto->isBlocked,
+                $dto->dateFrom,
+                $dto->dateTo,
+                $dto->pageNumber,
+                $dto->pageSize,
+            ]
+        );
 
-    $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
 
-    if (!$result->success) {
-        throw new BusinessValidationException($result->message, 422);
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        $items = array_map(fn($row) => ProductAdminResponseDto::fromRow($row), $rows);
+
+        return new PaginatedProductAdminResponseDto(
+            items: $items,
+            total: (int) $result->totalCount,
+            page: $dto->pageNumber,
+            pageSize: $dto->pageSize,
+        );
     }
 
-    $items = array_map(fn ($row) => ProductAdminResponseDto::fromRow($row), $rows);
+    public function getProductDetails(int $productId): ProductDetailsDto
+    {
+        $pdo = DB::connection()->getPdo();
 
-    return new PaginatedProductAdminResponseDto(
-        items: $items,
-        total: (int) $result->totalCount,
-        page: $dto->pageNumber,
-        pageSize: $dto->pageSize,
-    );
-}
-    
+        $stmt = $pdo->prepare('CALL SP_GetProductDetails(?, @success, @message)');
+        $stmt->bindValue(1, $productId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        // Resultset 1: details (only present when the product exists)
+        $detailsRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        $details = $detailsRows[0] ?? null;
+
+        $tags = $allowedPayments = $categories = $configs = [];
+
+        if ($details) {
+            $stmt->nextRowset();
+            $tags = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            $stmt->nextRowset();
+            $allowedPayments = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            $stmt->nextRowset();
+            $categories = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            $stmt->nextRowset();
+            $configs = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        }
+
+        // Drain any remaining rowsets (CALL statements sometimes emit a trailing
+        // empty one) before the connection can be reused safely.
+        while ($stmt->nextRowset()) {
+            // no-op, just draining
+        }
+
+        $stmt->closeCursor();
+
+        $out = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$out->success) {
+            throw new BusinessValidationException($out->message, 422);
+        }
+
+        return new ProductDetailsDto(
+            details: $details,
+            tags: $tags,
+            allowedPayments: $allowedPayments,
+            categories: $categories,
+            configs: $configs,
+        );
+    }
+    public function validate(ValidateProductDto $dto): void
+    {
+        DB::select('CALL SP_ValidateProduct(?, ?, ?, @success, @message)', [
+            $dto->productId,
+            $dto->validatorId,
+            $dto->notes,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
+
+    public function isExistsByID(int $productID): bool
+    {
+        $result = DB::selectOne('SELECT 1 AS Found FROM Products WHERE ProductID = ?', [$productID]);
+
+        return !empty($result);
+    }
 }

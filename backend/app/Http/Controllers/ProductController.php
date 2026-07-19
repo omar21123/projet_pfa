@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DTOs\Product\CreateProductDto;
 use App\DTOs\Product\GetAllProductsAdminDto;
+use App\DTOs\Product\ValidateProductDto;
 use App\Http\Requests\Product\CreateProductRequest;
 use App\Http\Requests\Product\GetAllProductsAdminRequest;
+use App\Http\Requests\Product\ValidateProductRequest;
 use App\Services\Interface\ProductServiceInterface;
 use App\Services\Interface\BrandServiceInterface;
 use App\Services\Interface\ProductModelServiceInterface;
@@ -430,5 +432,259 @@ class ProductController extends Controller
         }
 
         return response()->json($result->toArray(), 200);
+    }
+    #[OA\Get(
+        path: "/api/products/{product}",
+        tags: ["Products"],
+        summary: "Détails d'un produit",
+        description: "Retourne les détails complets d'un produit : informations générales, statut, historique de validation/refus/blocage, tags, moyens de paiement autorisés, catégories et attributs de configuration (avec leurs options).",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 1
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Détails du produit récupérés avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "object",
+                    properties: [
+                        new OA\Property(
+                            property: "details",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "product_id", type: "integer", example: 1),
+                                new OA\Property(property: "product_name", type: "string", example: "Wireless Bluetooth Headphones Pro"),
+                                new OA\Property(property: "full_name", type: "string", example: "Jean Dupont"),
+                                new OA\Property(property: "brand_name", type: "string", nullable: true, example: "Sony"),
+                                new OA\Property(property: "brand_logo", type: "string", nullable: true, example: "https://cdn.example.com/brands/sony.png"),
+                                new OA\Property(property: "model_name", type: "string", nullable: true, example: "WH-1000XM5"),
+                                new OA\Property(property: "status", type: "string", example: "En attente de validation"),
+                                new OA\Property(property: "barcode", type: "string", example: "8806090123456"),
+                                new OA\Property(property: "stock", type: "integer", example: 250),
+                                new OA\Property(property: "created_at", type: "string", format: "date-time"),
+                                new OA\Property(property: "refuse_attempt", type: "integer", nullable: true, example: 0),
+                                new OA\Property(property: "refuse_notes", type: "string", nullable: true),
+                                new OA\Property(property: "refused_by", type: "string", nullable: true),
+                                new OA\Property(property: "refuse_at", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "validator_by", type: "string", nullable: true),
+                                new OA\Property(property: "validation_notes", type: "string", nullable: true),
+                                new OA\Property(property: "validation_date", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "is_active", type: "boolean", example: true),
+                                new OA\Property(property: "deleted_at", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "is_blocked", type: "boolean", example: false),
+                                new OA\Property(property: "blocked_date", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "blocked_notes", type: "string", nullable: true),
+                            ]
+                        ),
+                        new OA\Property(
+                            property: "tags",
+                            type: "array",
+                            items: new OA\Items(type: "string"),
+                            example: ["clothes", "T-Shirt"]
+                        ),
+                        new OA\Property(
+                            property: "allowed_payments",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "name", type: "string", example: "Carte bancaire"),
+                                    new OA\Property(property: "code", type: "string", example: "CB"),
+                                    new OA\Property(property: "icon_url", type: "string", nullable: true),
+                                ]
+                            )
+                        ),
+                        new OA\Property(
+                            property: "categories",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "name", type: "string", example: "Électronique"),
+                                    new OA\Property(property: "icon_url", type: "string", nullable: true),
+                                    new OA\Property(property: "is_primary", type: "boolean", example: true),
+                                ]
+                            )
+                        ),
+                        new OA\Property(
+                            property: "configs",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "attribute", type: "string", example: "Color"),
+                                    new OA\Property(property: "option", type: "string", example: "Red"),
+                                    new OA\Property(property: "is_default", type: "boolean", example: true),
+                                ]
+                            )
+                        ),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 500,
+        description: "Erreur interne du serveur",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string"),
+            ]
+        )
+    )]
+    public function show(int $product): JsonResponse
+    {
+        if ($product <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de produit invalide.',
+            ], 404);
+        }
+
+        $isExist = $this->productService->isExistsByID($product);
+
+        if (!$isExist) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Produit introuvable.',
+            ], 404);
+        }
+
+        try {
+            $result = $this->productService->getProductDetails($product);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/products/{product}/validate",
+        tags: ["Products"],
+        summary: "Valider un produit",
+        description: "Valide un produit en attente : met à jour son statut (Status = 2), enregistre l'administrateur validateur, la date de validation et d'éventuelles notes.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit à valider.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 1
+    )]
+    #[OA\RequestBody(
+        required: false,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "ValidationNotes",
+                    type: "string",
+                    nullable: true,
+                    maxLength: 1000,
+                    description: "Notes de l'administrateur concernant la validation.",
+                    example: "Produit conforme, images vérifiées."
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Produit validé avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Produit validé avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Règle métier violée (produit déjà validé, etc.)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Ce produit est déjà validé."),
+            ]
+        )
+    )]
+    public function validateProduct(ValidateProductRequest $request, int $product): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        $dto = ValidateProductDto::fromArray([
+            'ProductID'       => $product,
+            'ValidatorID'     => $userInfo->userId,
+            'ValidationNotes' => $validated['ValidationNotes'] ?? null,
+        ]);
+
+        try {
+            $this->productService->validateProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Produit validé avec succès.',
+        ], 200);
     }
 }
