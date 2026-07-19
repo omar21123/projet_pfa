@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Product\BlockProductDto;
 use App\DTOs\Product\CreateProductDto;
 use App\DTOs\Product\GetAllProductsAdminDto;
+use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\ValidateProductDto;
+use App\Http\Requests\Product\BlockProductRequest;
 use App\Http\Requests\Product\CreateProductRequest;
 use App\Http\Requests\Product\GetAllProductsAdminRequest;
+use App\Http\Requests\Product\RefuseProductRequest;
 use App\Http\Requests\Product\ValidateProductRequest;
 use App\Services\Interface\ProductServiceInterface;
 use App\Services\Interface\BrandServiceInterface;
@@ -685,6 +689,208 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Produit validé avec succès.',
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/products/{product}/block",
+        tags: ["Products"],
+        summary: "Bloquer un produit",
+        description: "Bloque un produit : met à jour son statut (Status = 4, IsBlocked = 1), enregistre l'administrateur ayant bloqué le produit, la date de blocage et le motif.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit à bloquer.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 1
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["BlockedNotes"],
+            properties: [
+                new OA\Property(
+                    property: "BlockedNotes",
+                    type: "string",
+                    maxLength: 1000,
+                    description: "Motif du blocage du produit.",
+                    example: "Signalement pour contenu non conforme."
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Produit bloqué avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Produit bloqué avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Règle métier violée (produit déjà bloqué, motif manquant, etc.)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Ce produit est déjà bloqué."),
+            ]
+        )
+    )]
+    public function blockProduct(BlockProductRequest $request, int $product): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        $dto = BlockProductDto::fromArray([
+            'ProductID'    => $product,
+            'BlockedBy'    => $userInfo->userId,
+            'BlockedNotes' => $validated['BlockedNotes'],
+        ]);
+
+        try {
+            $this->productService->blockProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Produit bloqué avec succès.',
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/products/{product}/refuse",
+        tags: ["Products"],
+        summary: "Refuser un produit",
+        description: "Refuse un produit et incrémente son compteur de refus. Après 4 refus consécutifs (3 tentatives précédentes + celle-ci), le produit est automatiquement bloqué via SP_BlockProduct.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit à refuser.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 1
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["RefuseNotes"],
+            properties: [
+                new OA\Property(
+                    property: "RefuseNotes",
+                    type: "string",
+                    maxLength: 1000,
+                    description: "Motif du refus du produit.",
+                    example: "Photos insuffisantes, merci de compléter la fiche produit."
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Produit refusé (ou automatiquement bloqué après le seuil de refus atteint)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Produit refusé."),
+                new OA\Property(property: "auto_blocked", type: "boolean", example: false),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Règle métier violée",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string"),
+            ]
+        )
+    )]
+    public function refuseProduct(RefuseProductRequest $request, int $product): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        $dto = RefuseProductDto::fromArray([
+            'ProductID'   => $product,
+            'RefusedBy'   => $userInfo->userId,
+            'RefuseNotes' => $validated['RefuseNotes'],
+        ]);
+
+        try {
+            $result = $this->productService->refuseProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'message'      => $result->message,
+            'auto_blocked' => $result->autoBlocked,
         ], 200);
     }
 }

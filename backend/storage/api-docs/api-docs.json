@@ -3675,6 +3675,231 @@
                 ]
             }
         },
+        "/api/products/{product}/block": {
+            "patch": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Bloquer un produit",
+                "description": "Bloque un produit : met à jour son statut (Status = 4, IsBlocked = 1), enregistre l'administrateur ayant bloqué le produit, la date de blocage et le motif.",
+                "operationId": "4df974ba20535720055c6a1d001fa165",
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "description": "Identifiant du produit à bloquer.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 1
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "BlockedNotes"
+                                ],
+                                "properties": {
+                                    "BlockedNotes": {
+                                        "description": "Motif du blocage du produit.",
+                                        "type": "string",
+                                        "example": "Signalement pour contenu non conforme.",
+                                        "maxLength": 1000
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit bloqué avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit bloqué avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (produit déjà bloqué, motif manquant, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce produit est déjà bloqué."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products/{product}/refuse": {
+            "patch": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Refuser un produit",
+                "description": "Refuse un produit et incrémente son compteur de refus. Après 4 refus consécutifs (3 tentatives précédentes + celle-ci), le produit est automatiquement bloqué via SP_BlockProduct.",
+                "operationId": "521ee241c148e6616e07cbcf3b34ef25",
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "description": "Identifiant du produit à refuser.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 1
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "RefuseNotes"
+                                ],
+                                "properties": {
+                                    "RefuseNotes": {
+                                        "description": "Motif du refus du produit.",
+                                        "type": "string",
+                                        "example": "Photos insuffisantes, merci de compléter la fiche produit.",
+                                        "maxLength": 1000
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit refusé (ou automatiquement bloqué après le seuil de refus atteint)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit refusé."
+                                        },
+                                        "auto_blocked": {
+                                            "type": "boolean",
+                                            "example": false
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [

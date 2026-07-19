@@ -232,3 +232,122 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_BlockProduct(
+    IN  p_ProductID INT,
+    IN  p_BlockedBy INT,
+    IN  p_Notes     VARCHAR(1000),
+    OUT p_Success   TINYINT,
+    OUT p_Message   VARCHAR(255)
+)
+BEGIN
+    DECLARE v_Exists    INT DEFAULT 0;
+    DECLARE v_IsBlocked TINYINT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_Success = 0;
+        SET p_Message = 'Une erreur est survenue lors du blocage du produit.';
+    END;
+
+    SELECT COUNT(*), MAX(IsBlocked)
+    INTO v_Exists, v_IsBlocked
+    FROM Products
+    WHERE ProductID = p_ProductID;
+
+    IF v_Exists = 0 THEN
+        SET p_Success = 0;
+        SET p_Message = 'Produit introuvable.';
+    ELSEIF v_IsBlocked = 1 THEN
+        SET p_Success = 0;
+        SET p_Message = 'Ce produit est déjà bloqué.';
+    ELSE
+        START TRANSACTION;
+
+        UPDATE Products
+        SET
+            BlokedBy      = p_BlockedBy,
+            BlockedNotes  = p_Notes,
+            IsBlocked     = 1,
+            Status        = 4,
+            BlockedDate   = UTC_TIMESTAMP()
+        WHERE ProductID = p_ProductID;
+
+        COMMIT;
+
+        SET p_Success = 1;
+        SET p_Message = 'Produit bloqué avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;
+DELIMITER $$
+CREATE PROCEDURE SP_RefuseProduct(
+    IN  p_ProductID   INT,
+    IN  p_RefusedBy   INT,
+    IN  p_Notes       VARCHAR(1000),
+    OUT p_Success     TINYINT,
+    OUT p_Message     VARCHAR(255),
+    OUT p_AutoBlocked TINYINT
+)
+BEGIN
+    DECLARE v_Exists        INT DEFAULT 0;
+    DECLARE v_Status        INT;
+    DECLARE v_RefuseAttempt INT DEFAULT 0;
+    DECLARE v_BlockMessage  VARCHAR(1000);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_Success = 0;
+        SET p_Message = 'Une erreur est survenue lors du refus du produit.';
+        SET p_AutoBlocked = 0;
+    END;
+
+    SET p_AutoBlocked = 0;
+
+    SELECT COUNT(*), MAX(Status), MAX(RefuseAttempt)
+    INTO v_Exists, v_Status, v_RefuseAttempt
+    FROM Products
+    WHERE ProductID = p_ProductID;
+
+    IF v_Exists = 0 THEN
+        SET p_Success = 0;
+        SET p_Message = 'Produit introuvable.';
+    ELSEIF v_Status <> 1 THEN
+        SET p_Success = 0;
+        SET p_Message = 'Ce produit nest pas en brouillon, il ne peut pas être refusé.';
+    ELSEIF v_RefuseAttempt <= 3 THEN
+        START TRANSACTION;
+
+        UPDATE Products
+        SET
+            RefuseAttempt = RefuseAttempt + 1,
+            RefuseNotes   = p_Notes,
+            RefusedBy     = p_RefusedBy,
+            Status        = 3,
+            RefuseAt      = UTC_TIMESTAMP()
+        WHERE ProductID = p_ProductID;
+
+        COMMIT;
+
+        SET p_Success = 1;
+        SET p_Message = 'Produit refusé.';
+    ELSE
+        SET v_BlockMessage = CONCAT(
+            'Lutilisateur a atteint 3 refus. Ce produit a été automatiquement bloqué. Dernière note de refus : ',
+            p_Notes
+        );
+
+        CALL SP_BlockProduct(p_ProductID, p_RefusedBy, v_BlockMessage, @b_success, @b_message);
+
+        SET p_Success     = @b_success;
+        SET p_Message     = @b_message;
+        SET p_AutoBlocked = 1;
+    END IF;
+END$$
+
+DELIMITER ;

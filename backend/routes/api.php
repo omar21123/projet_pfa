@@ -17,7 +17,8 @@ use App\Http\Controllers\ProductController;
 
 Route::prefix('auth')->group(function () {
 
-    Route::middleware('throttle:auth')->group(function () {
+    // ⚠️ Rate limiting disabled for DEV — re-enable before deploying to prod
+    // Route::middleware('throttle:auth')->group(function () {
         Route::post('/mobile/register', [AuthController::class, 'Customerregister']);
         Route::post('/web/customer/register', [AuthController::class, 'CustomerRegisterWeb']);
         Route::post('/mobile/login', [AuthController::class, 'login']);
@@ -27,7 +28,7 @@ Route::prefix('auth')->group(function () {
         Route::post('/mobile/logout', [AuthController::class, 'logout']);
         Route::post('/web/logout', [AuthController::class, 'webLogout']);
         Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
-    });
+    // });
 
     // TODO — pas encore implémentés
     // Route::post('/set-password', [AuthController::class, 'setPassword']);
@@ -175,7 +176,8 @@ Route::prefix('products')->group(function () {
         Route::get('/admin', [ProductController::class, 'index']);
         Route::get('/{product}', [ProductController::class, 'show']);
         Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);
-
+        Route::patch('/{product}/block', [ProductController::class, 'blockProduct']);
+        Route::patch('/{product}/refuse', [ProductController::class, 'refuseProduct']);
     });
 
 });

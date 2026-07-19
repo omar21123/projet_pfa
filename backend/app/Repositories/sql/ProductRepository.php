@@ -2,6 +2,7 @@
 
 namespace App\Repositories\sql;
 
+use App\DTOs\Product\BlockProductDto;
 use App\DTOs\Product\CreateProductDto;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
@@ -10,6 +11,8 @@ use App\DTOs\Product\GetAllProductsAdminDto;
 use App\DTOs\Product\PaginatedProductAdminResponseDto;
 use App\DTOs\Product\ProductAdminResponseDto;
 use App\DTOs\Product\ProductDetailsDto;
+use App\DTOs\Product\RefuseProductDto;
+use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
 
 class ProductRepository implements ProductRepositoryInterface
@@ -224,11 +227,43 @@ class ProductRepository implements ProductRepositoryInterface
             throw new BusinessValidationException($result->message, 422);
         }
     }
+    public function block(BlockProductDto $dto): void
+    {
+        DB::select('CALL SP_BlockProduct(?, ?, ?, @success, @message)', [
+            $dto->productId,
+            $dto->blockedBy,
+            $dto->notes,
+        ]);
 
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
     public function isExistsByID(int $productID): bool
     {
         $result = DB::selectOne('SELECT 1 AS Found FROM Products WHERE ProductID = ?', [$productID]);
 
         return !empty($result);
+    }
+    public function refuse(RefuseProductDto $dto): RefuseProductResultDto
+    {
+        DB::select('CALL SP_RefuseProduct(?, ?, ?, @success, @message, @autoBlocked)', [
+            $dto->productId,
+            $dto->refusedBy,
+            $dto->notes,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message, @autoBlocked AS autoBlocked');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        return new RefuseProductResultDto(
+            message: $result->message,
+            autoBlocked: (bool) $result->autoBlocked,
+        );
     }
 }
