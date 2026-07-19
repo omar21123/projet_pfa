@@ -6,7 +6,9 @@ use App\DTOs\Product\CreateProductDto;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
-
+use App\DTOs\Product\GetAllProductsAdminDto;
+use App\DTOs\Product\PaginatedProductAdminResponseDto;
+use App\DTOs\Product\ProductAdminResponseDto;
 class ProductRepository implements ProductRepositoryInterface
 {
     public function create(CreateProductDto $dto): ?object
@@ -119,4 +121,40 @@ class ProductRepository implements ProductRepositoryInterface
             return DB::selectOne('SELECT * FROM Products WHERE ProductID = ?', [$productId]);
         });
     }
+     
+    public function getAllProductsAdmin(GetAllProductsAdminDto $dto): PaginatedProductAdminResponseDto
+{
+    $rows = DB::select(
+        'CALL SP_GetAllProductsAdmin(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
+        [
+            $dto->status,
+            $dto->vendorId,
+            $dto->brandId,
+            $dto->modelId,
+            $dto->search,
+            $dto->isActive === null ? null : (int) $dto->isActive,
+            $dto->isBlocked === null ? null : (int) $dto->isBlocked,
+            $dto->dateFrom,
+            $dto->dateTo,
+            $dto->pageNumber,
+            $dto->pageSize,
+        ]
+    );
+
+    $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+    if (!$result->success) {
+        throw new BusinessValidationException($result->message, 422);
+    }
+
+    $items = array_map(fn ($row) => ProductAdminResponseDto::fromRow($row), $rows);
+
+    return new PaginatedProductAdminResponseDto(
+        items: $items,
+        total: (int) $result->totalCount,
+        page: $dto->pageNumber,
+        pageSize: $dto->pageSize,
+    );
+}
+    
 }

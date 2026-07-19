@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\Product\CreateProductDto;
+use App\DTOs\Product\GetAllProductsAdminDto;
 use App\Http\Requests\Product\CreateProductRequest;
+use App\Http\Requests\Product\GetAllProductsAdminRequest;
 use App\Services\Interface\ProductServiceInterface;
 use App\Services\Interface\BrandServiceInterface;
 use App\Services\Interface\ProductModelServiceInterface;
@@ -361,5 +363,72 @@ class ProductController extends Controller
             'message' => 'Produit créé avec succès',
             'data' => $product
         ], 201);
+    }
+    #[OA\Get(
+        path: "/api/products/admin",
+        tags: ["Products"],
+        summary: "Lister les produits (admin)",
+        description: "Retourne la liste paginée des produits avec informations vendeur, marque, modèle, statut, et historique de validation/refus/blocage. Filtrable par statut, vendeur, marque, modèle, recherche texte, actif/bloqué et plage de dates.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "status", in: "query", required: false, schema: new OA\Schema(type: "integer"), example: 1)]
+    #[OA\Parameter(name: "vendor_id", in: "query", required: false, schema: new OA\Schema(type: "integer"))]
+    #[OA\Parameter(name: "brand_id", in: "query", required: false, schema: new OA\Schema(type: "integer"))]
+    #[OA\Parameter(name: "model_id", in: "query", required: false, schema: new OA\Schema(type: "integer"))]
+    #[OA\Parameter(name: "search", in: "query", required: false, schema: new OA\Schema(type: "string"), example: "headphones")]
+    #[OA\Parameter(name: "is_active", in: "query", required: false, schema: new OA\Schema(type: "boolean"))]
+    #[OA\Parameter(name: "is_blocked", in: "query", required: false, schema: new OA\Schema(type: "boolean"))]
+    #[OA\Parameter(name: "date_from", in: "query", required: false, schema: new OA\Schema(type: "string", format: "date"))]
+    #[OA\Parameter(name: "date_to", in: "query", required: false, schema: new OA\Schema(type: "string", format: "date"))]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Liste des produits récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "total", type: "integer", example: 128),
+                        new OA\Property(property: "page", type: "integer", example: 1),
+                        new OA\Property(property: "page_size", type: "integer", example: 20),
+                        new OA\Property(property: "last_page", type: "integer", example: 7),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Règle métier violée",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string"),
+            ]
+        )
+    )]
+    public function index(GetAllProductsAdminRequest $request): JsonResponse
+    {
+        $dto = GetAllProductsAdminDto::fromRequest($request->validated());
+
+        try {
+            $result = $this->productService->getAllProductsAdmin($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json($result->toArray(), 200);
     }
 }
