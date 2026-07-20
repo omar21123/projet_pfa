@@ -3,8 +3,13 @@ version: "3.9"
 services:
 
   backend:
-    build: ./backend
-    container_name: laravel
+  build: ./backend
+  container_name: laravel
+  healthcheck:
+    test: ["CMD", "php", "-v"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
     restart: unless-stopped
     working_dir: /var/www
     volumes:
