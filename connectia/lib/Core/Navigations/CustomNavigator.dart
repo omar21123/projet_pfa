@@ -2,6 +2,7 @@ import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
+import 'package:connectia/Features/Account/views/AboutPage.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
@@ -95,6 +96,10 @@ class CustomNavigator {
         path: '/FAQHelpPage',
         builder: (context, state) => const HelpCenterPage(),
       ),
+      GoRoute(
+        path: '/AboutView',
+        builder: (context, state) => const AboutPage(),
+      ),
     ],
   );
 
@@ -119,6 +124,9 @@ class CustomNavigator {
   }
    static Future navigateToSettingFAQHelp() async {
     await router.push('/FAQHelpPage');
+  }
+  static Future navigateToSettingAbout() async {
+    await router.push('/AboutView');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>

@@ -4,6 +4,7 @@ import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Features/Account/Widgets/CustomerProfileSliver.dart';
 import 'package:connectia/Features/Account/Widgets/MenuTileCard.dart';
 import 'package:flutter/material.dart';
+import 'package:pro_dialog/pro_dialog.dart';
 
 class Accountview extends StatelessWidget {
   const Accountview({super.key});
@@ -208,7 +209,26 @@ class Accountview extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
             child: Customnavigationbutton(
               backgroundColor: AppColors.logoutBg(context),
-              onPressed: onLogOut,
+              onPressed: () {
+                showProDialog(
+                  context,
+                  type: DialogType.question,
+                  title: 'Se déconnecter',
+                  description:
+                      'Voulez-vous vraiment vous déconnecter de votre compte ?',
+                  buttons: [
+                    DialogButton(
+                      text: 'Annuler',
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    DialogButton(
+                      text: 'Se déconnecter',
+                      isPrimary: true,
+                      onPressed: () {},
+                    ),
+                  ],
+                );
+              },
               text: 'Se déconnecter',
               textColor: AppColors.logout(context),
             ),
@@ -246,7 +266,7 @@ class Accountview extends StatelessWidget {
     await CustomNavigator.navigateToSettingFAQHelp();
   }
 
-  void onAboutTap() {}
-
-  void onLogOut() {}
+  void onAboutTap() async {
+    await CustomNavigator.navigateToSettingAbout();
+  }
 }
