@@ -48,6 +48,25 @@ class AppColors {
   static const Color notificationsIconDark = Color(0xFFCBB894);
   static final Color notificationsIconBgDark = const Color(0xFFCBB894).withValues(alpha: 0.20);
 
+  /// Couleur sémantique "succès" (badge Vérifié, confirmations, etc.)
+  static const Color success = Color(0xFF1A9463);
+  static final Color successBg = const Color(0xFF1A9463).withValues(alpha: 0.14);
+  static const Color successDark = Color(0xFF4FCC96);
+  static final Color successBgDark = const Color(0xFF4FCC96).withValues(alpha: 0.18);
+
+  // ── Carte "Points de fidélité" ────────────────────────────────
+  static const Color loyaltyIcon = Color(0xFFC77400);
+  static const Color loyaltyIconBg = Color(0xFFFCE9BE);
+  static const Color loyaltyCardBg = Color(0xFFFFFBEA);
+  static const Color loyaltyBorder = Color(0xFFF3DFA0);
+  static const Color loyaltyText = Color(0xFF6B3410);
+
+  static const Color loyaltyIconDark = Color(0xFFE8A93D);
+  static final Color loyaltyIconBgDark = const Color(0xFFE8A93D).withValues(alpha: 0.20);
+  static const Color loyaltyCardBgDark = Color(0xFF241C0E);
+  static const Color loyaltyBorderDark = Color(0xFF4A3A1C);
+  static const Color loyaltyTextDark = Color(0xFFF0C97A);
+
   // ── Context-aware getters ─────────────────────────────────────
   static bool _isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
@@ -119,6 +138,27 @@ class AppColors {
 
   static Color notificationsBg(BuildContext context) =>
       _isDark(context) ? notificationsIconBgDark : notificationsIconBg;
+
+  static Color successColor(BuildContext context) =>
+      _isDark(context) ? successDark : success;
+
+  static Color successColorBg(BuildContext context) =>
+      _isDark(context) ? successBgDark : successBg;
+
+  static Color loyalty(BuildContext context) =>
+      _isDark(context) ? loyaltyIconDark : loyaltyIcon;
+
+  static Color loyaltyBg(BuildContext context) =>
+      _isDark(context) ? loyaltyIconBgDark : loyaltyIconBg;
+
+  static Color loyaltyCardBackground(BuildContext context) =>
+      _isDark(context) ? loyaltyCardBgDark : loyaltyCardBg;
+
+  static Color loyaltyBorderColor(BuildContext context) =>
+      _isDark(context) ? loyaltyBorderDark : loyaltyBorder;
+
+  static Color loyaltyTextColor(BuildContext context) =>
+      _isDark(context) ? loyaltyTextDark : loyaltyText;
 
   /// Icônes "neutres" de type paramètres (Informations personnelles,
   /// Gestion des adresses...) -> même look gris/teal que primary()/accent20(),

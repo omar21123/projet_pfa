@@ -32,12 +32,9 @@ Route::prefix('auth')->group(function () {
 
     // TODO — pas encore implémentés
     // Route::post('/set-password', [AuthController::class, 'setPassword']);
-
 });
 
 Route::prefix('categories')->group(function () {
-
-
     Route::get('/navbar', [CategoryController::class, 'navbar']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -46,29 +43,21 @@ Route::prefix('categories')->group(function () {
         Route::get('/{id}/children', [CategoryController::class, 'children']);
         Route::put('/{id}/deactivate-subtree', [CategoryController::class, 'deactivateSubtree']);
         Route::put('/{id}/activate', [CategoryController::class, 'activate']);
-
-
     });
-
 });
 
 Route::prefix('tags')->group(function () {
-
     Route::get('/', [TagController::class, 'index']);
-
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/create', [TagController::class, 'store']);
         Route::post('/create-by-name', [TagController::class, 'storeByName']);
         Route::post('/{id}/disable', [TagController::class, 'disable']);
     });
-
 });
 Route::prefix('brands')->group(function () {
-
     // 🌐 Route Publique
     Route::get('/', [BrandController::class, 'publicIndex']);
-
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [BrandController::class, 'adminIndex']);
@@ -81,10 +70,8 @@ Route::prefix('brands')->group(function () {
 
 });
 Route::prefix('models')->group(function () {
-
     // 🌐 Route Publique
     Route::get('/', [ProductModelController::class, 'publicIndex']);
-
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [ProductModelController::class, 'adminIndex']);
@@ -93,14 +80,11 @@ Route::prefix('models')->group(function () {
         Route::put('/{id}/disable', [ProductModelController::class, 'disable']);
         Route::put('/{id}/enable', [ProductModelController::class, 'enable']);
     });
-
 });
 
 Route::prefix('units')->group(function () {
-
     // 🌐 Route Publique
     Route::get('/', [UnitController::class, 'publicIndex']);
-
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [UnitController::class, 'adminIndex']);
@@ -124,7 +108,6 @@ Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(funct
 });
 
 Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
-
     // Route GET pour récupérer le profil complet de l'administrateur connecté
     Route::get('/admin/profile', [AdminProfileController::class, 'show']);
 
@@ -132,10 +115,8 @@ Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
 
 Route::get('/countries', [CountryController::class, 'index']);
 Route::prefix('products-config-attributes')->group(function () {
-
     // 🌐 Route Publique (liste légère : ID + Name)
     Route::get('/', [ProductsConfigAttributeController::class, 'index']);
-
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [ProductsConfigAttributeController::class, 'adminIndex']);
