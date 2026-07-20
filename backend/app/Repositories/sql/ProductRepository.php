@@ -175,7 +175,7 @@ class ProductRepository implements ProductRepositoryInterface
         $detailsRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
         $details = $detailsRows[0] ?? null;
 
-        $tags = $allowedPayments = $categories = $configs = [];
+        $tags = $allowedPayments = $categories = $configs = $resources = [];
 
         if ($details) {
             $stmt->nextRowset();
@@ -189,6 +189,10 @@ class ProductRepository implements ProductRepositoryInterface
 
             $stmt->nextRowset();
             $configs = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            // 🎯 6e resultset : images/vidéos du produit (à ajouter côté SP, voir note plus bas)
+            $stmt->nextRowset();
+            $resources = $stmt->fetchAll(\PDO::FETCH_OBJ);
         }
 
         // Drain any remaining rowsets (CALL statements sometimes emit a trailing
@@ -211,6 +215,7 @@ class ProductRepository implements ProductRepositoryInterface
             allowedPayments: $allowedPayments,
             categories: $categories,
             configs: $configs,
+            resources: $resources,
         );
     }
     public function validate(ValidateProductDto $dto): void

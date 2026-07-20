@@ -5218,7 +5218,7 @@
                     "Admin Profile"
                 ],
                 "summary": "Afficher le profil de l'administrateur connecté",
-                "operationId": "60ee859849316a2ae41fb7485e16e93e",
+                "operationId": "bff51cee5e2885993333cb6cf27258d7",
                 "responses": {
                     "200": {
                         "description": "Profil récupéré avec succès"
