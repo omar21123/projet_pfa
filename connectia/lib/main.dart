@@ -18,7 +18,9 @@ Future<void> main() async {
       providers: [
         BlocProvider(
           create: (context) {
-           bool isDarkMode = PlatformDispatcher.instance.platformBrightness == Brightness.dark;
+            bool isDarkMode =
+                PlatformDispatcher.instance.platformBrightness ==
+                Brightness.dark;
 
             return DarkModeCubit()..initiale(isDarkMode);
           },

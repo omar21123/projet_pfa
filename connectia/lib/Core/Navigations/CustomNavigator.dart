@@ -4,6 +4,7 @@ import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScree
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
 import 'package:connectia/Features/Account/views/AboutPage.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
+import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
@@ -100,6 +101,10 @@ class CustomNavigator {
         path: '/AboutView',
         builder: (context, state) => const AboutPage(),
       ),
+      GoRoute(
+        path: '/PersonalinformationsView',
+        builder: (context, state) => const PersonalinformationsView(),
+      ),
     ],
   );
 
@@ -127,6 +132,9 @@ class CustomNavigator {
   }
   static Future navigateToSettingAbout() async {
     await router.push('/AboutView');
+  }
+   static Future navigateToSettingPersonalinformationsView() async {
+    await router.push('/PersonalinformationsView');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>

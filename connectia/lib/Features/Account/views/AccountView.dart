@@ -250,7 +250,9 @@ class Accountview extends StatelessWidget {
 
   void onOrderHistoryTap() {}
 
-  void onPersonalInfoTap() {}
+  void onPersonalInfoTap() async {
+    await CustomNavigator.navigateToSettingPersonalinformationsView();
+  }
 
   void onAddressesTap() {}
 

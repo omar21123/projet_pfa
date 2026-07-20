@@ -44,6 +44,7 @@ dependencies:
   google_nav_bar: ^5.0.7
   flutter_bloc: ^9.1.1
   pro_dialog: ^1.0.9
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
