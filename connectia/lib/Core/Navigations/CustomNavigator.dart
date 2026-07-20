@@ -2,6 +2,8 @@ import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
+import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
+import 'package:connectia/Features/Account/views/PreferencesPage.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
@@ -27,10 +29,15 @@ class CustomNavigator {
       final location = state.matchedLocation;
 
       const introRoute = '/introduction';
-    const authRoutes = {
-  '/login', '/register', '/terms', '/privacy',
-  '/forgot-password', '/forgot-password/verify', '/forgot-password/reset',
-};
+      const authRoutes = {
+        '/login',
+        '/register',
+        '/terms',
+        '/privacy',
+        '/forgot-password',
+        '/forgot-password/verify',
+        '/forgot-password/reset',
+      };
 
       if (prefs.isShowOnboarding) {
         return location == introRoute ? null : introRoute;
@@ -53,28 +60,41 @@ class CustomNavigator {
         path: '/register',
         builder: (context, state) => const Registerscreen(),
       ),
-      GoRoute(path: '/terms', builder: (context, state) => const TermsOfUseScreen()),
-GoRoute(path: '/privacy', builder: (context, state) => const PrivacyPolicyScreen()),
-GoRoute(
-  path: '/forgot-password',
-  builder: (context, state) => const ForgotPasswordEmailScreen(),
-),
-GoRoute(
-  path: '/forgot-password/verify',
-  builder: (context, state) => VerifyResetCodeScreen(
-    email: state.extra as String,
-  ),
-),
-GoRoute(
-  path: '/forgot-password/reset',
-  builder: (context, state) {
-    final args = state.extra as Map<String, String>;
-    return ResetPasswordScreen(
-      email: args['email']!,
-      code: args['code']!,
-    );
-  },
-),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsOfUseScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordEmailScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password/verify',
+        builder: (context, state) =>
+            VerifyResetCodeScreen(email: state.extra as String),
+      ),
+      GoRoute(
+        path: '/forgot-password/reset',
+        builder: (context, state) {
+          final args = state.extra as Map<String, String>;
+          return ResetPasswordScreen(
+            email: args['email']!,
+            code: args['code']!,
+          );
+        },
+      ),
+       GoRoute(
+        path: '/Preferences',
+        builder: (context, state) => const PreferencesPage(),
+      ),
+       GoRoute(
+        path: '/FAQHelpPage',
+        builder: (context, state) => const HelpCenterPage(),
+      ),
     ],
   );
 
@@ -94,7 +114,12 @@ GoRoute(
   static Future navigateToRegister() async {
     await router.push('/register');
   }
-
+   static Future navigateToSettingPReferences() async {
+    await router.push('/Preferences');
+  }
+   static Future navigateToSettingFAQHelp() async {
+    await router.push('/FAQHelpPage');
+  }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');

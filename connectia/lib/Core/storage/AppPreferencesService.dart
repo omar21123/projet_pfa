@@ -9,13 +9,16 @@ class AppPreferencesService {
   // ── Keys (private, defined once) ──────────────────────────
   static const _keyShowOnboarding = 'showOnboarding';
   static const _keyShowLogin = 'showLogin';
-
+  static const _keyDarkMode = 'DarkMode';
   bool get isShowLogin => _prefs.getBool(_keyShowLogin) ?? true;
   bool get isShowOnboarding => _prefs.getBool(_keyShowOnboarding) ?? true;
 
   Future<void> initialize() async {
     if (!_prefs.containsKey(_keyShowOnboarding)) {
-      await _prefs.setBool(_keyShowOnboarding, true); // only the very first time
+      await _prefs.setBool(
+        _keyShowOnboarding,
+        true,
+      ); // only the very first time
     }
     if (!_prefs.containsKey(_keyShowLogin)) {
       await _prefs.setBool(_keyShowLogin, true); // only the very first time
@@ -25,9 +28,18 @@ class AppPreferencesService {
   Future<void> setHasSeenOnboarding() =>
       _prefs.setBool(_keyShowOnboarding, false);
 
-  Future<void> setHasSeenLogin() =>
-      _prefs.setBool(_keyShowLogin, false);
-
+  Future<void> setHasSeenLogin() => _prefs.setBool(_keyShowLogin, false);
   // ── Clear everything (e.g. on logout / reset) ────────────────
   Future<void> clearAll() => _prefs.clear();
+
+  Future<void> changeDarkModeStatus(bool inDarkMode) =>
+      _prefs.setBool(_keyDarkMode, inDarkMode);
+
+  Future<bool> initialeDarkModeStatus(bool isSytemDarkMode) async {
+    if (!_prefs.containsKey(_keyDarkMode)) {
+      await _prefs.setBool(_keyDarkMode, isSytemDarkMode);
+      return isSytemDarkMode;
+    }
+    return _prefs.getBool(_keyDarkMode) ?? isSytemDarkMode;
+  }
 }

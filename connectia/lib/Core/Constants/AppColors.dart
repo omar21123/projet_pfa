@@ -23,6 +23,31 @@ class AppColors {
   static const Color buttonSurfaceDark = Color(0xFF223038);
   static const Color buttonSurfaceAltDark = Color(0xFF2A3A43);
 
+  // ── Menu tile icons (Wishlist / Produits aimés / Historique) ──
+  // Historique n'a pas besoin de couleurs dédiées : primary() +
+  // accent20() reproduisent déjà exactement ce look (teal sur fond
+  // teal translucide), donc on les réutilise tel quel plus bas.
+
+  static const Color wishlistIcon = Color(0xFFC0182B);
+  static const Color wishlistIconBg = Color(0xFFFBE3E6);
+  static const Color wishlistIconDark = Color(0xFFFF6B81);
+  static final Color wishlistIconBgDark = const Color(0xFFFF6B81).withValues(alpha: 0.20);
+
+  static const Color likedProductsIcon = Color(0xFF9A5B23);
+  static const Color likedProductsIconBg = Color(0xFFF6E3C7);
+  static const Color likedProductsIconDark = Color(0xFFE0A868);
+  static final Color likedProductsIconBgDark = const Color(0xFFE0A868).withValues(alpha: 0.20);
+
+  static const Color securityIcon = Color(0xFF6B4232);
+  static const Color securityIconBg = Color(0xFFF0E1D6);
+  static const Color securityIconDark = Color(0xFFC98B6C);
+  static final Color securityIconBgDark = const Color(0xFFC98B6C).withValues(alpha: 0.20);
+
+  static const Color notificationsIcon = Color(0xFF3D3A2E);
+  static const Color notificationsIconBg = Color(0xFFE8E3DC);
+  static const Color notificationsIconDark = Color(0xFFCBB894);
+  static final Color notificationsIconBgDark = const Color(0xFFCBB894).withValues(alpha: 0.20);
+
   // ── Context-aware getters ─────────────────────────────────────
   static bool _isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
@@ -58,4 +83,47 @@ class AppColors {
   /// Neutral text color that flips black/white depending on mode
   static Color primaryText(BuildContext context) =>
       _isDark(context) ? defaultBase : Colors.black;
+
+  // ── Menu tile getters ──────────────────────────────────────────
+  static Color wishlist(BuildContext context) =>
+      _isDark(context) ? wishlistIconDark : wishlistIcon;
+
+  static Color wishlistBg(BuildContext context) =>
+      _isDark(context) ? wishlistIconBgDark : wishlistIconBg;
+
+  /// "Se déconnecter" utilise le même rouge/rose que wishlist() ->
+  /// alias sémantique plutôt que couleur dupliquée.
+  static Color logout(BuildContext context) => wishlist(context);
+
+  static Color logoutBg(BuildContext context) => wishlistBg(context);
+
+  static Color likedProducts(BuildContext context) =>
+      _isDark(context) ? likedProductsIconDark : likedProductsIcon;
+
+  static Color likedProductsBg(BuildContext context) =>
+      _isDark(context) ? likedProductsIconBgDark : likedProductsIconBg;
+
+  /// Historique réutilise primary()/accent20() -> pas de couleur dédiée.
+  static Color history(BuildContext context) => primary(context);
+
+  static Color historyBg(BuildContext context) => accent20(context);
+
+  static Color security(BuildContext context) =>
+      _isDark(context) ? securityIconDark : securityIcon;
+
+  static Color securityBg(BuildContext context) =>
+      _isDark(context) ? securityIconBgDark : securityIconBg;
+
+  static Color notifications(BuildContext context) =>
+      _isDark(context) ? notificationsIconDark : notificationsIcon;
+
+  static Color notificationsBg(BuildContext context) =>
+      _isDark(context) ? notificationsIconBgDark : notificationsIconBg;
+
+  /// Icônes "neutres" de type paramètres (Informations personnelles,
+  /// Gestion des adresses...) -> même look gris/teal que primary()/accent20(),
+  /// exposé sous un nom sémantique dédié plutôt que dupliqué.
+  static Color neutral(BuildContext context) => primary(context);
+
+  static Color neutralBg(BuildContext context) => accent20(context);
 }

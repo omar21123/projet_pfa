@@ -10,7 +10,7 @@ class Firstintroduction extends StatelessWidget {
     final size = MediaQuery.of(context).size;
 
     return Container(
-      color: AppColors.defaultBase,
+      color: AppColors.background(context),
       padding: EdgeInsets.symmetric(horizontal: size.width * 0.08),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -27,7 +27,7 @@ class Firstintroduction extends StatelessWidget {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppColors.primaryBrand,
+              color: AppColors.primary(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -37,7 +37,7 @@ class Firstintroduction extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               height: 1.4,
-              color: AppColors.secondaryText,
+              color: AppColors.secondary(context),
             ),
           ),
         ],
