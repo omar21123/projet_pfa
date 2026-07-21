@@ -1,7 +1,6 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Features/Account/Widgets/Pref/CurrencySection.dart';
 import 'package:connectia/Features/Account/Widgets/Pref/LanguageSection.dart';
-import 'package:connectia/Features/Account/Widgets/Pref/SectionCard.dart';
 import 'package:connectia/Features/Account/Widgets/Pref/ThemeSection.dart';
 import 'package:connectia/Features/Account/data/Dark%20Mode%20Cubit/dark_mode_cubit.dart';
 import 'package:flutter/material.dart';
@@ -18,22 +17,64 @@ class PreferencesPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.softBg(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        elevation: 0,
-        centerTitle: false,
-        iconTheme: IconThemeData(color: AppColors.primaryText(context)),
-        title: Text(
-          'Préférences',
-          style: TextStyle(
-            color: AppColors.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-      ),
       body: CustomScrollView(
         slivers: [
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: AppColors.background(context),
+            elevation: 0,
+            expandedHeight: 130,
+            iconTheme: IconThemeData(color: AppColors.primaryText(context)),
+            flexibleSpace: LayoutBuilder(
+              builder: (context, constraints) {
+                final expandRatio =
+                    ((constraints.maxHeight - kToolbarHeight) /
+                            (130 - kToolbarHeight))
+                        .clamp(0.0, 1.0);
+
+                return FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  centerTitle: false,
+                  title: Text(
+                    'Préférences',
+                    style: TextStyle(
+                      color: AppColors.primaryText(context),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18 + (4 * expandRatio),
+                    ),
+                  ),
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.background(context),
+                          AppColors.accent20(context),
+                        ],
+                      ),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 24, top: 10),
+                        child: Opacity(
+                          opacity: expandRatio,
+                          child: Icon(
+                            Icons.tune_rounded,
+                            size: 64,
+                            color: AppColors.primary(
+                              context,
+                            ).withValues(alpha: 0.25),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           SliverToBoxAdapter(child: LanguageSection()),
           SliverToBoxAdapter(
             child: ThemeSection(
@@ -47,7 +88,9 @@ class PreferencesPage extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(child: CurrencySection()),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+          ),
         ],
       ),
     );
