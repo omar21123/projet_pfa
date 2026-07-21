@@ -1,5 +1,6 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/VerifiableInfoTile.dart';
+import 'package:connectia/Features/Account/Widgets/Security/LastConnectionBanner.dart';
 import 'package:connectia/Features/Account/Widgets/Security/PasswordSettingsCard.dart';
 import 'package:connectia/Features/Account/Widgets/Security/SecurityAppBar.dart';
 import 'package:connectia/Features/Account/Widgets/Security/SocialAccountRow.dart';
@@ -103,7 +104,10 @@ class Securitysetting extends StatelessWidget {
               ),
             ),
           ),
-          
+          _gap(25),
+           SliverToBoxAdapter(
+            child:  LastConnectionBanner(timestampLabel: DateTime.now().toString()),
+           ),
           SliverToBoxAdapter(
             child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
           ),
