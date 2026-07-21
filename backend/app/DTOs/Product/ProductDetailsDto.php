@@ -10,6 +10,7 @@ class ProductDetailsDto
         public readonly array $allowedPayments,
         public readonly array $categories,
         public readonly array $configs,
+        public readonly array $resources = [],
     ) {}
 
     public function toArray(): array
@@ -55,6 +56,22 @@ class ProductDetailsDto
                 'option'      => $row->OptionValue,
                 'is_default'  => (bool) $row->IsDefaultForAttribute,
             ], $this->configs),
+            // 🎯 Séparation images/vidéos à partir du même resultset "resources",
+            // en se basant sur la colonne Type ('image' | 'video')
+            'images' => array_values(array_map(fn ($row) => [
+                'url'  => $row->Path,
+                'role' => (int) $row->Role,
+            ], array_filter(
+                $this->resources,
+                fn ($row) => strtolower($row->Type) === 'image'
+            ))),
+            'videos' => array_values(array_map(fn ($row) => [
+                'url'  => $row->Path,
+                'role' => (int) $row->Role,
+            ], array_filter(
+                $this->resources,
+                fn ($row) => strtolower($row->Type) === 'video'
+            ))),
         ];
     }
 }

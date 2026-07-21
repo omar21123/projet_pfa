@@ -1,5 +1,5 @@
 <?
-namespace App\DTOs\Admin;
+namespace App\DTOs;
 
 class CreateAdminDto
 {
