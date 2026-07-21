@@ -254,7 +254,9 @@ class Accountview extends StatelessWidget {
     await CustomNavigator.navigateToSettingPersonalinformationsView();
   }
 
-  void onAddressesTap() {}
+  void onAddressesTap() async {
+    await CustomNavigator.navigateToSettingAddressesview();
+  }
 
   void onSecurityTap() {}
 

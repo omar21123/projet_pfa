@@ -6,11 +6,7 @@ class LoyaltyPointsCard extends StatelessWidget {
   final int points;
   final VoidCallback? onTap;
 
-  const LoyaltyPointsCard({
-    super.key,
-    required this.points,
-    this.onTap,
-  });
+  const LoyaltyPointsCard({super.key, required this.points, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +45,7 @@ class LoyaltyPointsCard extends StatelessWidget {
                     'Points de fidélité',
                     style: TextStyle(
                       color: AppColors.loyaltyTextColor(context),
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -62,7 +58,7 @@ class LoyaltyPointsCard extends StatelessWidget {
                         '$points',
                         style: TextStyle(
                           color: AppColors.loyaltyTextColor(context),
-                          fontSize: 26,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -71,7 +67,7 @@ class LoyaltyPointsCard extends StatelessWidget {
                         'pts',
                         style: TextStyle(
                           color: AppColors.loyaltyTextColor(context),
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -80,7 +76,11 @@ class LoyaltyPointsCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: AppColors.loyalty(context), size: 22),
+            Icon(
+              Icons.chevron_right,
+              color: AppColors.loyalty(context),
+              size: 22,
+            ),
           ],
         ),
       ),

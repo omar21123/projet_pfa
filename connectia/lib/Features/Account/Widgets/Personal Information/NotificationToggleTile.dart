@@ -40,7 +40,7 @@ class NotificationToggleTile extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: AppColors.primaryText(context),
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -49,7 +49,7 @@ class NotificationToggleTile extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   color: AppColors.secondary(context),
-                  fontSize: 14,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -61,7 +61,9 @@ class NotificationToggleTile extends StatelessWidget {
           activeColor: Colors.white,
           activeTrackColor: AppColors.primary(context),
           inactiveThumbColor: Colors.white,
-          inactiveTrackColor: AppColors.secondary(context).withValues(alpha: 0.4),
+          inactiveTrackColor: AppColors.secondary(
+            context,
+          ).withValues(alpha: 0.4),
         ),
       ],
     );

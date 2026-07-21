@@ -73,7 +73,9 @@ class _IdentitySectionState extends State<IdentitySection> {
                     g.label,
                     style: TextStyle(
                       color: AppColors.primaryText(context),
-                      fontWeight: g == _data.gender ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: g == _data.gender
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   trailing: g == _data.gender
@@ -137,8 +139,6 @@ class _IdentitySectionState extends State<IdentitySection> {
     );
   }
 
-
-
   Widget _buildTextField(
     BuildContext context, {
     required String label,
@@ -150,24 +150,31 @@ class _IdentitySectionState extends State<IdentitySection> {
       children: [
         Text(
           label,
-          style: TextStyle(color: AppColors.secondary(context), fontSize: 13),
+          style: TextStyle(color: AppColors.secondary(context), fontSize: 12),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
           onChanged: onChanged,
-          style: TextStyle(color: AppColors.primaryText(context), fontSize: 17),
+          style: TextStyle(color: AppColors.primaryText(context), fontSize: 15),
           decoration: InputDecoration(
             isDense: true,
             contentPadding: const EdgeInsets.only(bottom: 8),
             border: UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.secondary(context).withValues(alpha: 0.25)),
+              borderSide: BorderSide(
+                color: AppColors.secondary(context).withValues(alpha: 0.25),
+              ),
             ),
             enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.secondary(context).withValues(alpha: 0.25)),
+              borderSide: BorderSide(
+                color: AppColors.secondary(context).withValues(alpha: 0.25),
+              ),
             ),
             focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: AppColors.primary(context), width: 1.5),
+              borderSide: BorderSide(
+                color: AppColors.primary(context),
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -188,7 +195,7 @@ class _IdentitySectionState extends State<IdentitySection> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppColors.secondary(context), fontSize: 13),
+            style: TextStyle(color: AppColors.secondary(context), fontSize: 12),
           ),
           const SizedBox(height: 6),
           Container(
@@ -202,7 +209,10 @@ class _IdentitySectionState extends State<IdentitySection> {
             ),
             child: Text(
               value.isEmpty ? '—' : value,
-              style: TextStyle(color: AppColors.primaryText(context), fontSize: 17),
+              style: TextStyle(
+                color: AppColors.primaryText(context),
+                fontSize: 15,
+              ),
             ),
           ),
         ],
@@ -216,7 +226,7 @@ class _IdentitySectionState extends State<IdentitySection> {
       children: [
         Text(
           'Genre',
-          style: TextStyle(color: AppColors.secondary(context), fontSize: 13),
+          style: TextStyle(color: AppColors.secondary(context), fontSize: 12),
         ),
         const SizedBox(height: 10),
         GestureDetector(
@@ -232,7 +242,7 @@ class _IdentitySectionState extends State<IdentitySection> {
               style: TextStyle(
                 color: AppColors.onPrimary(context),
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 13,
               ),
             ),
           ),

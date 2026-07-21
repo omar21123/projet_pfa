@@ -63,7 +63,7 @@ class VerifiableInfoTile extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: AppColors.secondary(context),
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -71,7 +71,7 @@ class VerifiableInfoTile extends StatelessWidget {
                   value,
                   style: TextStyle(
                     color: AppColors.primaryText(context),
-                    fontSize: 18,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -109,7 +109,7 @@ class VerifiableInfoTile extends StatelessWidget {
             style: TextStyle(
               color: AppColors.successColor(context),
               fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontSize: 12,
             ),
           ),
         ],
@@ -132,7 +132,7 @@ class VerifiableInfoTile extends StatelessWidget {
           style: TextStyle(
             color: AppColors.onPrimary(context),
             fontWeight: FontWeight.bold,
-            fontSize: 13,
+            fontSize: 12,
           ),
         ),
       ),

@@ -159,7 +159,9 @@ class _EditableAvatarState extends State<EditableAvatar> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.18),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.35 : 0.18,
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -224,7 +226,7 @@ class _EditableAvatarState extends State<EditableAvatar> {
               _initials,
               style: TextStyle(
                 color: AppColors.primary(context),
-                fontSize: widget.size * 0.32,
+                fontSize: widget.size * 0.28,
                 fontWeight: FontWeight.bold,
               ),
             ),

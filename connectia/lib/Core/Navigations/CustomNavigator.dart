@@ -3,6 +3,7 @@ import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
 import 'package:connectia/Features/Account/views/AboutPage.dart';
+import 'package:connectia/Features/Account/views/AddressesView.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
@@ -105,6 +106,10 @@ class CustomNavigator {
         path: '/PersonalinformationsView',
         builder: (context, state) => const PersonalinformationsView(),
       ),
+       GoRoute(
+        path: '/Addressesview',
+        builder: (context, state) => const Addressesview(),
+      ),
     ],
   );
 
@@ -135,6 +140,9 @@ class CustomNavigator {
   }
    static Future navigateToSettingPersonalinformationsView() async {
     await router.push('/PersonalinformationsView');
+  }
+   static Future navigateToSettingAddressesview() async {
+    await router.push('/Addressesview');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>

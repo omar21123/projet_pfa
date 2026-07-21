@@ -27,7 +27,7 @@ class PersonalinformationsView extends StatelessWidget {
           style: TextStyle(
             color: AppColors.primaryText(context),
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
         actions: [_buildSaveButton(context)],
@@ -194,7 +194,7 @@ class PersonalinformationsView extends StatelessWidget {
           title,
           style: TextStyle(
             color: AppColors.primary(context),
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),

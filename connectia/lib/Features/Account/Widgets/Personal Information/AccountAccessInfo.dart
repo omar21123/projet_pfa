@@ -85,7 +85,7 @@ class _InfoRow extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: AppColors.secondary(context),
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -93,9 +93,9 @@ class _InfoRow extends StatelessWidget {
                     value,
                     style: TextStyle(
                       color: AppColors.primaryText(context),
-                      fontSize: 18,
+                      fontSize: 15,
                       fontFamily: monospace ? 'monospace' : null,
-                      letterSpacing: monospace ? 1.2 : null,
+                      letterSpacing: monospace ? 1.1 : null,
                     ),
                   ),
                 ],
