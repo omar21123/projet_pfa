@@ -21,7 +21,7 @@ class Securityappbar extends StatelessWidget {
 
           return FlexibleSpaceBar(
             titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-            centerTitle: false,
+            centerTitle: true,
             title: Text(
               'Sécurité',
               style: TextStyle(
