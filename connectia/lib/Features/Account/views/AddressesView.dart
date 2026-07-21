@@ -1,5 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Features/Account/Functions/showDeleteAddressDialog.dart';
+import 'package:connectia/Features/Account/Widgets/address/AddAddressButton.dart';
+import 'package:connectia/Features/Account/Widgets/address/AddNewAddress.dart';
 import 'package:connectia/Features/Account/Widgets/address/AddressAppBar.dart';
 import 'package:connectia/Features/Account/Widgets/address/AddressCard.dart';
 import 'package:connectia/Features/Account/data/Models/AddressModel.dart';
@@ -60,6 +62,16 @@ class Addressesview extends StatelessWidget {
             },
           ),
         ],
+      ),
+      floatingActionButton: AddAddressButton(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            useSafeArea: true,
+            isScrollControlled: true,
+            builder: (context) => Addnewaddress(),
+          );
+        },
       ),
     );
   }

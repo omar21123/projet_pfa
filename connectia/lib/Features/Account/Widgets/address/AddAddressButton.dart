@@ -1,4 +1,3 @@
-
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +14,7 @@ class AddAddressButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             color: AppColors.primary(context),
             borderRadius: BorderRadius.circular(20),
