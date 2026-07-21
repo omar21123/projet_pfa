@@ -23,7 +23,7 @@ class Addressappbar extends StatelessWidget {
 
           return FlexibleSpaceBar(
             titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-            centerTitle: false,
+            centerTitle: true,
             title: Text(
               'Gestion des adresses',
               style: TextStyle(
@@ -60,51 +60,6 @@ class Addressappbar extends StatelessWidget {
             ),
           );
         },
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-          child: _AddAddressButton(onTap: onTap),
-        ),
-      ],
-    );
-  }
-}
-
-class _AddAddressButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddAddressButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary(context),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, color: AppColors.onPrimary(context), size: 18),
-              const SizedBox(width: 4),
-              Text(
-                'Ajouter',
-                style: TextStyle(
-                  color: AppColors.onPrimary(context),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
