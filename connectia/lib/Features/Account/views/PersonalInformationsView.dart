@@ -147,7 +147,7 @@ class PersonalinformationsView extends StatelessWidget {
                 icon: Icons.delete_outline,
                 text: 'Supprimer mon compte',
                 color: AppColors.logout(context),
-                backgroundColor: AppColors.logoutBg(context),
+                backgroundColor: AppColors.softBg(context),
                 onClick: () {},
               ),
             ),
