@@ -6,7 +6,6 @@ import 'package:connectia/Features/Account/Widgets/address/AddressAppBar.dart';
 import 'package:connectia/Features/Account/Widgets/address/AddressCard.dart';
 import 'package:connectia/Features/Account/data/Models/AddressModel.dart';
 import 'package:flutter/material.dart';
-import 'package:pro_dialog/pro_dialog.dart';
 
 class Addressesview extends StatelessWidget {
   const Addressesview({super.key});
@@ -67,9 +66,12 @@ class Addressesview extends StatelessWidget {
         onTap: () {
           showModalBottomSheet(
             context: context,
-            useSafeArea: true,
             isScrollControlled: true,
-            builder: (context) => Addnewaddress(),
+            builder: (context) => Addnewaddress(
+              onSave: (newAddress) async {
+                print('Done');
+              },
+            ),
           );
         },
       ),
