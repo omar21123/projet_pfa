@@ -3,6 +3,7 @@ import 'package:connectia/Core/widgets/Buttons/CustomActionButton.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/AccountAccessInfo.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/EditableAvatar.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/IdentitySection.dart';
+import 'package:connectia/Features/Account/Widgets/Personal%20Information/InfrPersonnaleAppBar.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/LoyaltyPointsCard.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/NotificationToggleTile.dart';
 import 'package:connectia/Features/Account/Widgets/Personal%20Information/VerifiableInfoTile.dart';
@@ -18,22 +19,9 @@ class PersonalinformationsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.softBg(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.primaryText(context)),
-        title: Text(
-          "Informations personnelles",
-          style: TextStyle(
-            color: AppColors.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        actions: [_buildSaveButton(context)],
-      ),
       body: CustomScrollView(
         slivers: [
+          Infrpersonnaleappbar(onPressed: () {}),
           // ── Avatar ──────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
@@ -157,31 +145,6 @@ class PersonalinformationsView extends StatelessWidget {
             child: SizedBox(height: MediaQuery.of(context).padding.bottom),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Center(
-        child: TextButton.icon(
-          onPressed: () {},
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.accent20(context),
-            foregroundColor: AppColors.primary(context),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            visualDensity: VisualDensity.compact,
-          ),
-          icon: const Icon(Icons.check, size: 18),
-          label: const Text(
-            '',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-        ),
       ),
     );
   }
