@@ -7,6 +7,7 @@ import 'package:connectia/Features/Account/views/AddressesView.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
+import 'package:connectia/Features/Account/views/SecuritySetting.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
@@ -90,11 +91,11 @@ class CustomNavigator {
           );
         },
       ),
-       GoRoute(
+      GoRoute(
         path: '/Preferences',
         builder: (context, state) => const PreferencesPage(),
       ),
-       GoRoute(
+      GoRoute(
         path: '/FAQHelpPage',
         builder: (context, state) => const HelpCenterPage(),
       ),
@@ -106,9 +107,13 @@ class CustomNavigator {
         path: '/PersonalinformationsView',
         builder: (context, state) => const PersonalinformationsView(),
       ),
-       GoRoute(
+      GoRoute(
         path: '/Addressesview',
         builder: (context, state) => const Addressesview(),
+      ),
+      GoRoute(
+        path: '/Securitysetting',
+        builder: (context, state) => const Securitysetting(),
       ),
     ],
   );
@@ -129,21 +134,31 @@ class CustomNavigator {
   static Future navigateToRegister() async {
     await router.push('/register');
   }
-   static Future navigateToSettingPReferences() async {
+
+  static Future navigateToSettingPReferences() async {
     await router.push('/Preferences');
   }
-   static Future navigateToSettingFAQHelp() async {
+
+  static Future navigateToSettingFAQHelp() async {
     await router.push('/FAQHelpPage');
   }
+
   static Future navigateToSettingAbout() async {
     await router.push('/AboutView');
   }
-   static Future navigateToSettingPersonalinformationsView() async {
+
+  static Future navigateToSettingPersonalinformationsView() async {
     await router.push('/PersonalinformationsView');
   }
-   static Future navigateToSettingAddressesview() async {
+
+  static Future navigateToSettingAddressesview() async {
     await router.push('/Addressesview');
   }
+
+  static Future navigateToSecuritysetting() async {
+    await router.push('/Securitysetting');
+  }
+
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');
