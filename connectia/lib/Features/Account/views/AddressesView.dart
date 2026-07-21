@@ -50,7 +50,9 @@ class Addressesview extends StatelessWidget {
                       context,
                       isDefaultBilling: index % 2 == 1,
                       isDefaultShipping: index % 2 == 0,
-                      onConfirm: () {},
+                      onConfirm: () {
+                        print('Deleted');
+                      },
                     );
                   },
                 ),
