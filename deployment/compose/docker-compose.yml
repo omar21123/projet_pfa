@@ -66,6 +66,14 @@ services:
     networks:
       - devsecops-net
 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - devsecops-net
 
 networks:
   devsecops-net:
