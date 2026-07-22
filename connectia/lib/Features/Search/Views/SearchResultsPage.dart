@@ -3,6 +3,7 @@ import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/ProductCard.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class SearchResultsPage extends StatefulWidget {
   final String initialQuery;
@@ -53,7 +54,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     ProductModel(
       id: '3',
       name: 'Sac à main cuir',
-      description: 'Sac en cuir véritable, plusieurs compartiments.',
+      description:
+          'Sac en cuir véritable, plusieurs compartiments et finitions soignées.',
       brand: 'Zara',
       model: 'Classic Tote',
       price: 599,
@@ -105,10 +107,12 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       _results = query.trim().isEmpty
           ? _demoProducts
           : _demoProducts
-              .where((p) =>
-                  p.name.toLowerCase().contains(query.toLowerCase()) ||
-                  p.brand.toLowerCase().contains(query.toLowerCase()))
-              .toList();
+                .where(
+                  (p) =>
+                      p.name.toLowerCase().contains(query.toLowerCase()) ||
+                      p.brand.toLowerCase().contains(query.toLowerCase()),
+                )
+                .toList();
       _isLoading = false;
     });
   }
@@ -153,33 +157,29 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Aucun résultat trouvé',
-                          style: TextStyle(color: AppColors.secondary(context)),
-                        ),
-                      )
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                        itemCount: _results.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          childAspectRatio: 0.62,
-                        ),
-                        itemBuilder: (context, index) {
-                          final product = _results[index];
-                          return ProductCard(
-                            product: product,
-                            width: double.infinity,
-                            onTap: () {
-                              // TODO: naviguer vers la page détail produit
-                            },
-                          );
+                ? Center(
+                    child: Text(
+                      'Aucun résultat trouvé',
+                      style: TextStyle(color: AppColors.secondary(context)),
+                    ),
+                  )
+                : MasonryGridView.count(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    itemCount: _results.length,
+                    itemBuilder: (context, index) {
+                      final product = _results[index];
+                      return ProductCard(
+                        product: product,
+                        width: double.infinity,
+                        onTap: () {
+                          // TODO: naviguer vers la page détail produit
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

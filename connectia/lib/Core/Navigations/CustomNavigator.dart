@@ -176,8 +176,8 @@ class CustomNavigator {
     await router.push('/Searchtypingsuggestions');
   }
 
-  static Future navigateSearchResultsPage() async {
-    await router.push('/SearchResultsPage');
+  static Future navigateSearchResultsPage(String suggestion) async {
+    await router.push('/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}');
   }
 
   // ── Methods with context ──────────────────────────────────────

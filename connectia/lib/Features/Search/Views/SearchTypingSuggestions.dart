@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
 import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
 import 'package:connectia/Features/Search/widgets/SuggestionCard.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +54,6 @@ class _SearchtypingsuggestionsState extends State<Searchtypingsuggestions> {
     setState(() {}); // pour rafraîchir le bouton clear immédiatement
 
     _debounce = Timer(const Duration(milliseconds: 350), () {
-      
       _performSearch(query);
     });
   }
@@ -118,7 +118,7 @@ class _SearchtypingsuggestionsState extends State<Searchtypingsuggestions> {
                   onTap: () {
                     _controller.text = suggestion;
                     _performSearch(suggestion);
-                    // TODO: naviguer vers la page de résultats avec ce terme
+                    CustomNavigator.navigateSearchResultsPage(suggestion);
                   },
                 );
               },
