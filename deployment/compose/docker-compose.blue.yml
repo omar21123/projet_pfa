@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  backend-blue:
+    build: ./production/backend
+    container_name: laravel_blue
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./production/backend:/var/www
+    networks:
+      - devsecops-net
+
+  nginx-blue:
+    image: nginx:latest
+    container_name: nginx_blue
+    ports:
+      - "8081:80" # Port interne/isolé pour les tests pre-switch
+    volumes:
+      - ./production/backend:/var/www
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend-blue
+    networks:
+      - devsecops-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_pfa
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: marketplace_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: devops
+      MYSQL_PASSWORD: password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - devsecops-net
+
+networks:
+  devsecops-net:
+    driver: bridge
+
+volumes:
+  mysql_data:

@@ -1,0 +1,82 @@
+12:09:35 | Démarrage du script — BASE_URL=http://localhost:8000  COUNT=20
+12:09:35 | Résultats et logs stockés dans : ./souk_api_run_20260720_120935
+12:09:35 | === [0] Health check & route de test ===
+12:09:35 | GET /health -> HTTP 000
+12:09:35 | GET /api/test -> HTTP 000
+12:09:35 | === [1] Récupération des pays ===
+12:09:35 | GET /api/countries -> HTTP 000
+12:09:35 | === [2] Création de 20 comptes clients (mobile) ===
+12:09:35 |   [FAIL] Client 1/20 -> HTTP 000 : 
+12:09:35 |   [FAIL] Client 2/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 3/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 4/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 5/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 6/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 7/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 8/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 9/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 10/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 11/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 12/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 13/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 14/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 15/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 16/20 -> HTTP 000 : 
+12:09:36 |   [FAIL] Client 17/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Client 18/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Client 19/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Client 20/20 -> HTTP 000 : 
+12:09:37 | === [3] Création de 20 comptes vendeurs (web) ===
+12:09:37 |   [FAIL] Vendeur 1/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 2/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 3/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 4/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 5/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 6/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 7/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 8/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 9/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 10/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 11/20 -> HTTP 000 : 
+12:09:37 |   [FAIL] Vendeur 12/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 13/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 14/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 15/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 16/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 17/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 18/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 19/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Vendeur 20/20 -> HTTP 000 : 
+12:09:38 | === [4] Démo login / refresh / logout (mobile) ===
+12:09:38 |   Aucun client disponible pour la démo, étape ignorée.
+12:09:38 | === [5] Création de 20 catégories ===
+12:09:38 |   [FAIL] Catégorie 1/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 2/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 3/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 4/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 5/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 6/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 7/20 -> HTTP 000 : 
+12:09:38 |   [FAIL] Catégorie 8/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 9/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 10/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 11/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 12/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 13/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 14/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 15/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 16/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 17/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 18/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 19/20 -> HTTP 000 : 
+12:09:39 |   [FAIL] Catégorie 20/20 -> HTTP 000 : 
+12:09:39 | --- Listing des catégories racines ---
+12:09:39 | GET /api/categories -> HTTP 000
+12:09:39 | === [6] Création d'un nouvel administrateur ===
+12:09:39 |   ADMIN_TOKEN non fourni -> étape ignorée (authentification admin requise).
+12:09:39 | === [7] Gestion admin des vendeurs ===
+12:09:39 |   ADMIN_TOKEN non fourni -> étape ignorée (authentification admin requise).
+12:09:39 | === Terminé ===
+12:09:39 | Comptes clients : ./souk_api_run_20260720_120935/customer_tokens.txt
+12:09:39 | Comptes vendeurs : ./souk_api_run_20260720_120935/vendor_tokens.txt
+12:09:39 | Catégories créées : ./souk_api_run_20260720_120935/category_ids.txt
