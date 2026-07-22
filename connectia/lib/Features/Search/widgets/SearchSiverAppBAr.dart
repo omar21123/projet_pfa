@@ -1,5 +1,6 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
-import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Features/Search/widgets/SearchEntryButton.dart';
 import 'package:flutter/material.dart';
 
 class Searchsiverappbar extends StatelessWidget {
@@ -63,13 +64,15 @@ class Searchsiverappbar extends StatelessWidget {
           );
         },
       ),
-      // Barre de recherche épinglée en bas de l'AppBar : reste toujours
-      // visible, même une fois le header replié par le scroll.
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(_searchBarHeight),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: const Textsearchbar(),
+          child: SearchEntryButton(
+            onTap: () {
+              CustomNavigator.navigateToSearchtypingsuggestions();
+            },
+          ),
         ),
       ),
     );

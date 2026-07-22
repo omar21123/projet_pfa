@@ -14,6 +14,8 @@ import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyReset
 import 'package:connectia/Features/Login/Login.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
 import 'package:connectia/Features/Register/RegisterScreen.dart';
+import 'package:connectia/Features/Search/Views/SearchResultsPage.dart';
+import 'package:connectia/Features/Search/Views/SearchTypingSuggestions.dart';
 import 'package:connectia/Features/main/views/mainPage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -115,6 +117,17 @@ class CustomNavigator {
         path: '/Securitysetting',
         builder: (context, state) => const Securitysetting(),
       ),
+      GoRoute(
+        path: '/Searchtypingsuggestions',
+        builder: (context, state) => const Searchtypingsuggestions(),
+      ),
+      GoRoute(
+        path: '/SearchResultsPage',
+        builder: (context, state) {
+          final query = state.uri.queryParameters['q'] ?? '';
+          return SearchResultsPage(initialQuery: query);
+        },
+      ),
     ],
   );
 
@@ -157,6 +170,14 @@ class CustomNavigator {
 
   static Future navigateToSecuritysetting() async {
     await router.push('/Securitysetting');
+  }
+
+  static Future navigateToSearchtypingsuggestions() async {
+    await router.push('/Searchtypingsuggestions');
+  }
+
+  static Future navigateSearchResultsPage() async {
+    await router.push('/SearchResultsPage');
   }
 
   // ── Methods with context ──────────────────────────────────────
