@@ -11,6 +11,8 @@ import 'package:connectia/Features/Account/views/SecuritySetting.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
+import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
+import 'package:connectia/Features/Home/widgets/ProductDetailsPage.dart';
 import 'package:connectia/Features/Login/Login.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
 import 'package:connectia/Features/Register/RegisterScreen.dart';
@@ -128,6 +130,16 @@ class CustomNavigator {
           return SearchResultsPage(initialQuery: query);
         },
       ),
+      GoRoute(
+  path: '/ProductDetailsPage',
+  builder: (context, state) {
+    final product = state.extra as ProductModel?;
+    if (product == null) {
+      return const Scaffold(body: Center(child: Text('Produit introuvable')));
+    }
+    return ProductDetailsPage(product: product);
+  },
+),
     ],
   );
 
@@ -179,7 +191,9 @@ class CustomNavigator {
   static Future navigateSearchResultsPage(String suggestion) async {
     await router.push('/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}');
   }
-
+  static Future navigateProductDetailsPage(ProductModel product) async {
+  await router.push('/ProductDetailsPage', extra: product);
+}
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');

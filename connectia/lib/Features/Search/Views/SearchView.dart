@@ -76,7 +76,6 @@ class _SearchviewState extends State<Searchview> {
             child: ProductsHorizontalSection(
               title: 'Recherches récentes',
               products: _recentSearches,
-              onProductTap: (p) {},
 
               onSeeAllTap: () {},
             ),
@@ -88,7 +87,6 @@ class _SearchviewState extends State<Searchview> {
             child: ProductsHorizontalSection(
               title: 'Les plus vendus',
               products: _bestSellers,
-              onProductTap: (p) {},
 
               onSeeAllTap: () {},
             ),

@@ -64,18 +64,22 @@ class _ProductCardState extends State<ProductCard> {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-                  child: Image.network(
-                    widget.product.imageUrl,
-                    height: 130,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                  // Tag partagé avec ProductDetailsPage pour l'animation Hero.
+                  child: Hero(
+                    tag: 'product-image-${widget.product.id}',
+                    child: Image.network(
+                      widget.product.imageUrl,
                       height: 130,
-                      color: AppColors.accent20(context),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: AppColors.secondary(context),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 130,
+                        color: AppColors.accent20(context),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          color: AppColors.secondary(context),
+                        ),
                       ),
                     ),
                   ),

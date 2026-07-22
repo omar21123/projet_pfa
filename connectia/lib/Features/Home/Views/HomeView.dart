@@ -115,7 +115,6 @@ class _HomeviewState extends State<Homeview> {
               child: ProductsHorizontalSection(
                 title: 'Tes dernières recherches',
                 products: _recentSearches,
-                onProductTap: (p) {},
 
                 onSeeAllTap: () {},
               ),
@@ -127,7 +126,6 @@ class _HomeviewState extends State<Homeview> {
               child: ProductsHorizontalSection(
                 title: 'Pour toi',
                 products: _forYou,
-                onProductTap: (p) {},
 
                 onSeeAllTap: () {},
               ),
@@ -139,7 +137,6 @@ class _HomeviewState extends State<Homeview> {
               child: ProductsHorizontalSection(
                 title: 'Près de chez toi',
                 products: _nearYou,
-                onProductTap: (p) {},
 
                 onSeeAllTap: () {},
               ),
@@ -151,7 +148,6 @@ class _HomeviewState extends State<Homeview> {
               child: ProductsHorizontalSection(
                 title: 'Meilleurs vendeurs',
                 products: _topSellers,
-                onProductTap: (p) {},
                 onSeeAllTap: () {},
               ),
             ),
@@ -162,7 +158,6 @@ class _HomeviewState extends State<Homeview> {
               child: ProductsHorizontalSection(
                 title: 'Meilleurs produits',
                 products: _bestProducts,
-                onProductTap: (p) {},
                 onSeeAllTap: () {},
               ),
             ),

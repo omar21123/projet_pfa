@@ -1,18 +1,18 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:flutter/material.dart';
 import 'ProductCard.dart'; // adapte le chemin selon ton projet
+
 class ProductsHorizontalSection extends StatelessWidget {
   final String title;
   final List<ProductModel> products;
   final VoidCallback? onSeeAllTap;
-  final void Function(ProductModel product) onProductTap;
 
   const ProductsHorizontalSection({
     super.key,
     required this.title,
     required this.products,
-    required this.onProductTap,
     this.onSeeAllTap,
   });
 
@@ -63,7 +63,9 @@ class ProductsHorizontalSection extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 12),
                 child: ProductCard(
                   product: product,
-                  onTap: () => onProductTap(product),
+                  onTap: () async {
+                    await CustomNavigator.navigateProductDetailsPage(product);
+                  },
                 ),
               );
             },
