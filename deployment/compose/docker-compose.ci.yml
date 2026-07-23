@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   jenkins:
-    build: ./jenkins
+    build: ../../ci/jenkins
     container_name: jenkins
     restart: unless-stopped
     user: root

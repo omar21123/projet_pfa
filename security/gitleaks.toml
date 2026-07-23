@@ -1,0 +1,11 @@
+title = "Gitleaks Custom Configuration"
+
+[extend]
+# Utiliser les règles de base par défaut de Gitleaks
+useDefault = true
+
+# Tu peux ajouter des règles personnalisées ici si ton entreprise utilise des formats de clés spécifiques
+[[rules]]
+description = "Custom API Key"
+regex = '''pfa_api_[0-9a-zA-Z]{32}'''
+tags = ["key", "Custom"]

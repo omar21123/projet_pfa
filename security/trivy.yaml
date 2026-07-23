@@ -1,0 +1,14 @@
+scan:
+  # Types de failles à scanner (vulnérabilités OS et packages applicatifs)
+  scanners:
+    - vuln
+    - secret
+    - config
+
+severity:
+  - CRITICAL
+  - HIGH
+
+# Ignorer certains CVE spécifiques si besoin (laisser vide pour tout scanner)
+ignore:
+  # - CVE-2023-XXXX

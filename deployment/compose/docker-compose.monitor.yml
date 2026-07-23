@@ -6,7 +6,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
@@ -42,11 +42,31 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - monitoring-net
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ../../monitoring/loki/config.yml:/etc/loki/local-config.yaml
+    networks:
+      - monitoring-net
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - monitoring-net
 networks:
   monitoring-net:
     external: true
-
+    name: monitoring-net
 volumes:
   prometheus_data:
   grafana_data:
