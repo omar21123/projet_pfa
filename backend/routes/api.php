@@ -14,20 +14,23 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\GoogleAuthController;
 
 Route::prefix('auth')->group(function () {
 
     // ⚠️ Rate limiting disabled for DEV — re-enable before deploying to prod
     // Route::middleware('throttle:auth')->group(function () {
-        Route::post('/mobile/register', [AuthController::class, 'Customerregister']);
-        Route::post('/web/customer/register', [AuthController::class, 'CustomerRegisterWeb']);
-        Route::post('/mobile/login', [AuthController::class, 'login']);
-        Route::post('/web/login', [AuthController::class, 'webLogin']);
-        Route::post('/mobile/refresh', [AuthController::class, 'refresh']);
-        Route::post('/web/refresh', [AuthController::class, 'webRefresh']);
-        Route::post('/mobile/logout', [AuthController::class, 'logout']);
-        Route::post('/web/logout', [AuthController::class, 'webLogout']);
-        Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
+    Route::post('/mobile/register', [AuthController::class, 'Customerregister']);
+    Route::post('/web/customer/register', [AuthController::class, 'CustomerRegisterWeb']);
+    Route::post('/mobile/login', [AuthController::class, 'login']);
+    Route::post('/web/login', [AuthController::class, 'webLogin']);
+    Route::post('/mobile/refresh', [AuthController::class, 'refresh']);
+    Route::post('/web/refresh', [AuthController::class, 'webRefresh']);
+    Route::post('/mobile/logout', [AuthController::class, 'logout']);
+    Route::post('/web/logout', [AuthController::class, 'webLogout']);
+    Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
+    Route::post('/mobile/google', [GoogleAuthController::class, 'mobileGoogleLogin']);
+    Route::post('/web/google', [GoogleAuthController::class, 'webGoogleLogin']);
     // });
 
     // TODO — pas encore implémentés
@@ -135,7 +138,7 @@ Route::prefix('config-attribute-options')->group(function () {
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
-            Route::get('/by-attribute/{attributeID}', [ConfigAttributeOptionController::class, 'getAllOptionsByAttributeID']);
+        Route::get('/by-attribute/{attributeID}', [ConfigAttributeOptionController::class, 'getAllOptionsByAttributeID']);
         Route::get('/admin', [ConfigAttributeOptionController::class, 'adminIndex']);
         Route::get('/exists', [ConfigAttributeOptionController::class, 'existsByName']);
         Route::post('/create', [ConfigAttributeOptionController::class, 'store']);
@@ -153,7 +156,7 @@ Route::prefix('products')->group(function () {
 
     });
 
-    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {    
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [ProductController::class, 'index']);
         Route::get('/{product}', [ProductController::class, 'show']);
         Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);

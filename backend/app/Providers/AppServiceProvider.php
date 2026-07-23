@@ -76,6 +76,8 @@ use App\Repositories\Interface\VendorRepositoryInterface;
 use App\Repositories\sql\VendorRepository;
 use App\Services\Interface\VendorServiceInterface;
 use App\Services\VendorService;
+use App\Repositories\Interface\UsergoogleRepositoryInterface;
+use App\Repositories\sql\UsergoogleRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -238,6 +240,11 @@ class AppServiceProvider extends ServiceProvider
             VendorServiceInterface::class,
             VendorService::class
         );
+        $this->app->bind(
+            UsergoogleRepositoryInterface::class,
+            UsergoogleRepository::class
+        );
+
     }
 
     /**
