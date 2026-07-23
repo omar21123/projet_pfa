@@ -12,7 +12,7 @@ import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPassw
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
-import 'package:connectia/Features/Home/widgets/ProductDetailsPage.dart';
+import 'package:connectia/Features/Home/Views/ProductDetailsPage.dart';
 import 'package:connectia/Features/Login/Login.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
 import 'package:connectia/Features/Register/RegisterScreen.dart';

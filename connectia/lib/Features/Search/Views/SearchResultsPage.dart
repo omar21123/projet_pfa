@@ -1,7 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
-import 'package:connectia/Features/Home/widgets/ProductCard.dart';
+import 'package:connectia/Features/Home/widgets/Products/ProductCard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 

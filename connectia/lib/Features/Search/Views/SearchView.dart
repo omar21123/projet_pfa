@@ -1,7 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
-import 'package:connectia/Features/Home/widgets/ProductsHorizontalSection.dart';
+import 'package:connectia/Features/Home/widgets/Products/ProductsHorizontalSection.dart';
 import 'package:connectia/Features/Search/widgets/SearchCategoriesRow.dart';
 import 'package:connectia/Features/Search/widgets/SearchSiverAppBAr.dart';
 import 'package:flutter/material.dart';

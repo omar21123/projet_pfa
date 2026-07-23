@@ -3,7 +3,7 @@ import 'package:connectia/Features/Home/data/Models/CategoryModel.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/CategoryCard.dart';
 import 'package:connectia/Features/Home/widgets/HomeHeaderBar.dart';
-import 'package:connectia/Features/Home/widgets/ProductsHorizontalSection.dart';
+import 'package:connectia/Features/Home/widgets/Products/ProductsHorizontalSection.dart';
 import 'package:connectia/Features/Home/widgets/PromoBannerCard.dart';
 import 'package:flutter/material.dart';
 

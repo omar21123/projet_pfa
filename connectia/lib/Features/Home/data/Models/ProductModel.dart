@@ -1,4 +1,6 @@
-/// Modèle "Produit" pour le feed Home.
+import 'ProductConfig.dart'; // adapte le chemin selon ton projet
+
+/// Modèle "Produit" pour le feed Home + la page détail.
 class ProductModel {
   final String id;
   final String name;
@@ -12,6 +14,9 @@ class ProductModel {
   final int totalWishlists;
   final bool isLiked;
   final bool isWishlisted;
+  final List<String> categories;
+  final List<ProductConfig> configs;
+  final List<PaymentMethod> allowedPayments;
 
   const ProductModel({
     required this.id,
@@ -26,6 +31,9 @@ class ProductModel {
     required this.totalWishlists,
     required this.isLiked,
     required this.isWishlisted,
+    this.categories = const [],
+    this.configs = const [],
+    this.allowedPayments = const [PaymentMethod.cod, PaymentMethod.online],
   });
 
   ProductModel copyWith({
@@ -47,6 +55,9 @@ class ProductModel {
       totalWishlists: totalWishlists ?? this.totalWishlists,
       isLiked: isLiked ?? this.isLiked,
       isWishlisted: isWishlisted ?? this.isWishlisted,
+      categories: categories,
+      configs: configs,
+      allowedPayments: allowedPayments,
     );
   }
 }
