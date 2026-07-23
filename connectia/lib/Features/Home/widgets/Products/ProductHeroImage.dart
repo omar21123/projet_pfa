@@ -50,31 +50,35 @@ class ProductHeroImage extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 12,
+          top: 25,
           left: 12,
           child: SafeArea(
             child: CircleIconButton(
-              icon: Icons.arrow_back,
+              icon: Icons.cancel_outlined,
               color: AppColors.primaryText(context),
               onTap: onBackTap,
             ),
           ),
         ),
         Positioned(
-          top: 12,
+          top: 25,
           right: 12,
           child: SafeArea(
             child: Row(
               children: [
                 CircleIconButton(
                   icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? AppColors.wishlist(context) : AppColors.primaryText(context),
+                  color: isLiked
+                      ? AppColors.wishlist(context)
+                      : AppColors.primaryText(context),
                   onTap: onLikeTap,
                 ),
                 const SizedBox(width: 8),
                 CircleIconButton(
                   icon: isWishlisted ? Icons.bookmark : Icons.bookmark_border,
-                  color: isWishlisted ? AppColors.primary(context) : AppColors.primaryText(context),
+                  color: isWishlisted
+                      ? AppColors.primary(context)
+                      : AppColors.primaryText(context),
                   onTap: onWishlistTap,
                 ),
               ],
