@@ -52,6 +52,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               _totalWishlists = _totalWishlists + value;
             },
           ),
+         
         ],
       ),
     );
