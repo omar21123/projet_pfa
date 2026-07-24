@@ -11,11 +11,11 @@ class Productdetailsappbar extends StatefulWidget {
     required this.onBackTap,
     required this.onWishlistTap,
   });
-  static const double _imageHeight = 250;
+  static const double _imageHeight = 200;
   final ProductModel product;
-  final void Function (int value) onLikeTap;
+  final void Function(int value) onLikeTap;
   final VoidCallback onBackTap;
-  final void Function (int value) onWishlistTap;
+  final void Function(int value) onWishlistTap;
   @override
   State<Productdetailsappbar> createState() => _ProductdetailsappbarState();
 }
@@ -32,22 +32,22 @@ class _ProductdetailsappbarState extends State<Productdetailsappbar> {
       automaticallyImplyLeading: false,
       expandedHeight: Productdetailsappbar._imageHeight,
       backgroundColor: AppColors.background(context),
-      
+
       flexibleSpace: FlexibleSpaceBar(
         background: ProductHeroImage(
           productId: widget.product.id,
           imageUrl: widget.product.imageUrl,
-          height: Productdetailsappbar._imageHeight,
+          height: Productdetailsappbar._imageHeight + 22,
           isLiked: _isLiked,
           isWishlisted: _isWishlisted,
           onBackTap: widget.onBackTap,
           onLikeTap: () => setState(() {
             _isLiked = !_isLiked;
-            widget.onLikeTap.call(_isLiked?1:-1);
+            widget.onLikeTap.call(_isLiked ? 1 : -1);
           }),
           onWishlistTap: () => setState(() {
             _isWishlisted = !_isWishlisted;
-            widget.onWishlistTap.call(_isWishlisted ? 1:-1);
+            widget.onWishlistTap.call(_isWishlisted ? 1 : -1);
           }),
         ),
       ),

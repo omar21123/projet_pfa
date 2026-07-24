@@ -32,26 +32,31 @@ class ProductHeroImage extends StatelessWidget {
       children: [
         Hero(
           tag: 'product-image-$productId',
-          child: Image.network(
-            
-            imageUrl,
-            height: height,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
+          child: ClipRRect(
+            borderRadius: BorderRadiusGeometry.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+            child: Image.network(
+              imageUrl,
               height: height,
-              color: AppColors.accent20(context),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.image_not_supported_outlined,
-                color: AppColors.secondary(context),
-                size: 48,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: height,
+                color: AppColors.accent20(context),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.image_not_supported_outlined,
+                  color: AppColors.secondary(context),
+                  size: 48,
+                ),
               ),
             ),
           ),
         ),
         Positioned(
-          top: 25,
+          top: 12,
           left: 12,
           child: SafeArea(
             child: CircleIconButton(
@@ -62,7 +67,7 @@ class ProductHeroImage extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 25,
+          top: 12,
           right: 12,
           child: SafeArea(
             child: Row(

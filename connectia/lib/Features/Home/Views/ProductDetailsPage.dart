@@ -7,6 +7,8 @@ import 'package:connectia/Features/Home/widgets/Products/ProductConfigSelector.d
 import 'package:connectia/Features/Home/widgets/Products/ProductDetailsAppBar.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductHeroImage.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductStatsCard.dart';
+import 'package:connectia/Features/Search/widgets/SearchCategoriesRow.dart';
+import 'package:connectia/Features/Search/widgets/SearchCategoryChip.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,6 +29,14 @@ class ProductDetailsPage extends StatefulWidget {
 }
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
+  final List<String> _categories = const [
+    'Tout',
+    'Basketball',
+    'Chaussures',
+    'Training',
+    'Yoga',
+    'Vélo',
+  ];
   late int _totalLikes = widget.product.totalLikes;
   late int _totalWishlists = widget.product.totalWishlists;
   @override
@@ -39,6 +49,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         slivers: [
           Productdetailsappbar(
             product: widget.product,
+
             onBackTap: () => context.pop(),
             onLikeTap: (value) {
               _totalLikes = _totalLikes + value;
@@ -48,12 +59,18 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             },
           ),
           SliverToBoxAdapter(
-            child: Text(
-              widget.product.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary(context),
+            child: SizedBox(
+              height: 40, // adjust to your chip height
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length - 1,
+                itemBuilder: (context, index) {
+                  return SearchCategoryChip(
+                    isSelected: false,
+                    label: _categories[index],
+                    onTap: () {},
+                  );
+                },
               ),
             ),
           ),
