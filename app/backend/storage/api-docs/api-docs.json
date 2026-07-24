@@ -15,6 +15,31 @@
         }
     ],
     "paths": {
+        "/api/admin/profile": {
+            "get": {
+                "tags": [
+                    "Admin Profile"
+                ],
+                "summary": "Afficher le profil de l'administrateur connecté",
+                "operationId": "60ee859849316a2ae41fb7485e16e93e",
+                "responses": {
+                    "200": {
+                        "description": "Profil récupéré avec succès"
+                    },
+                    "401": {
+                        "description": "Utilisateur non authentifié"
+                    },
+                    "404": {
+                        "description": "Profil introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/admin/register": {
             "post": {
                 "tags": [
@@ -4886,6 +4911,23 @@
                 ]
             }
         },
+        "/api/test": {
+            "get": {
+                "tags": [
+                    "Test"
+                ],
+                "summary": "Route de test pour vérifier Swagger",
+                "operationId": "4bd555185e754072eb17825b92b4ac9a",
+                "responses": {
+                    "200": {
+                        "description": "Ça fonctionne"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/api/units/create": {
             "post": {
                 "tags": [
@@ -5211,31 +5253,6 @@
                     }
                 }
             }
-        },
-        "/api/admin/profile": {
-            "get": {
-                "tags": [
-                    "Admin Profile"
-                ],
-                "summary": "Afficher le profil de l'administrateur connecté",
-                "operationId": "bff51cee5e2885993333cb6cf27258d7",
-                "responses": {
-                    "200": {
-                        "description": "Profil récupéré avec succès"
-                    },
-                    "401": {
-                        "description": "Utilisateur non authentifié"
-                    },
-                    "404": {
-                        "description": "Profil introuvable"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
         }
     },
     "components": {
@@ -5294,12 +5311,16 @@
             "description": "Gestion des unités de mesure"
         },
         {
+            "name": "Admin Profile",
+            "description": "Admin Profile"
+        },
+        {
             "name": "Countries",
             "description": "Countries"
         },
         {
-            "name": "Admin Profile",
-            "description": "Admin Profile"
+            "name": "Test",
+            "description": "Test"
         }
     ],
     "security": [

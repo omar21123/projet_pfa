@@ -18,3 +18,11 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker Mailserver runtime data
+mail/mailserver/mail-data/
+mail/mailserver/mail-state/
+mail/mailserver/mail-logs/
+
+# Docker compose local env
+deployment/compose/.env

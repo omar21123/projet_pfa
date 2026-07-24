@@ -8,17 +8,17 @@ services:
     hostname: mail
     domainname: example.com
     env_file:
-      - mailserver.env
+      - ../../mail/mailserver.env
     ports:
       - "25:25"
       - "465:465"
       - "587:587"
       - "993:993"
     volumes:
-      - ./mailserver/mail-data:/var/mail
-      - ./mailserver/mail-state:/var/mail-state
-      - ./mailserver/mail-logs:/var/log/mail
-      - ./mailserver/config:/tmp/docker-mailserver
+      - ../../mail/mailserver/mail-data:/var/mail
+      - ../../mail/mailserver/mail-state:/var/mail-state
+      - ../../mail/mailserver/mail-logs:/var/log/mail
+      - ../../mail/mailserver/config:/tmp/docker-mailserver
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
