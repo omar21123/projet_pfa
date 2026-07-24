@@ -1,10 +1,12 @@
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Features/Home/data/Models/ProductConfigsOptions.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/Products/BrandVerifiedBadge.dart';
 import 'package:connectia/Features/Home/widgets/Products/PaymentMethodBadges.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductCategoryChips.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductConfigSelector.dart';
+import 'package:connectia/Features/Home/widgets/Products/ProductConfigsSliverList.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductDetailsAppBar.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductDetailsStats.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductHeroImage.dart';
@@ -39,6 +41,57 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     'Yoga',
     'Vélo',
   ];
+
+  List<ProductConfigsOptions> productConfigsOptionsList = [
+    ProductConfigsOptions(
+      id: 1,
+      name: 'Color',
+      options: [
+        OptionModel(id: 101, name: 'Red'),
+        OptionModel(id: 102, name: 'Blue'),
+        OptionModel(id: 103, name: 'Green'),
+      ],
+    ),
+    ProductConfigsOptions(
+      id: 2,
+      name: 'Size',
+      options: [
+        OptionModel(id: 201, name: 'Small'),
+        OptionModel(id: 202, name: 'Medium'),
+        OptionModel(id: 203, name: 'Large'),
+        OptionModel(id: 204, name: 'Extra Large'),
+      ],
+    ),
+    ProductConfigsOptions(
+      id: 3,
+      name: 'Material',
+      options: [
+        OptionModel(id: 301, name: 'Cotton'),
+        OptionModel(id: 302, name: 'Polyester'),
+        OptionModel(id: 303, name: 'Wool'),
+      ],
+    ),
+    ProductConfigsOptions(
+      id: 4,
+      name: 'Storage',
+      options: [
+        OptionModel(id: 401, name: '64GB'),
+        OptionModel(id: 402, name: '128GB'),
+        OptionModel(id: 403, name: '256GB'),
+        OptionModel(id: 404, name: '512GB'),
+      ],
+    ),
+    ProductConfigsOptions(
+      id: 5,
+      name: 'Warranty',
+      options: [
+        OptionModel(id: 501, name: '1 Year'),
+        OptionModel(id: 502, name: '2 Years'),
+        OptionModel(id: 503, name: 'No Warranty'),
+      ],
+    ),
+  ];
+
   late int _totalLikes = widget.product.totalLikes;
   late int _totalWishlists = widget.product.totalWishlists;
   @override
@@ -128,6 +181,12 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 favorites: '842',
               ),
             ),
+          ),
+          ProductConfigsSliverList(
+            configs: productConfigsOptionsList, // List<ProductConfigsOptions>
+            onChanged: (selections) {
+              
+            },
           ),
         ],
       ),

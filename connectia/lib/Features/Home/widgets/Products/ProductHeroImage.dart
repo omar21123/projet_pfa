@@ -25,7 +25,7 @@ class ProductHeroImage extends StatelessWidget {
     required this.onWishlistTap,
     this.height = 340,
   });
-
+  
   @override
   Widget build(BuildContext context) {
     return Stack(
