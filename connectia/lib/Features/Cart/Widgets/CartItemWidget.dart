@@ -1,4 +1,6 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Features/Cart/Widgets/OrderActionButtons.dart';
+import 'package:connectia/Features/Cart/Widgets/OrderTotalSummary.dart';
 import 'package:connectia/Features/Cart/Widgets/PaymentMethodTile.dart';
 import 'package:connectia/Features/Cart/Widgets/ProductConfigsPanel.dart';
 import 'package:connectia/Features/Cart/Widgets/ProductSummaryCard.dart';
@@ -48,6 +50,22 @@ class Cartitemwidget extends StatelessWidget {
             child: PaymentMethodTile(
               method: PaymentMethod.online,
               selected: true,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: OrderTotalSummary(total: 17000),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: OrderActionButtons(
+              onDelete: () {
+                // logique de suppression
+              },
+              onBuy: () {
+                // logique d'achat
+              },
+              onEdit: () {},
             ),
           ),
         ],
