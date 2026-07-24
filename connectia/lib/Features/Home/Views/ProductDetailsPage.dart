@@ -4,6 +4,7 @@ import 'package:connectia/Features/Home/data/Models/ProductConfigsOptions.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/Products/BrandVerifiedBadge.dart';
 import 'package:connectia/Features/Home/widgets/Products/PaymentMethodBadges.dart';
+import 'package:connectia/Features/Home/widgets/Products/PaymentMethodSelector.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductCategoryChips.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductConfigSelector.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductConfigsSliverList.dart';
@@ -92,7 +93,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       ],
     ),
   ];
-
+  PaymentMethod _selectedPayment = PaymentMethod.cod;
   late int _totalLikes = widget.product.totalLikes;
   late int _totalWishlists = widget.product.totalWishlists;
   @override
@@ -195,6 +196,12 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 max: 10,
                 onChanged: (qty) {},
               ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: PaymentMethodSelector(onChanged: (method) {}),
             ),
           ),
         ],
