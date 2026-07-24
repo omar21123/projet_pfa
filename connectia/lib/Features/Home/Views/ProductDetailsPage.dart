@@ -11,6 +11,7 @@ import 'package:connectia/Features/Home/widgets/Products/ProductDetailsAppBar.da
 import 'package:connectia/Features/Home/widgets/Products/ProductDetailsStats.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductHeroImage.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductStatsCard.dart';
+import 'package:connectia/Features/Home/widgets/Products/QuantitySelector.dart';
 import 'package:connectia/Features/Search/widgets/SearchCategoriesRow.dart';
 import 'package:connectia/Features/Search/widgets/SearchCategoryChip.dart';
 import 'package:flutter/material.dart';
@@ -184,9 +185,17 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           ),
           ProductConfigsSliverList(
             configs: productConfigsOptionsList, // List<ProductConfigsOptions>
-            onChanged: (selections) {
-              
-            },
+            onChanged: (selections) {},
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: QuantitySelector(
+                initialValue: 1,
+                max: 10,
+                onChanged: (qty) {},
+              ),
+            ),
           ),
         ],
       ),
