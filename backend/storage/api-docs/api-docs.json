@@ -2792,6 +2792,176 @@
                 }
             }
         },
+        "/api/auth/mobile/google": {
+            "post": {
+                "tags": [
+                    "Auth - Google"
+                ],
+                "summary": "Connexion / inscription via Google (mobile)",
+                "description": "L'app mobile envoie l'ID token obtenu via le SDK Google Sign-In. Le backend le vérifie auprès de Google puis retourne access_token + refresh_token dans le body.",
+                "operationId": "2f8a047b0ae3dc31f9761b1bdca043f4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_token"
+                                ],
+                                "properties": {
+                                    "id_token": {
+                                        "type": "string",
+                                        "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie."
+                                        },
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "Refresh_token": {
+                                            "type": "string"
+                                        },
+                                        "displayName": {
+                                            "type": "string"
+                                        },
+                                        "public_id": {
+                                            "type": "string"
+                                        },
+                                        "is_new_user": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "ID token Google invalide"
+                    }
+                }
+            }
+        },
+        "/api/auth/web/google": {
+            "post": {
+                "tags": [
+                    "Auth - Google"
+                ],
+                "summary": "Connexion / inscription via Google (Web)",
+                "description": "Le frontend envoie l'ID Token Google obtenu via Google Identity Services. Le backend vérifie ce token auprès de Google, authentifie ou crée l'utilisateur puis retourne un access_token. Le refresh_token est envoyé dans un cookie HttpOnly sécurisé.",
+                "operationId": "9afb55d217b22566e790351b55fec72f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_token"
+                                ],
+                                "properties": {
+                                    "id_token": {
+                                        "type": "string",
+                                        "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Connexion réussie",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Cookie HttpOnly contenant le refresh_token.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "refresh_token=xxxxxxxx; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie."
+                                        },
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "unreadNotifications": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Mohammed Bourass"
+                                        },
+                                        "public_id": {
+                                            "type": "string"
+                                        },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "CUSTOMER"
+                                        },
+                                        "is_new_user": {
+                                            "type": "boolean",
+                                            "example": false
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "ID token Google invalide"
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "id_token": [
+                                                    "The id token field is required."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/products/create": {
             "post": {
                 "tags": [
@@ -5272,6 +5442,10 @@
         {
             "name": "ConfigAttributeOptions",
             "description": "Gestion des options des attributs de configuration produit"
+        },
+        {
+            "name": "Auth - Google",
+            "description": "Authentification via Google OAuth (web + mobile)"
         },
         {
             "name": "Products",

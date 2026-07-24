@@ -177,19 +177,24 @@ class UserRepository implements UserRepositoryInterface
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
 
-    public function getRoleForUser(int $userId): string
+    public function getRolesForUser(int $userId): array
     {
-        $result = DB::selectOne(
+        return DB::select(
             "SELECT r.Code
          FROM UserRoles ur
          INNER JOIN Roles r ON r.RoleID = ur.RoleID
-         WHERE ur.UserID = ?
-         ORDER BY ur.AssignedAt DESC
-         LIMIT 1",
+         WHERE ur.UserID = ?",
             [$userId]
         );
+    }
 
-        return $result?->Code;
+    /**
+     * Garde une méthode au singulier qui renvoie un string direct si besoin ailleurs
+     */
+    public function getRoleForUser(int $userId): ?string
+    {
+        $roles = $this->getRolesForUser($userId);
+        return !empty($roles) ? $roles[0]->Code : null;
     }
 
     public function updateLastLogin(int $id): void
@@ -276,7 +281,7 @@ class UserRepository implements UserRepositoryInterface
         $row = $result[0];
 
         return [
-            'user_id'   => $row->UserID,
+            'user_id' => $row->UserID,
             'public_id' => $row->PublicID,
         ];
     }
