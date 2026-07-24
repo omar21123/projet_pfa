@@ -33,6 +33,7 @@ class ProductHeroImage extends StatelessWidget {
         Hero(
           tag: 'product-image-$productId',
           child: Image.network(
+            
             imageUrl,
             height: height,
             width: double.infinity,

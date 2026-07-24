@@ -11,7 +11,7 @@ class Productdetailsappbar extends StatefulWidget {
     required this.onBackTap,
     required this.onWishlistTap,
   });
-  static const double _imageHeight = 340;
+  static const double _imageHeight = 250;
   final ProductModel product;
   final void Function (int value) onLikeTap;
   final VoidCallback onBackTap;
@@ -32,6 +32,7 @@ class _ProductdetailsappbarState extends State<Productdetailsappbar> {
       automaticallyImplyLeading: false,
       expandedHeight: Productdetailsappbar._imageHeight,
       backgroundColor: AppColors.background(context),
+      
       flexibleSpace: FlexibleSpaceBar(
         background: ProductHeroImage(
           productId: widget.product.id,

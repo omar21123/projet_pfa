@@ -1,3 +1,4 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/Products/PaymentMethodBadges.dart';
@@ -8,6 +9,7 @@ import 'package:connectia/Features/Home/widgets/Products/ProductHeroImage.dart';
 import 'package:connectia/Features/Home/widgets/Products/ProductStatsCard.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Page détail produit, ouverte depuis ProductCard (Hero image partagée).
 class ProductDetailsPage extends StatefulWidget {
@@ -25,15 +27,8 @@ class ProductDetailsPage extends StatefulWidget {
 }
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
-  static const double _imageHeight = 340;
   late int _totalLikes = widget.product.totalLikes;
   late int _totalWishlists = widget.product.totalWishlists;
-
-  final Map<String, String> _selectedOptions = {};
-
-  bool get _allConfigsSelected =>
-      widget.product.configs.every((c) => _selectedOptions.containsKey(c.name));
-
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
@@ -52,7 +47,16 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               _totalWishlists = _totalWishlists + value;
             },
           ),
-         
+          SliverToBoxAdapter(
+            child: Text(
+              widget.product.name,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary(context),
+              ),
+            ),
+          ),
         ],
       ),
     );
