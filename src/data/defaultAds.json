@@ -1,0 +1,95 @@
+[
+  {
+    "id": "ad-1",
+    "title": "New era Utah jazz 920 cap",
+    "description": "🔴Condition 9/10",
+    "price": 216,
+    "category": "Casquette",
+    "images": ["/placeholder-ad.png", "/placeholder-ad.png", "/placeholder-ad.png"],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.429Z",
+    "updatedAt": "2026-05-17T17:56:37.429Z"
+  },
+  {
+    "id": "ad-2",
+    "title": "T-shirt",
+    "description": "Catégorie: T-shirt",
+    "price": 247,
+    "category": "T-shirt",
+    "images": ["/placeholder-ad.png", "/placeholder-ad.png", "/placeholder-ad.png"],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.430Z",
+    "updatedAt": "2026-05-17T17:56:37.430Z"
+  },
+  {
+    "id": "ad-3",
+    "title": "Polo Lacoste",
+    "description": "▫️taille: L\n▫️condition: 9,5/10\nMade in France 🇫🇷",
+    "price": 121,
+    "category": "polo lacoste",
+    "images": [
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png"
+    ],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.430Z",
+    "updatedAt": "2026-05-17T17:56:37.430Z"
+  },
+  {
+    "id": "ad-4",
+    "title": "polo_lacoste green",
+    "description": "Catégorie: polo_lacoste green",
+    "price": 105,
+    "category": "polo_lacoste green",
+    "images": ["/placeholder-ad.png", "/placeholder-ad.png"],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.430Z",
+    "updatedAt": "2026-05-17T17:56:37.430Z"
+  },
+  {
+    "id": "ad-5",
+    "title": "shoes nike",
+    "description": "▫️taille: 41\n▫️condition: 8,5/10\nblack",
+    "price": 112,
+    "category": "shoes_nike",
+    "images": [
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png"
+    ],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.430Z",
+    "updatedAt": "2026-05-17T17:56:37.430Z"
+  },
+  {
+    "id": "ad-6",
+    "title": "shoes nike",
+    "description": "▫️taille: 42\n▫️condition: 9,5/10\nwhite",
+    "price": 68,
+    "category": "shoes_nike_white",
+    "images": ["/placeholder-ad.png", "/placeholder-ad.png", "/placeholder-ad.png"],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.431Z",
+    "updatedAt": "2026-05-17T17:56:37.431Z"
+  },
+  {
+    "id": "ad-7",
+    "title": "veste nike",
+    "description": "▫️taille: L\n▫️condition: 9,5/10\nred",
+    "price": 135,
+    "category": "veste",
+    "images": [
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png",
+      "/placeholder-ad.png"
+    ],
+    "userId": "admin",
+    "createdAt": "2026-05-17T17:56:37.431Z",
+    "updatedAt": "2026-05-17T17:56:37.431Z"
+  }
+]
