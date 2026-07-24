@@ -1,4 +1,6 @@
 import 'package:connectia/Core/DI/locator.dart';
+import 'package:connectia/Core/shared/Models/BrandModel.dart';
+import 'package:connectia/Core/shared/Views/BrandInfoPage.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
@@ -131,15 +133,29 @@ class CustomNavigator {
         },
       ),
       GoRoute(
-  path: '/ProductDetailsPage',
-  builder: (context, state) {
-    final product = state.extra as ProductModel?;
-    if (product == null) {
-      return const Scaffold(body: Center(child: Text('Produit introuvable')));
-    }
-    return ProductDetailsPage(product: product);
-  },
-),
+        path: '/ProductDetailsPage',
+        builder: (context, state) {
+          final product = state.extra as ProductModel?;
+          if (product == null) {
+            return const Scaffold(
+              body: Center(child: Text('Produit introuvable')),
+            );
+          }
+          return ProductDetailsPage(product: product);
+        },
+      ),
+      GoRoute(
+        path: '/BrandInfoPage',
+        builder: (context, state) {
+          final brand = state.extra as BrandModel?;
+          if (brand == null) {
+            return const Scaffold(
+              body: Center(child: Text('Marque introuvable')),
+            );
+          }
+          return BrandInfoPage(brand: brand);
+        },
+      ),
     ],
   );
 
@@ -189,11 +205,19 @@ class CustomNavigator {
   }
 
   static Future navigateSearchResultsPage(String suggestion) async {
-    await router.push('/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}');
+    await router.push(
+      '/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}',
+    );
   }
+
   static Future navigateProductDetailsPage(ProductModel product) async {
-  await router.push('/ProductDetailsPage', extra: product);
-}
+    await router.push('/ProductDetailsPage', extra: product);
+  }
+
+  static Future navigateBrandInfoPage(BrandModel brand) async {
+    await router.push('/BrandInfoPage', extra: brand);
+  }
+
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');

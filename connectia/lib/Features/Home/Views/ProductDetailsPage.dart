@@ -1,4 +1,6 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/shared/Models/BrandModel.dart';
 import 'package:connectia/Features/Home/data/Models/ProductConfigsOptions.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/Products/AddToCartButton.dart';
@@ -144,11 +146,55 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     'https://nmp.about.nike.com/about/prod/cf68f541-fc92-4373-91cb-086ae0fe2f88/001-nike-logos-swoosh-black.jpg?m=eyJlZGl0cyI6eyJqcGVnIjp7InF1YWxpdHkiOjEwMH0sIndlYnAiOnsicXVhbGl0eSI6MTAwfSwiZXh0cmFjdCI6eyJsZWZ0IjowLCJ0b3AiOjAsIndpZHRoIjo1MDAwLCJoZWlnaHQiOjI4MTN9LCJyZXNpemUiOnsid2lkdGgiOjE5MjB9fX0%3D&s=61f6e4257083078e443fcbec16a22a762b57a3182ddbeba67f9f92799b2dec94',
                 label: 'Nike',
                 isVerified: true,
+                onTap: () async {
+                  await CustomNavigator.navigateBrandInfoPage(
+                    BrandModel(
+                      countryName: 'Morocco',
+                      description:
+                          'Le Lumix G-Pro X1 est un appareil photo hybride conçu pour '
+                          'les photographes exigeants qui recherchent à la fois performance et '
+                          'portabilité. Doté d\'un capteur de nouvelle génération et d\'un '
+                          'processeur d\'image ultra-rapide, il offre une qualité d\'image '
+                          'exceptionnelle même dans des conditions de faible luminosité. '
+                          'Son autofocus hybride à détection de phase garantit une mise au '
+                          'point rapide et précise, idéale pour la photographie de sport, '
+                          'de portrait ou de voyage.\n\n'
+                          'Le boîtier, fabriqué en alliage de magnésium, allie robustesse et '
+                          'légèreté, avec une résistance renforcée à la poussière et aux '
+                          'projections d\'eau pour une utilisation en extérieur en toute '
+                          'sérénité. L\'écran tactile orientable et le viseur électronique '
+                          'haute résolution permettent de composer vos images sous tous les '
+                          'angles, tandis que la stabilisation d\'image sur 5 axes réduit '
+                          'considérablement les flous de bougé, que ce soit en photo ou en '
+                          'vidéo 4K.\n\n'
+                          'Livré avec l\'objectif standard 18-55mm, ce kit constitue un point '
+                          'de départ idéal pour découvrir la photographie créative, tout en '
+                          'restant évolutif grâce à la compatibilité avec l\'ensemble de la '
+                          'gamme d\'objectifs interchangeables. Que vous soyez débutant '
+                          'passionné ou photographe amateur confirmé, le Lumix G-Pro X1 '
+                          'saura s\'adapter à votre pratique et vous accompagner dans '
+                          'chacun de vos projets créatifs.',
+                      isVerified: true,
+                      logoUrl:
+                          'https://nmp.about.nike.com/about/prod/cf68f541-fc92-4373-91cb-086ae0fe2f88/001-nike-logos-swoosh-black.jpg?m=eyJlZGl0cyI6eyJqcGVnIjp7InF1YWxpdHkiOjEwMH0sIndlYnAiOnsicXVhbGl0eSI6MTAwfSwiZXh0cmFjdCI6eyJsZWZ0IjowLCJ0b3AiOjAsIndpZHRoIjo1MDAwLCJoZWlnaHQiOjI4MTN9LCJyZXNpemUiOnsid2lkdGgiOjE5MjB9fX0%3D&s=61f6e4257083078e443fcbec16a22a762b57a3182ddbeba67f9f92799b2dec94',
+                      name: 'NIKE',
+                      website: 'https://www.nike.com/ma/en/',
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(_kHPad, 5, _kHPad, 0),
+              child: BrandVerifiedBadge(
+                label: 'TN-19000',
+                isVerified: false,
                 onTap: () {},
               ),
             ),
           ),
-
           // ── Titre + prix ───────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(

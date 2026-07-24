@@ -25,7 +25,7 @@ class ProductHeroImage extends StatelessWidget {
     required this.onWishlistTap,
     this.height = 340,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -37,21 +37,25 @@ class ProductHeroImage extends StatelessWidget {
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
-            child: Image.network(
-              imageUrl,
-              height: height,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: height,
-                color: AppColors.accent20(context),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.image_not_supported_outlined,
-                  color: AppColors.secondary(context),
-                  size: 48,
+            child: Stack(
+              children: [
+                Image.network(
+                  imageUrl,
+                  height: height,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: height,
+                    color: AppColors.accent20(context),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.secondary(context),
+                      size: 48,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -60,7 +64,7 @@ class ProductHeroImage extends StatelessWidget {
           left: 12,
           child: SafeArea(
             child: CircleIconButton(
-              icon: Icons.cancel_outlined,
+              icon: Icons.arrow_back_ios_new_rounded,
               color: AppColors.primaryText(context),
               onTap: onBackTap,
             ),

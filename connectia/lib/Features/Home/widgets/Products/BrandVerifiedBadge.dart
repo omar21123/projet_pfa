@@ -39,6 +39,15 @@ class _BrandVerifiedBadgeState extends State<BrandVerifiedBadge>
   );
 
   @override
+  void deactivate() {
+    // Stoppe le ticker dès que le widget commence à quitter l'arbre
+    // (ex: pendant une transition de route) pour éviter tout setState
+    // déclenché alors que le context est temporairement inactif.
+    _pulseController.stop();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _pulseController.dispose();
     super.dispose();
@@ -46,7 +55,13 @@ class _BrandVerifiedBadgeState extends State<BrandVerifiedBadge>
 
   void _setPressed(bool value) {
     if (widget.onTap == null) return;
+    if (!mounted) return;
     setState(() => _pressed = value);
+  }
+
+  void _handleTap() {
+    if (!mounted) return;
+    widget.onTap?.call();
   }
 
   @override
@@ -55,7 +70,7 @@ class _BrandVerifiedBadgeState extends State<BrandVerifiedBadge>
     final successBg = AppColors.successColorBg(context);
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: widget.onTap == null ? null : _handleTap,
       onTapDown: (_) => _setPressed(true),
       onTapUp: (_) => _setPressed(false),
       onTapCancel: () => _setPressed(false),
@@ -66,14 +81,13 @@ class _BrandVerifiedBadgeState extends State<BrandVerifiedBadge>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt(context),
-            borderRadius: BorderRadius.circular(40),
-            border: Border.all(
-              color: AppColors.secondary(context).withValues(alpha: 0.15),
-            ),
+            color: AppColors.background(context),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.accent30(context), width: 1.2),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _BrandLogo(iconPath: widget.iconPath),
               const SizedBox(width: 10),
