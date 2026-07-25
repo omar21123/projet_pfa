@@ -12,7 +12,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
   await initLocator();
-  locator<AppPreferencesService>().clearAll();
+  //locator<AppPreferencesService>().clearAll();
   runApp(
     MultiBlocProvider(
       providers: [

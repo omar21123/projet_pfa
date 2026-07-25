@@ -9,6 +9,7 @@ import 'package:connectia/Features/Account/views/AddressesView.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
+import 'package:connectia/Features/Account/views/ProductsLoved.dart';
 import 'package:connectia/Features/Account/views/SecuritySetting.dart';
 import 'package:connectia/Features/Account/views/WishLists.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
@@ -161,6 +162,11 @@ class CustomNavigator {
         path: '/Wishlists',
         builder: (context, state) => const Wishlists(),
       ),
+    
+       GoRoute(
+        path: '/Productsloved',
+        builder: (context, state) => const Productsloved(),
+      ),
     ],
   );
 
@@ -224,6 +230,9 @@ class CustomNavigator {
   }
   static Future navigateWishlistsPage( ) async {
     await router.push('/Wishlists');
+  }
+   static Future navigateProductslovedPage( ) async {
+    await router.push('/Productsloved');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
