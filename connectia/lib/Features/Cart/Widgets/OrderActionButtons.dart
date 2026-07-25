@@ -1,4 +1,5 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/widgets/Buttons/CircleIconActionButton.dart';
 import 'package:flutter/material.dart';
 
 /// Boutons d'action : Supprimer (rouge) + Modifier + Acheter (primary).
@@ -22,7 +23,7 @@ class OrderActionButtons extends StatelessWidget {
     return Row(
       children: [
         // Bouton Supprimer — icône rouge
-        _CircleIconButton(
+        CircleIconActionButton(
           icon: Icons.delete_outline,
           color: AppColors.wishlist(context),
           backgroundColor: AppColors.wishlist(context).withValues(alpha: 0.12),
@@ -32,7 +33,7 @@ class OrderActionButtons extends StatelessWidget {
         const SizedBox(width: 12),
 
         // Bouton Modifier — icône neutre
-        _CircleIconButton(
+        CircleIconActionButton(
           icon: Icons.edit_outlined,
           color: AppColors.primary(context),
           backgroundColor: AppColors.accent20(context),
@@ -43,7 +44,7 @@ class OrderActionButtons extends StatelessWidget {
 
         // Bouton Acheter — rempli, couleur primary
         Expanded(
-          child: _CircleIconButton(
+          child: CircleIconActionButton(
             icon: Icons.shopping_bag_outlined,
             color: AppColors.onPrimary(context),
             backgroundColor: AppColors.primary(context),
@@ -54,52 +55,6 @@ class OrderActionButtons extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final Color backgroundColor;
-  final Color borderColor;
-  final VoidCallback? onTap;
-  final bool expanded;
-  final bool isLoading;
-
-  const _CircleIconButton({
-    required this.icon,
-    required this.color,
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.onTap,
-    this.expanded = false,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: expanded ? null : 52,
-        height: 52,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: expanded ? BoxShape.rectangle : BoxShape.circle,
-          borderRadius: expanded ? BorderRadius.circular(14) : null,
-          color: backgroundColor,
-          border: Border.all(color: borderColor),
-        ),
-        child: isLoading
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: color),
-              )
-            : Icon(icon, color: color),
-      ),
     );
   }
 }
