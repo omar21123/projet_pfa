@@ -244,7 +244,9 @@ class Accountview extends StatelessWidget {
     );
   }
 
-  void onWishlistTap() {}
+  void onWishlistTap() async {
+    await CustomNavigator.navigateWishlistsPage();
+  }
 
   void onLikedProductsTap() {}
 

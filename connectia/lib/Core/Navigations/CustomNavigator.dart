@@ -10,6 +10,7 @@ import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
 import 'package:connectia/Features/Account/views/SecuritySetting.dart';
+import 'package:connectia/Features/Account/views/WishLists.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
@@ -156,6 +157,10 @@ class CustomNavigator {
           return BrandInfoPage(brand: brand);
         },
       ),
+       GoRoute(
+        path: '/Wishlists',
+        builder: (context, state) => const Wishlists(),
+      ),
     ],
   );
 
@@ -217,7 +222,9 @@ class CustomNavigator {
   static Future navigateBrandInfoPage(BrandModel brand) async {
     await router.push('/BrandInfoPage', extra: brand);
   }
-
+  static Future navigateWishlistsPage( ) async {
+    await router.push('/Wishlists');
+  }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');

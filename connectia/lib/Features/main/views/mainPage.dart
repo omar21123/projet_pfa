@@ -156,7 +156,7 @@ class CustomBottomNavBar extends StatelessWidget {
               ),
               // Contextual action button — only shown while on the Cart tab.
               Positioned(
-                bottom: barHeight - (raisedButtonSize / 2) - 2,
+                bottom: barHeight - (raisedButtonSize / 5) ,
                 child: IgnorePointer(
                   ignoring: !onCartTab,
                   child: AnimatedScale(
@@ -205,10 +205,10 @@ class _RaisedActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.primary(context),
-          border: Border.all(color: AppColors.background(context), width: 4),
+          border: Border.all(color: AppColors.onPrimary(context), width: 4),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary(context).withValues(alpha: 0.35),
+              color: AppColors.successColorBg(context).withValues(alpha: 0.35),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
