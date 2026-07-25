@@ -19,6 +19,7 @@ import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyReset
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/Views/ProductDetailsPage.dart';
 import 'package:connectia/Features/Login/Login.dart';
+import 'package:connectia/Features/Notifications/presentation/View/NotificationsPage.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
 import 'package:connectia/Features/Register/RegisterScreen.dart';
 import 'package:connectia/Features/Search/Views/SearchResultsPage.dart';
@@ -172,6 +173,10 @@ class CustomNavigator {
         path: '/Ordershistory',
         builder: (context, state) => const Ordershistory(),
       ),
+       GoRoute(
+        path: '/NotificationsPage',
+        builder: (context, state) => const NotificationsPage(),
+      ),
     ],
   );
 
@@ -241,6 +246,9 @@ class CustomNavigator {
   }
    static Future navigateOrdershistoryPage( ) async {
     await router.push('/Ordershistory');
+  }
+   static Future navigateNotificationsPagePage( ) async {
+    await router.push('/NotificationsPage');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
