@@ -7,6 +7,7 @@ import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.d
 import 'package:connectia/Features/Account/views/AboutPage.dart';
 import 'package:connectia/Features/Account/views/AddressesView.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
+import 'package:connectia/Features/Account/views/OrdersHistory.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
 import 'package:connectia/Features/Account/views/ProductsLoved.dart';
@@ -167,6 +168,10 @@ class CustomNavigator {
         path: '/Productsloved',
         builder: (context, state) => const Productsloved(),
       ),
+       GoRoute(
+        path: '/Ordershistory',
+        builder: (context, state) => const Ordershistory(),
+      ),
     ],
   );
 
@@ -233,6 +238,9 @@ class CustomNavigator {
   }
    static Future navigateProductslovedPage( ) async {
     await router.push('/Productsloved');
+  }
+   static Future navigateOrdershistoryPage( ) async {
+    await router.push('/Ordershistory');
   }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
