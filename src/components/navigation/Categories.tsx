@@ -91,6 +91,8 @@ const Categories = ({ onFilter }: CategoriesProps) => {
   // Hook public (route /api/categories/navbar) : fonctionne pour un visiteur non connecté
   const { data: categories = [], isLoading } = useNavbarCategories();
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
+  // 🆕 Sous-catégorie actuellement survolée/ouverte -> pilote le flyout de niveau 3
+  const [activeSubCategory, setActiveSubCategory] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fermer au clic à l'extérieur
@@ -98,6 +100,7 @@ const Categories = ({ onFilter }: CategoriesProps) => {
     const onClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setActiveCategory(null);
+        setActiveSubCategory(null);
       }
     };
     document.addEventListener("mousedown", onClick);
@@ -106,11 +109,13 @@ const Categories = ({ onFilter }: CategoriesProps) => {
 
   const toggle = (id: number) => {
     setActiveCategory((cur) => (cur === id ? null : id));
+    setActiveSubCategory(null); // 🆕 on réinitialise le niveau 3 en changeant de catégorie racine
   };
 
   const handleSelection = (catId: number | null, subId: number | null, label = "") => {
     onFilter({ categoryId: catId, subCategoryId: subId, label });
     setActiveCategory(null);
+    setActiveSubCategory(null);
   };
 
   if (isLoading) {
@@ -162,6 +167,7 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                       exit={{ opacity: 0, y: 8 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
                       className="absolute left-0 right-0 top-full z-[999] bg-popover/95 backdrop-blur-lg text-popover-foreground border-t border-border shadow-xl"
+                      onMouseLeave={() => setActiveSubCategory(null)}
                     >
                       <div className="container py-6">
                         <div className="w-full max-w-4xl mx-auto">
@@ -188,27 +194,107 @@ const Categories = ({ onFilter }: CategoriesProps) => {
                               if (!subId) return null;
 
                               const SubIcon = getSubCategoryIcon(subName);
-                              const hasChildren = Boolean(sub.children?.length);
+                              const grandChildren = sub.children ?? [];
+                              const hasChildren = grandChildren.length > 0;
+                              const isSubActive = activeSubCategory === subId;
 
                               return (
-                                <button
+                                // 🆕 wrapper "relative" : ancre de positionnement pour le flyout niveau 3
+                                <div
                                   key={subId}
-                                  type="button"
-                                  onClick={() => handleSelection(catId, subId, subName)}
-                                  className="group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 hover:bg-accent hover:scale-[1.02]"
+                                  className="relative"
+                                  onMouseEnter={() => hasChildren && setActiveSubCategory(subId)}
                                 >
-                                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                                    <SubIcon className="h-4.5 w-4.5 text-primary" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                                      {t(subName)}
-                                    </span>
-                                  </div>
-                                  {hasChildren && (
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2" />
-                                  )}
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // 🆕 si des enfants existent, le clic ouvre/ferme le flyout niveau 3
+                                      // au lieu de sélectionner directement (comportement mega-menu classique)
+                                      if (hasChildren) {
+                                        setActiveSubCategory((cur) => (cur === subId ? null : subId));
+                                      } else {
+                                        handleSelection(catId, subId, subName);
+                                      }
+                                    }}
+                                    className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 hover:bg-accent hover:scale-[1.02] w-full ${
+                                      isSubActive ? "bg-accent" : ""
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                      <SubIcon className="h-4.5 w-4.5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                        {t(subName)}
+                                      </span>
+                                    </div>
+                                    {hasChildren && (
+                                      <ChevronRight
+                                        className={`h-4 w-4 text-muted-foreground transition-all absolute right-2 top-1/2 -translate-y-1/2 ${
+                                          isSubActive
+                                            ? "opacity-100 text-primary rotate-90"
+                                            : "opacity-0 group-hover:opacity-100"
+                                        }`}
+                                      />
+                                    )}
+                                  </button>
+
+                                  {/* 🆕 FLYOUT NIVEAU 3 : sous-sous-catégories */}
+                                  <AnimatePresence>
+                                    {hasChildren && isSubActive && (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: 4 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 4 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute left-0 top-full mt-1 w-72 z-[1000] bg-popover/95 backdrop-blur-lg border border-border rounded-lg shadow-2xl p-2"
+                                      >
+                                        {/* Voir tout dans cette sous-catégorie — même style que le bouton "Voir tout" du niveau 2 */}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelection(catId, subId, subName)}
+                                          className="group flex items-center gap-3 px-3 py-2 mb-1.5 w-full rounded-lg bg-primary/10 hover:bg-primary/20 transition-all duration-200"
+                                        >
+                                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 shrink-0">
+                                            <Grid3X3 className="h-4 w-4 text-primary" />
+                                          </div>
+                                          <span className="text-sm font-semibold text-foreground truncate">
+                                            {t("Voir tout dans")} {t(subName)}
+                                          </span>
+                                          <ChevronRight className="h-4 w-4 ml-auto text-primary group-hover:translate-x-1 transition-transform shrink-0" />
+                                        </button>
+
+                                        <div className="flex flex-col space-y-0.5 max-h-64 overflow-y-auto">
+                                          {grandChildren.map((grand) => {
+                                            const grandId = getCatId(grand);
+                                            const grandName = getCatName(grand);
+                                            if (!grandId) return null;
+
+                                            const GrandIcon = getSubCategoryIcon(grandName);
+
+                                            return (
+                                              <button
+                                                key={grandId}
+                                                type="button"
+                                                onClick={() =>
+                                                  handleSelection(catId, grandId, grandName)
+                                                }
+                                                className="group flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 hover:bg-accent hover:scale-[1.02]"
+                                              >
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                                                  <GrandIcon className="h-4 w-4 text-primary" />
+                                                </div>
+                                                <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                                  {t(grandName)}
+                                                </span>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
                               );
                             })}
                           </div>

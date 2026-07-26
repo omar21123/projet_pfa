@@ -1,0 +1,229 @@
+import { useState } from "react";
+import { ChevronDown, Loader, ChevronRight, LayoutGrid } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useNavbarCategories, CategoryNode } from "@/hooks/useCategories";
+
+interface CategoriesProps {
+  onFilter: (filters: { categoryId?: number; subCategoryId?: number; label: string }) => void;
+}
+
+// Helpers de sécurité pour extraire ID et Nom
+const getCatID = (cat: CategoryNode): number => {
+  return Number(cat.CategoryID ?? cat.category_id ?? cat.id ?? cat.ID ?? 0);
+};
+
+const getCatName = (cat: CategoryNode): string => {
+  return cat.Name ?? cat.name ?? cat.nom ?? "";
+};
+
+// --- COMPOSANT RÉCURSIF POUR CHAQUE ÉLÉMENT DE SOUS-CATÉGORIE ---
+interface FlyoutItemProps {
+  category: CategoryNode;
+  activePath: number[];
+  setActivePath: React.Dispatch<React.SetStateAction<number[]>>;
+  depth: number;
+  onSelect: (subId: number, label: string) => void;
+}
+
+
+const CategoryFlyoutItem = ({
+  category,
+  activePath,
+  setActivePath,
+  depth,
+  onSelect,
+}: FlyoutItemProps) => {
+  const { t } = useTranslation();
+  const catId = getCatID(category);
+  const catName = getCatName(category);
+  const children = category.children ?? [];
+  const hasChildren = children.length > 0;
+  const isActive = activePath[depth] === catId;
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [openLeft, setOpenLeft] = useState(false);
+
+  useLayoutEffect(() => {
+    if (isActive && hasChildren && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      // largeur estimée du sous-menu suivant (w-56 = 224px)
+      const wouldOverflow = rect.right + 224 > window.innerWidth;
+      setOpenLeft(wouldOverflow);
+    }
+  }, [isActive, hasChildren]);
+
+  if (!catId) return null;
+
+  const handleMouseEnter = () => {
+    setActivePath((prev) => [...prev.slice(0, depth), catId]);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect(catId, catName);
+    setActivePath([]);
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef} onMouseEnter={handleMouseEnter}>
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center justify-between transition-colors ${
+          isActive
+            ? "bg-teal-50 text-teal-700 font-semibold"
+            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+        }`}
+      >
+        <span className="truncate">{t(catName)}</span>
+        {hasChildren && (
+          <ChevronRight
+            size={13}
+            className={`transition-transform ${
+              isActive ? "text-teal-600 translate-x-0.5" : "text-slate-400"
+            } ${openLeft ? "rotate-180" : ""}`}
+          />
+        )}
+      </button>
+
+      {hasChildren && isActive && (
+        <div
+          className={`absolute top-0 w-56 ${
+            openLeft
+              ? "right-full pr-1 -mr-1"
+              : "left-full pl-1 -ml-1"
+          }`}
+          style={{ zIndex: 100 + depth }}
+        >
+          <div className="bg-white border border-slate-200 shadow-2xl rounded-xl p-1.5 min-w-[190px]">
+            <button
+              type="button"
+              onClick={handleClick}
+              className="w-full text-left px-3 py-1.5 text-[11px] font-bold text-teal-600 hover:bg-teal-50 rounded-md mb-1 border-b border-slate-100"
+            >
+              {t("Voir tout dans")} {t(catName)}
+            </button>
+            <div className="flex flex-col space-y-0.5">
+              {children.map((child) => (
+                <CategoryFlyoutItem
+                  key={getCatID(child)}
+                  category={child}
+                  activePath={activePath}
+                  setActivePath={setActivePath}
+                  depth={depth + 1}
+                  onSelect={onSelect}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- COMPOSANT PRINCIPAL ---
+const CategoryNav = ({ onFilter }: CategoriesProps) => {
+  const { t } = useTranslation();
+  const { data: categories = [], isLoading } = useNavbarCategories();
+
+  // Tableau d'IDs actifs pour suivre la branche survolée [id_racine, id_niv1, id_niv2, ...]
+  const [activePath, setActivePath] = useState<number[]>([]);
+
+  const handleParentSelection = (catId: number, catName: string) => {
+    onFilter({ categoryId: catId, label: catName });
+    setActivePath([]);
+  };
+
+  const handleSubSelection = (subId: number, label: string) => {
+    onFilter({ subCategoryId: subId, label });
+    setActivePath([]);
+  };
+
+  if (isLoading)
+    return (
+      <div className="h-10 flex items-center px-4">
+        <Loader className="animate-spin h-4 w-4 text-teal-600" />
+      </div>
+    );
+
+  return (
+    <nav
+      className="relative flex items-center border-b border-gray-200 bg-white px-6 h-12 gap-8 z-40"
+      onMouseLeave={() => setActivePath([])}
+    >
+      {categories.map((cat) => {
+        const catId = getCatID(cat);
+        const catName = getCatName(cat);
+        const children = cat.children ?? [];
+        const hasChildren = children.length > 0;
+        const isRootActive = activePath[0] === catId;
+
+        if (!catId) return null;
+
+        return (
+          <div
+            key={catId}
+            className="relative h-full flex items-center"
+            onMouseEnter={() => setActivePath([catId])}
+          >
+            {/* Libellé de la catégorie racine (ex: ttttt) */}
+            <button
+              type="button"
+              onClick={() => handleParentSelection(catId, catName)}
+              className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-teal-600 ${
+                isRootActive ? "text-teal-600 font-semibold" : "text-gray-600"
+              }`}
+            >
+              {t(catName)}
+              {hasChildren && (
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    isRootActive ? "rotate-180 text-teal-600" : ""
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* MENU DÉROULANT PRINCIPAL */}
+            {hasChildren && isRootActive && (
+              <div className="absolute top-full left-0 w-60 z-[90] pt-1">
+                <div className="bg-white border border-slate-200 shadow-xl rounded-b-2xl p-2">
+                  {/* BOUTON VOIR TOUT RACINE */}
+                  <button
+                    type="button"
+                    onClick={() => handleParentSelection(catId, catName)}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100/80 rounded-xl mb-1.5 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid size={13} />
+                      <span>{t("Voir tout")} {t(catName)}</span>
+                    </div>
+                    <ChevronRight size={13} />
+                  </button>
+
+                  {/* LISTE DES SOUS-CATÉGORIES DE NIVEAU 1 (ex: ss, vvvvvvvvv) */}
+                  <div className="flex flex-col space-y-0.5">
+                    {children.map((sub) => (
+                      <CategoryFlyoutItem
+                        key={getCatID(sub)}
+                        category={sub}
+                        activePath={activePath}
+                        setActivePath={setActivePath}
+                        depth={1}
+                        onSelect={handleSubSelection}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+};
+
+export default CategoryNav;

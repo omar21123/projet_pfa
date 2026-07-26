@@ -27,7 +27,7 @@ import { useCart } from "@/hooks/useCart";
 import { useLanguage } from "@/contexts/LanguageContext";
 import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import Categories from "@/components/Categories";
+import Categories from "@/components/navigation/Categories";
 
 /* ──────────────────────────────────────────────
    SOUS-COMPOSANTS

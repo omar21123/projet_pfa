@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Importations de tes hooks et client API
 import { useCategories, CategoryNode, categoriesQueryKeys } from "@/hooks/useCategories";
 import { apiClient } from "@/api/client";
 
@@ -44,7 +43,6 @@ export default function Categories() {
   const [errorMsg, setErrorMsg] = useState("");
 
   // --- GETTERS SÉCURISÉS ---
-  // Modification cruciale : on vérifie d'abord "ID" (majuscule d'après ta BDD)
   const getCatID = (cat: CategoryNode): number => {
     const id = cat.ID ?? cat.id ?? cat.CategoryID ?? 0;
     return Number(id);
@@ -58,23 +56,14 @@ export default function Categories() {
     return cat.Slug ?? cat.slug ?? "";
   };
 
-  // Détection ultra-robuste de l'état d'activation (gère string, number, boolean et toutes les casses)
   const getCatActive = (cat: CategoryNode): boolean => {
-    const value = cat.IsActive ?? cat.is_active ?? cat.isActive;
-
+    const value = cat.IsActive ?? cat.is_active ?? (cat as any).isActive;
     if (value === undefined || value === null) return false;
-    
-    // Si c'est un booléen (true/false)
     if (typeof value === "boolean") return value;
-    
-    // Si c'est un nombre (1 ou 0)
     if (typeof value === "number") return value === 1;
-    
-    // Si c'est du texte ("1", "0", "true", "false")
     if (typeof value === "string") {
       return value === "1" || value.toLowerCase() === "true";
     }
-    
     return false;
   };
 
@@ -97,7 +86,7 @@ export default function Categories() {
     setExpandedRows(prev => ({ ...prev, [catId]: !isExpanded }));
 
     // Si on ouvre et qu'on n'a pas encore chargé ses enfants
-    if (!isExpanded && !childrenMap[catId]) {
+    if (!isExpanded && childrenMap[catId] === undefined) {
       try {
         const response = await apiClient.get<{ success: boolean; data: CategoryNode[] }>(
           `/api/categories/${catId}/children`
@@ -120,14 +109,10 @@ export default function Categories() {
     const isActive = getCatActive(category);
     
     if (!catId || catId === 0) {
-      console.error("Erreur : Impossible de modifier le statut car l'ID extrait est 0 ou indéfini.", category);
       alert("Erreur locale : l'identifiant de cette catégorie n'a pas pu être lu.");
       return;
     }
 
-    console.log(`[Statut] Clic détecté sur ID: ${catId}. Statut actuel dans l'UI: ${isActive ? 'Actif' : 'Inactif'}`);
-
-    // 1. Calculer tous les IDs enfants pour les mettre à jour immédiatement à l'écran (UI réactive)
     const getDescendantIds = (parentId: number): number[] => {
       const ids: number[] = [];
       const queue = [parentId];
@@ -149,11 +134,9 @@ export default function Categories() {
     const nextStatus = !isActive;
     const nextStatusValue = nextStatus ? 1 : 0;
 
-    // Sauvegarde de secours en cas d'erreur API (Rollback)
     const previousRootCategories = queryClient.getQueryData<CategoryNode[]>(categoriesQueryKeys.roots()) || [];
     const previousChildrenMap = { ...childrenMap };
 
-    // Fonction de mise à jour instantanée en local
     const updateNodesStatus = (nodes: CategoryNode[]): CategoryNode[] => {
       return nodes.map(node => {
         const id = getCatID(node);
@@ -175,7 +158,6 @@ export default function Categories() {
       });
     };
 
-    // Appliquer le changement immédiatement dans l'UI (Optimistic Update)
     queryClient.setQueryData(categoriesQueryKeys.roots(), (oldData: CategoryNode[] | undefined) => {
       if (!oldData) return [];
       return updateNodesStatus(oldData);
@@ -189,31 +171,18 @@ export default function Categories() {
       return updated;
     });
 
-    // 2. Appel de ton API Laravel
     try {
       if (isActive) {
-        const url = `/api/categories/${catId}/deactivate-subtree`;
-        console.log(`[API Call] PUT ${url}`);
-        await apiClient.put(url);
+        await apiClient.put(`/api/categories/${catId}/deactivate-subtree`);
       } else {
-        const url = `/api/categories/${catId}/activate`;
-        console.log(`[API Call] PUT ${url}`);
-        await apiClient.put(url);
+        await apiClient.put(`/api/categories/${catId}/activate`);
       }
-      
-      console.log(`[API Success] Statut mis à jour avec succès sur le serveur pour l'ID: ${catId}`);
-      // Rechargement silencieux pour synchroniser
       refetch();
     } catch (err: any) {
-      console.error("[API Error] La requête de changement de statut a échoué :", err);
-      
-      // Rollback immédiat de l'UI
       queryClient.setQueryData(categoriesQueryKeys.roots(), previousRootCategories);
       setChildrenMap(previousChildrenMap);
-      
-      // Affichage d'un message d'erreur amical
       const statusText = err.response?.status ? `(Code ${err.response.status})` : "";
-      alert(`Impossible d'enregistrer le statut sur le serveur ${statusText}. Vos modifications locales ont été annulées.`);
+      alert(`Impossible d'enregistrer le statut sur le serveur ${statusText}. Modifications annulées.`);
     }
   };
 
@@ -273,17 +242,22 @@ export default function Categories() {
     setIsModalOpen(true);
   };
 
-  // --- RENDU EN ARBORESCENCE RÉCURSIVE ---
+  // --- RENDU EN ARBORESCENCE RÉCURSIVE UNIVERSELLE ---
   const renderCategoryRow = (cat: CategoryNode, depth = 0) => {
     const catId = getCatID(cat);
     if (!catId) return null;
 
     const isExpanded = !!expandedRows[catId];
-    const children = childrenMap[catId] || [];
+    const isAlreadyFetched = catId in childrenMap;
+    const children = childrenMap[catId] ?? cat.children ?? [];
+
+    const rawChildrenCount = cat.children_count ?? (cat as any).ChildrenCount;
     
-    const canBeExpanded = (cat.children_count !== undefined && cat.children_count > 0) || 
-                          children.length > 0 || 
-                          depth === 0;
+    // Détection universelle : autorise l'expansion si des enfants existent, 
+    // ou si l'API n'a pas encore indiqué que cette catégorie était vide.
+    const canBeExpanded = isAlreadyFetched
+      ? children.length > 0
+      : (rawChildrenCount === undefined || rawChildrenCount === null || rawChildrenCount > 0 || (cat.children && cat.children.length > 0));
 
     const catName = getCatName(cat);
     const isActive = getCatActive(cat);
@@ -292,11 +266,11 @@ export default function Categories() {
       <React.Fragment key={catId}>
         <tr className="hover:bg-slate-50/40 border-b border-slate-100 transition-colors">
           
-          {/* NOM & INDENTATION */}
+          {/* NOM & INDENTATION DE L'ARBRE */}
           <td className="py-4 px-6">
             <div 
               className="flex items-center gap-3" 
-              style={{ paddingLeft: `${depth * 2}rem` }}
+              style={{ paddingLeft: `${depth * 1.75}rem` }}
             >
               {depth > 0 && (
                 <span className="text-slate-300 font-mono text-xs shrink-0 select-none mr-1">
@@ -309,6 +283,7 @@ export default function Categories() {
                   type="button"
                   onClick={() => handleToggleRow(cat)}
                   className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors shrink-0"
+                  title={isExpanded ? "Fermer" : "Déplier"}
                 >
                   {isExpanded ? (
                     <ChevronDown className="w-4 h-4 text-slate-600" />
@@ -324,7 +299,7 @@ export default function Categories() {
                 <img 
                   src={cat.IconURL} 
                   alt={catName} 
-                  className="w-10 h-10 rounded-lg object-cover border border-slate-200/60 bg-white"
+                  className="w-10 h-10 rounded-lg object-cover border border-slate-200/60 bg-white shrink-0"
                 />
               ) : (
                 <div className="w-10 h-10 bg-blue-50/50 border border-blue-100/80 text-blue-600 font-bold rounded-lg flex items-center justify-center text-xs uppercase shrink-0">
@@ -343,9 +318,9 @@ export default function Categories() {
             </div>
           </td>
 
-          {/* SOUS-CATÉGORIES */}
+          {/* NOMBRE DE SOUS-CATÉGORIES */}
           <td className="py-4 px-6 text-center text-slate-600 font-medium text-sm">
-            {cat.children_count ?? children.length}
+            {isAlreadyFetched ? children.length : (rawChildrenCount ?? cat.children?.length ?? 0)}
           </td>
 
           {/* PRODUITS */}
@@ -386,7 +361,7 @@ export default function Categories() {
                 type="button"
                 onClick={() => openCreateModal(cat)}
                 className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
-                title="Ajouter une sous-catégorie"
+                title="Ajouter une sous-catégorie sous ce niveau"
               >
                 <Plus className="w-4 h-4 text-slate-600" />
               </button>
@@ -409,6 +384,7 @@ export default function Categories() {
           </td>
         </tr>
         
+        {/* APPEL RÉCURSIF POUR CHAQUE NIVEAU ENFANT */}
         {isExpanded && Array.isArray(children) && children.map(child => renderCategoryRow(child, depth + 1))}
       </React.Fragment>
     );
@@ -427,7 +403,7 @@ export default function Categories() {
           onClick={() => openCreateModal(null)}
           className="bg-[#124E54] hover:bg-[#0D3B40] text-[#CCEC53] font-bold rounded-xl h-10 px-4"
         >
-          <Plus className="w-4 h-4 mr-2" /> Nouvelle Catégorie
+          <Plus className="w-4 h-4 mr-2" /> Racine Principale
         </Button>
       </div>
 
