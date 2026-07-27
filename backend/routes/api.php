@@ -31,6 +31,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
     Route::post('/mobile/google', [GoogleAuthController::class, 'mobileGoogleLogin']);
     Route::post('/web/google', [GoogleAuthController::class, 'webGoogleLogin']);
+    Route::post('/google/complete-profile', [GoogleAuthController::class, 'completeProfile']);
     // });
 
     // TODO — pas encore implémentés

@@ -7,6 +7,7 @@ use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\VendorRegisterDto;
+use App\DTOs\Auth\CompleteGoogleProfileDto; 
 
 interface AuthServiceInterface
 {
@@ -38,4 +39,6 @@ interface AuthServiceInterface
      * }
      */
     public function loginOrRegister(GoogleUserDto $dto, ?string $ipAddress, int $refreshTtlSeconds): array;
+    public function completeGoogleProfile(int $userId, CompleteGoogleProfileDto $dto): array;
+
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Auth\CompleteGoogleProfileDto;
 use App\DTOs\Auth\GoogleUserDto;
 use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\LoginInfoDto;
@@ -79,35 +80,92 @@ class AuthService implements AuthServiceInterface
      *   user: \App\DTOs\Auth\UserDto,
      *   access_token: string,
      *   refresh_token: string,
-     *   is_new_user: bool
+     *   role: string|null,
+     *   is_new_user: bool,
+     *   requires_onboarding: bool
      * }
      */
-    public function loginOrRegister(GoogleUserDto $dto, ?string $ipAddress, int $refreshTtlSeconds): array
-    {
+    public function loginOrRegister(
+        GoogleUserDto $dto,
+        ?string $ipAddress,
+        int $refreshTtlSeconds,
+        array $extraData = []
+    ): array {
         $isNewUser = false;
 
-        // 1) Compte déjà lié à ce GoogleID -> connexion directe
+        // 1) Vérifier si le compte existe déjà
         $user = $this->usergoogleRepository->findByGoogleId($dto->googleId);
 
         if (!$user) {
-            // 2) Un compte existe déjà avec cet email (inscrit via mot de passe) -> on lie le compte
             $existing = $this->userRepository->findByEmail($dto->email);
 
             if ($existing) {
                 $this->usergoogleRepository->linkGoogleAccount($existing->id, $dto->googleId);
                 $user = $this->userRepository->findById($existing->id);
             } else {
-                // 3) Aucun compte -> création d'un nouveau customer
+                // Création du nouveau compte Google
                 $userId = $this->usergoogleRepository->createGoogleCustomer($dto);
-
-                $roleId = $this->userRepository->getRoleIdByCode('CUSTOMER');
-                $this->userRepository->assignRole($userId, $roleId);
-                $this->userRepository->createCustomerProfile($userId);
-
-                $user = $this->userRepository->findById($userId);
                 $isNewUser = true;
+                $user = $this->userRepository->findById($userId);
             }
         }
+
+        // 2) Attribution du rôle + infos complémentaires.
+        // 🟢 FIX : cette étape s'applique désormais à TOUT utilisateur sans rôle
+        // (nouveau compte, compte existant lié à Google pour la 1ère fois, ou
+        // compte déjà lié mais jamais onboardé) — pas seulement à la création.
+        // Avant ce fix, un vendeur qui se reconnectait via Google sans être un
+        // "nouveau compte" au sens strict ne recevait jamais son rôle/store_name.
+        $currentRoles = $this->userRepository->getRolesForUser($user->id);
+        $hasRoleAlready = !empty($currentRoles);
+
+        if (!$hasRoleAlready && !empty($extraData['role'])) {
+            $roleCode = strtoupper($extraData['role']);
+            $roleId = $this->userRepository->getRoleIdByCode($roleCode);
+
+            if ($roleId) {
+                // Attribution du rôle
+                $this->userRepository->assignRole($user->id, $roleId);
+
+                // Mise à jour des informations secondaires
+                $this->userRepository->updateGoogleUserProfile(
+                    $user->id,
+                    $extraData['phone_number'] ?? null,
+                    $extraData['birth_date'] ?? null,
+                    $extraData['gender'] ?? null
+                );
+
+                // Création du profil VENDOR ou CUSTOMER
+                if ($roleCode === 'VENDOR' && !empty($extraData['store_name'])) {
+                    $this->userRepository->createVendorProfile(
+                        $user->id,
+                        $extraData['store_name'],
+                        $extraData['description'] ?? null
+                    );
+                } else {
+                    $this->userRepository->createCustomerProfile($user->id);
+                }
+            }
+        }
+
+        // Récupération sécurisée du rôle (après attribution éventuelle ci-dessus)
+        $roles = $this->userRepository->getRolesForUser($user->id);
+        $userRole = null;
+
+        if (!empty($roles)) {
+            if (is_array($roles) && isset($roles[0])) {
+                $firstRole = $roles[0];
+                if (is_object($firstRole)) {
+                    $userRole = $firstRole->Code ?? $firstRole->code ?? null;
+                } elseif (is_string($firstRole)) {
+                    $userRole = $firstRole;
+                }
+            } elseif (is_string($roles)) {
+                $userRole = $roles;
+            }
+        }
+
+        $requiresOnboarding = empty($userRole);
 
         $this->userRepository->updateLastLogin($user->id);
 
@@ -119,13 +177,64 @@ class AuthService implements AuthServiceInterface
             $refreshTtlSeconds
         );
 
-        $accessToken = $this->accessTokenService->generate($user->publicId, 'CUSTOMER');
+        $accessToken = $this->accessTokenService->generate($user->publicId, $userRole ?? 'ONBOARDING');
 
         return [
-            'user' => $user,
-            'access_token' => $accessToken,
-            'refresh_token' => $refreshToken['token'],
-            'is_new_user' => $isNewUser,
+            'user'                => $user,
+            'access_token'        => $accessToken,
+            'refresh_token'       => $refreshToken['token'],
+            'role'                => $userRole,
+            'is_new_user'         => $isNewUser,
+            'requires_onboarding' => $requiresOnboarding,
+        ];
+    }
+
+    /**
+     * Finalise l'inscription Google en assignant le rôle et les infos complémentaires.
+     */
+    public function completeGoogleProfile(int $userId, CompleteGoogleProfileDto $dto): array
+    {
+        // 1. Mise à jour des champs optionnels (téléphone, date de naissance, genre)
+        $this->userRepository->updateGoogleUserProfile(
+            $userId,
+            $dto->phoneNumber ?? null,
+            $dto->birthDate ?? null,
+            $dto->gender ?? null
+        );
+
+        // 2. Attribution du rôle
+        $roleCode = strtoupper($dto->role);
+        $roleId = $this->userRepository->getRoleIdByCode($roleCode);
+
+        if (!$roleId) {
+            throw ValidationException::withMessages([
+                'role' => ["Le rôle '{$roleCode}' n'existe pas ou n'a pas été trouvé."],
+            ]);
+        }
+
+        $this->userRepository->assignRole($userId, $roleId);
+
+        // 3. Création du profil selon le rôle sélectionné
+        if ($roleCode === 'VENDOR') {
+            if (empty($dto->storeName)) {
+                throw ValidationException::withMessages([
+                    'store_name' => ['Le nom de la boutique est requis pour un vendeur.'],
+                ]);
+            }
+            $this->userRepository->createVendorProfile($userId, $dto->storeName, $dto->description ?? null);
+        } else {
+            $this->userRepository->createCustomerProfile($userId);
+        }
+
+        $user = $this->userRepository->findById($userId);
+
+        // 4. Génération du nouvel Access Token avec le rôle débloqué
+        $newAccessToken = $this->accessTokenService->generate($user->publicId, $roleCode);
+
+        return [
+            'user'         => $user,
+            'role'         => $roleCode,
+            'access_token' => $newAccessToken,
         ];
     }
 }

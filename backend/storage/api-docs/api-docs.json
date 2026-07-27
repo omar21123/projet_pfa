@@ -2798,7 +2798,7 @@
                     "Auth - Google"
                 ],
                 "summary": "Connexion / inscription via Google (mobile)",
-                "description": "L'app mobile envoie l'ID token obtenu via le SDK Google Sign-In. Le backend le vérifie auprès de Google puis retourne access_token + refresh_token dans le body.",
+                "description": "L'app mobile envoie l'ID token obtenu via le SDK Google Sign-In. Le backend retourne access_token + refresh_token ainsi que le statut d'onboarding.",
                 "operationId": "2f8a047b0ae3dc31f9761b1bdca043f4",
                 "requestBody": {
                     "required": true,
@@ -2842,8 +2842,17 @@
                                         "public_id": {
                                             "type": "string"
                                         },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "CUSTOMER",
+                                            "nullable": true
+                                        },
                                         "is_new_user": {
                                             "type": "boolean"
+                                        },
+                                        "requires_onboarding": {
+                                            "type": "boolean",
+                                            "example": true
                                         }
                                     },
                                     "type": "object"
@@ -2863,7 +2872,7 @@
                     "Auth - Google"
                 ],
                 "summary": "Connexion / inscription via Google (Web)",
-                "description": "Le frontend envoie l'ID Token Google obtenu via Google Identity Services. Le backend vérifie ce token auprès de Google, authentifie ou crée l'utilisateur puis retourne un access_token. Le refresh_token est envoyé dans un cookie HttpOnly sécurisé.",
+                "description": "Le frontend envoie l'ID Token Google. Le backend retourne access_token et définit le cookie HttpOnly pour le refresh_token.",
                 "operationId": "9afb55d217b22566e790351b55fec72f",
                 "requestBody": {
                     "required": true,
@@ -2891,8 +2900,7 @@
                             "Set-Cookie": {
                                 "description": "Cookie HttpOnly contenant le refresh_token.",
                                 "schema": {
-                                    "type": "string",
-                                    "example": "refresh_token=xxxxxxxx; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                                    "type": "string"
                                 }
                             }
                         },
@@ -2915,16 +2923,25 @@
                                             "type": "string",
                                             "example": "Mohammed Bourass"
                                         },
+                                        "email": {
+                                            "type": "string",
+                                            "example": "user@gmail.com"
+                                        },
                                         "public_id": {
                                             "type": "string"
                                         },
                                         "role": {
                                             "type": "string",
-                                            "example": "CUSTOMER"
+                                            "example": null,
+                                            "nullable": true
                                         },
                                         "is_new_user": {
                                             "type": "boolean",
-                                            "example": false
+                                            "example": true
+                                        },
+                                        "requires_onboarding": {
+                                            "type": "boolean",
+                                            "example": true
                                         }
                                     },
                                     "type": "object"
@@ -2934,32 +2951,111 @@
                     },
                     "401": {
                         "description": "ID token Google invalide"
-                    },
-                    "422": {
-                        "description": "Erreur de validation",
+                    }
+                }
+            }
+        },
+        "/api/auth/google/complete-profile": {
+            "post": {
+                "tags": [
+                    "Auth - Google"
+                ],
+                "summary": "Finaliser l'inscription Google (Rôle et Infos)",
+                "description": "Appelé après la connexion Google si requires_onboarding = true. Permet de choisir le rôle (CUSTOMER/VENDOR) et d'ajouter le numéro de téléphone, date de naissance ou nom de boutique.",
+                "operationId": "569ddb843edc620cf7ec783c1f62de40",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "role"
+                                ],
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "example": "VENDOR",
+                                        "enum": [
+                                            "CUSTOMER",
+                                            "VENDOR"
+                                        ]
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "+212600000000",
+                                        "nullable": true
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "1995-05-20",
+                                        "nullable": true
+                                    },
+                                    "gender": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true,
+                                        "enum": [
+                                            1,
+                                            2
+                                        ]
+                                    },
+                                    "store_name": {
+                                        "type": "string",
+                                        "example": "Boutique Tech",
+                                        "nullable": true
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Magasin d'électronique",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profil finalisé et rôle attribué avec succès",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "example": "The given data was invalid."
+                                            "example": "Profil finalisé avec succès."
                                         },
-                                        "errors": {
-                                            "type": "object",
-                                            "example": {
-                                                "id_token": [
-                                                    "The id token field is required."
-                                                ]
-                                            }
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "VENDOR"
+                                        },
+                                        "public_id": {
+                                            "type": "string"
+                                        },
+                                        "requires_onboarding": {
+                                            "type": "boolean",
+                                            "example": false
                                         }
                                     },
                                     "type": "object"
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Données invalides ou nom de boutique manquant"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/products/create": {
@@ -5445,7 +5541,7 @@
         },
         {
             "name": "Auth - Google",
-            "description": "Authentification via Google OAuth (web + mobile)"
+            "description": "Authentification via Google OAuth (web + mobile) et gestion de l'onboarding"
         },
         {
             "name": "Products",

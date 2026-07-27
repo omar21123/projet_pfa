@@ -31,8 +31,8 @@ interface UserRepositoryInterface
     public function findById(int $id): ?UserDto;
 
     public function updateLastLogin(int $id): void;
-// Retourne un tableau d'objets ou de résultats de rôles pour UserDto
-    public function getRolesForUser(int $userId): array;
+    // Retourne un tableau d'objets ou de résultats de rôles pour UserDto
+    public function getRolesForUser(int $userId): ?array;
 
     // Optionnel : Si vous gardez aussi la version au singulier pour retourner une string
     public function getRoleForUser(int $userId): ?string;
@@ -58,5 +58,10 @@ interface UserRepositoryInterface
         int $ttlDays
     ): array;
     public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
-
+    public function updateGoogleUserProfile(
+        int $userId,
+        ?string $phoneNumber,
+        ?string $birthDate,
+        ?int $gender
+    ): void;
 }

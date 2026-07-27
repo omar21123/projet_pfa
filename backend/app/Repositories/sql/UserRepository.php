@@ -177,7 +177,7 @@ class UserRepository implements UserRepositoryInterface
         return $row ? UserDto::fromDbRow($row, $this->getRolesForUser($row->UserID)) : null;
     }
 
-    public function getRolesForUser(int $userId): array
+    public function getRolesForUser(int $userId): ?array
     {
         return DB::select(
             "SELECT r.Code
@@ -285,4 +285,27 @@ class UserRepository implements UserRepositoryInterface
             'public_id' => $row->PublicID,
         ];
     }
+
+public function updateGoogleUserProfile(
+    int $userId,
+    ?string $phoneNumber,
+    ?string $birthDate,
+    ?int $gender
+): void {
+    DB::update(
+        "UPDATE Users 
+         SET PhoneNumber = COALESCE(?, PhoneNumber),
+             BirthDate = COALESCE(?, BirthDate),
+             Gender = COALESCE(?, Gender),
+             UpdatedAt = ?
+         WHERE UserID = ? AND IsDeleted = 0",
+        [
+            $phoneNumber,
+            $birthDate,
+            $gender,
+            now()->format('Y-m-d H:i:s'),
+            $userId
+        ]
+    );
+}
 }
