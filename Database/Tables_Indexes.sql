@@ -922,6 +922,62 @@ CREATE TABLE ProductStatus (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ====================================================
+-- PRODUCT OPTIONS COMBINATIONS (Variants)
+-- ====================================================
+
+CREATE TABLE ProductOptionsCombiniason (
+    CombinationID       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ProductID           INT NOT NULL,
+    SKU                 NVARCHAR(64) NULL,
+    Price               DECIMAL(10,2) NOT NULL,
+    CompareAtPrice      DECIMAL(10,2) NULL,
+    Stock               INT NOT NULL DEFAULT 0,
+    ImagePath           NVARCHAR(255) NULL,
+    OptionsHash         CHAR(64) NOT NULL COMMENT 'SHA2 hash of sorted OptionIDs, prevents duplicate combos',
+    IsDefault           BIT NOT NULL DEFAULT 0,
+    IsActive            BIT NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_POC_Product
+        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT UQ_POC_Product_SKU UNIQUE (ProductID, SKU),
+    CONSTRAINT UQ_POC_Product_OptionsHash UNIQUE (ProductID, OptionsHash),
+
+    INDEX IX_POC_Product (ProductID),
+    INDEX IX_POC_Active (IsActive)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ====================================================
+-- PRODUCT OPTIONS COMBINATION DETAILS (junction)
+-- ====================================================
+
+CREATE TABLE ProductOptionsCombiniasonDetails (
+    CombinationDetailID        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    CombinationID               INT UNSIGNED NOT NULL,
+    ProductsConfigAttributeID   INT NOT NULL,
+    OptionID                    INT NOT NULL,
+
+    CONSTRAINT FK_POCD_Combination
+        FOREIGN KEY (CombinationID) REFERENCES ProductOptionsCombiniason(CombinationID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_POCD_Attribute
+        FOREIGN KEY (ProductsConfigAttributeID) REFERENCES ProductsConfigAttribute(AttributeID),
+
+    CONSTRAINT FK_POCD_Option
+        FOREIGN KEY (OptionID) REFERENCES ConfigAttributeOptions(OptionID),
+
+    -- Prevents same combination setting the same attribute twice
+    CONSTRAINT UQ_POCD_Combination_Attribute UNIQUE (CombinationID, ProductsConfigAttributeID),
+
+    INDEX IX_POCD_Option (OptionID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

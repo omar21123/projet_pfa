@@ -38,338 +38,426 @@ class ProductController extends Controller
     ) {}
 
     #[OA\Post(
-        path: "/api/products/create",
+        path: "/api/products",
         tags: ["Products"],
-        summary: "Créer un produit",
-        description: "Crée un nouveau produit avec ses ressources (vidéos/images), catégories, attributs de configuration (avec options), tags et modes de paiement autorisés. Le VendorID est résolu automatiquement depuis le token JWT (PublicID -> UserID -> VendorID). Toutes les ressources doivent être envoyées en tant que fichiers via multipart/form-data.",
+        summary: "Créer un nouveau produit",
+        description: "Crée un nouveau produit avec ses ressources, catégories, attributs de configuration, combinaisons (variantes) et tags. Le fournisseur doit être approuvé, non suspendu et vérifié. VendorID est déduit du token JWT.",
         security: [["bearerAuth" => []]]
     )]
     #[OA\RequestBody(
-        required: true,
-        description: "Données du produit à créer. Envoyé en multipart/form-data car les ressources contiennent des fichiers binaires (vidéos/images). Le VendorID n'est pas à envoyer, il est déduit du token d'authentification.",
-        content: new OA\MediaType(
-            mediaType: "multipart/form-data",
-            schema: new OA\Schema(
-                required: [
-                    "Name",
-                    "Barcode",
-                    "BasePrice",
-                    "Stock",
-                    "Ressource",
-                    "Categories",
-                    "AllowedPayment"
-                ],
-                properties: [
-                    new OA\Property(
-                        property: "BrandID",
-                        type: "integer",
-                        nullable: true,
-                        description: "Identifiant de la marque. Facultatif — validé uniquement s'il est renseigné.",
-                        example: 5
-                    ),
-                    new OA\Property(
-                        property: "ModelID",
-                        type: "integer",
-                        nullable: true,
-                        description: "Identifiant du modèle. Facultatif — validé uniquement s'il est renseigné.",
-                        example: 124
-                    ),
-                    new OA\Property(
-                        property: "Name",
-                        type: "string",
-                        maxLength: 255,
-                        description: "Nom du produit.",
-                        example: "Wireless Bluetooth Headphones Pro"
-                    ),
-                    new OA\Property(
-                        property: "Barcode",
-                        type: "string",
-                        maxLength: 100,
-                        description: "Code-barres unique du produit.",
-                        example: "8806090123456"
-                    ),
-                    new OA\Property(
-                        property: "Description",
-                        type: "string",
-                        nullable: true,
-                        description: "Description détaillée du produit.",
-                        example: "High-fidelity over-ear headphones with active noise cancellation and 40-hour battery life."
-                    ),
-                    new OA\Property(
-                        property: "BasePrice",
-                        type: "number",
-                        format: "float",
-                        minimum: 0,
-                        description: "Prix de base du produit (hors options).",
-                        example: 149.99
-                    ),
-                    new OA\Property(
-                        property: "Stock",
-                        type: "integer",
-                        minimum: 0,
-                        description: "Quantité en stock.",
-                        example: 250
-                    ),
-                    new OA\Property(
-                        property: "Ressource",
-                        type: "array",
-                        description: "Liste des ressources média du produit (vidéos, images). Chaque élément doit contenir un fichier binaire.",
-                        items: new OA\Items(
-                            properties: [
-                                new OA\Property(
-                                    property: "type",
-                                    type: "string",
-                                    enum: ["video", "Video", "image", "Image"],
-                                    description: "Type de la ressource.",
-                                    example: "video"
-                                ),
-                                new OA\Property(
-                                    property: "Role",
-                                    type: "integer",
-                                    description: "Rôle de la ressource (ex: 1 = principale, 2 = miniature). Doit exister dans ResourcesRoles.",
-                                    example: 1
-                                ),
-                                new OA\Property(
-                                    property: "file",
-                                    type: "string",
-                                    format: "binary",
-                                    description: "Fichier binaire (vidéo ou image, max 50MB)."
-                                ),
-                            ]
-                        )
-                    ),
-                    new OA\Property(
-                        property: "Categories",
-                        type: "array",
-                        description: "Liste des identifiants de catégories associées au produit.",
-                        items: new OA\Items(type: "integer"),
-                        example: [10, 5, 100]
-                    ),
-                    new OA\Property(
-                        property: "Attribute",
-                        type: "array",
-                        description: "Liste des attributs de configuration du produit (ex: Couleur, Taille), chacun avec ses options possibles.",
-                        items: new OA\Items(
-                            properties: [
-                                new OA\Property(
-                                    property: "ConfigName",
-                                    type: "string",
-                                    maxLength: 150,
-                                    description: "Nom de l'attribut de configuration.",
-                                    example: "Color"
-                                ),
-                                new OA\Property(
-                                    property: "ConfigOptions",
-                                    type: "array",
-                                    description: "Options disponibles pour cet attribut.",
-                                    items: new OA\Items(
-                                        properties: [
-                                            new OA\Property(
-                                                property: "Name",
-                                                type: "string",
-                                                maxLength: 150,
-                                                description: "Nom/valeur de l'option.",
-                                                example: "Red"
-                                            ),
-                                            new OA\Property(
-                                                property: "IsDefault",
-                                                type: "boolean",
-                                                description: "Indique si cette option est la valeur par défaut pour l'attribut.",
-                                                example: true
-                                            ),
-                                        ]
-                                    )
-                                ),
-                            ]
-                        )
-                    ),
-                    new OA\Property(
-                        property: "Tags",
-                        type: "array",
-                        description: "Liste de tags libres associés au produit (utilisés pour la recherche).",
-                        items: new OA\Items(type: "string"),
-                        example: ["clothes", "T-Shirt", "all Sized"]
-                    ),
-                    new OA\Property(
-                        property: "AllowedPayment",
-                        type: "array",
-                        description: "Liste des identifiants de modes de paiement autorisés pour ce produit.",
-                        items: new OA\Items(type: "integer"),
-                        example: [1, 2]
-                    ),
-                ]
-            )
-        )
-    )]
-    #[OA\Response(
-        response: 201,
-        description: "Produit créé avec succès",
-        content: new OA\JsonContent(
+    required: true,
+    description: "Données du produit à créer. Envoyé en multipart/form-data car les ressources contiennent des fichiers binaires (vidéos/images). Le VendorID n'est pas à envoyer, il est déduit du token d'authentification.",
+    content: new OA\MediaType(
+        mediaType: "multipart/form-data",
+        schema: new OA\Schema(
+            required: [
+                "Name",
+                "Barcode",
+                "BasePrice",
+                "Stock",
+                "Ressource",
+                "Categories",
+                "AllowedPayment"
+            ],
             properties: [
-                new OA\Property(property: "success", type: "boolean", example: true),
-                new OA\Property(property: "message", type: "string", example: "Produit créé avec succès"),
                 new OA\Property(
-                    property: "data",
-                    type: "object",
-                    properties: [
-                        new OA\Property(property: "ID", type: "integer", example: 452),
-                        new OA\Property(property: "VendorID", type: "integer", example: 10),
-                        new OA\Property(property: "BrandID", type: "integer", nullable: true, example: 5),
-                        new OA\Property(property: "ModelID", type: "integer", nullable: true, example: 124),
-                        new OA\Property(property: "Name", type: "string", example: "Wireless Bluetooth Headphones Pro"),
-                        new OA\Property(property: "Barcode", type: "string", example: "8806090123456"),
-                        new OA\Property(property: "Description", type: "string", nullable: true),
-                        new OA\Property(property: "BasePrice", type: "number", format: "float", example: 149.99),
-                        new OA\Property(property: "Stock", type: "integer", example: 250),
-                        new OA\Property(property: "Status", type: "integer", example: 1),
-                        new OA\Property(property: "IsActive", type: "boolean", example: true),
-                        new OA\Property(property: "CreatedAt", type: "string", format: "date-time"),
-                        new OA\Property(property: "UpdatedAt", type: "string", format: "date-time"),
-                    ]
+                    property: "BrandID",
+                    type: "integer",
+                    nullable: true,
+                    description: "Identifiant de la marque. Facultatif — validé uniquement s'il est renseigné.",
+                    example: 5
+                ),
+                new OA\Property(
+                    property: "ModelID",
+                    type: "integer",
+                    nullable: true,
+                    description: "Identifiant du modèle. Facultatif — validé uniquement s'il est renseigné.",
+                    example: 124
+                ),
+                new OA\Property(
+                    property: "Name",
+                    type: "string",
+                    maxLength: 255,
+                    description: "Nom du produit.",
+                    example: "Wireless Bluetooth Headphones Pro"
+                ),
+                new OA\Property(
+                    property: "Barcode",
+                    type: "string",
+                    maxLength: 100,
+                    description: "Code-barres unique du produit.",
+                    example: "8806090123456"
+                ),
+                new OA\Property(
+                    property: "Description",
+                    type: "string",
+                    nullable: true,
+                    description: "Description détaillée du produit.",
+                    example: "High-fidelity over-ear headphones with active noise cancellation and 40-hour battery life."
+                ),
+                new OA\Property(
+                    property: "BasePrice",
+                    type: "number",
+                    format: "float",
+                    minimum: 0,
+                    description: "Prix de base du produit (hors options).",
+                    example: 149.99
+                ),
+                new OA\Property(
+                    property: "Stock",
+                    type: "integer",
+                    minimum: 0,
+                    description: "Quantité en stock.",
+                    example: 250
+                ),
+                new OA\Property(
+                    property: "Ressource",
+                    type: "array",
+                    description: "Liste des ressources média du produit (vidéos, images). Chaque élément doit contenir un fichier binaire.",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(
+                                property: "type",
+                                type: "string",
+                                enum: ["video", "Video", "image", "Image"],
+                                description: "Type de la ressource.",
+                                example: "video"
+                            ),
+                            new OA\Property(
+                                property: "Role",
+                                type: "integer",
+                                description: "Rôle de la ressource (ex: 1 = principale, 2 = miniature). Doit exister dans ResourcesRoles.",
+                                example: 1
+                            ),
+                            new OA\Property(
+                                property: "file",
+                                type: "string",
+                                format: "binary",
+                                description: "Fichier binaire (vidéo ou image, max 50MB)."
+                            ),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "Categories",
+                    type: "array",
+                    description: "Liste des identifiants de catégories associées au produit.",
+                    items: new OA\Items(type: "integer"),
+                    example: [10, 5, 100]
+                ),
+                new OA\Property(
+                    property: "Attribute",
+                    type: "array",
+                    description: "Liste des attributs de configuration du produit (ex: Couleur, Taille), chacun avec ses options possibles.",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(
+                                property: "ConfigName",
+                                type: "string",
+                                maxLength: 150,
+                                description: "Nom de l'attribut de configuration.",
+                                example: "Color"
+                            ),
+                            new OA\Property(
+                                property: "ConfigOptions",
+                                type: "array",
+                                description: "Options disponibles pour cet attribut.",
+                                items: new OA\Items(
+                                    properties: [
+                                        new OA\Property(
+                                            property: "Name",
+                                            type: "string",
+                                            maxLength: 150,
+                                            description: "Nom/valeur de l'option.",
+                                            example: "Red"
+                                        ),
+                                        new OA\Property(
+                                            property: "IsDefault",
+                                            type: "boolean",
+                                            description: "Indique si cette option est la valeur par défaut pour l'attribut.",
+                                            example: true
+                                        ),
+                                    ]
+                                )
+                            ),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "Combinations",
+                    type: "array",
+                    description: "Liste des combinaisons d'options (variantes) du produit. Chaque combinaison référence des attributs/options déjà déclarés dans 'Attribute'.",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(
+                                property: "SKU",
+                                type: "string",
+                                maxLength: 64,
+                                nullable: true,
+                                description: "Référence unique de la variante.",
+                                example: "TSH-501-RED-M"
+                            ),
+                            new OA\Property(
+                                property: "Price",
+                                type: "number",
+                                format: "float",
+                                minimum: 0,
+                                description: "Prix de cette combinaison.",
+                                example: 149.00
+                            ),
+                            new OA\Property(
+                                property: "CompareAtPrice",
+                                type: "number",
+                                format: "float",
+                                nullable: true,
+                                description: "Prix barré (promo), facultatif.",
+                                example: 179.00
+                            ),
+                            new OA\Property(
+                                property: "Stock",
+                                type: "integer",
+                                minimum: 0,
+                                description: "Stock disponible pour cette combinaison.",
+                                example: 20
+                            ),
+                            new OA\Property(
+                                property: "IsDefault",
+                                type: "boolean",
+                                description: "Indique si cette combinaison est la variante par défaut du produit.",
+                                example: true
+                            ),
+                            new OA\Property(
+                                property: "Image",
+                                type: "string",
+                                format: "binary",
+                                nullable: true,
+                                description: "Image spécifique à cette combinaison (optionnelle)."
+                            ),
+                            new OA\Property(
+                                property: "Options",
+                                type: "array",
+                                description: "Options qui composent cette combinaison. ConfigName/OptionName doivent correspondre à un attribut déclaré dans 'Attribute'.",
+                                items: new OA\Items(
+                                    properties: [
+                                        new OA\Property(
+                                            property: "ConfigName",
+                                            type: "string",
+                                            maxLength: 150,
+                                            example: "Color"
+                                        ),
+                                        new OA\Property(
+                                            property: "OptionName",
+                                            type: "string",
+                                            maxLength: 150,
+                                            example: "Red"
+                                        ),
+                                    ]
+                                )
+                            ),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "Tags",
+                    type: "array",
+                    description: "Liste de tags libres associés au produit (utilisés pour la recherche).",
+                    items: new OA\Items(type: "string"),
+                    example: ["clothes", "T-Shirt", "all Sized"]
+                ),
+                new OA\Property(
+                    property: "AllowedPayment",
+                    type: "array",
+                    description: "Liste des identifiants de modes de paiement autorisés pour ce produit.",
+                    items: new OA\Items(type: "integer"),
+                    example: [1, 2]
                 ),
             ]
         )
-    )]
-    #[OA\Response(
-        response: 401,
-        description: "Non authentifié",
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: "success", type: "boolean", example: false),
-                new OA\Property(property: "message", type: "string", example: "Non authentifié."),
-            ]
-        )
-    )]
-    #[OA\Response(
-        response: 403,
-        description: "Accès refusé",
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: "success", type: "boolean", example: false),
-                new OA\Property(property: "message", type: "string", example: "Accès refusé."),
-            ]
-        )
-    )]
-    #[OA\Response(
-        response: 404,
-        description: "Utilisateur ou profil vendeur introuvable",
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: "success", type: "boolean", example: false),
-                new OA\Property(property: "message", type: "string", example: "Profil vendeur introuvable pour cet utilisateur."),
-            ]
-        )
-    )]
-    #[OA\Response(
-        response: 422,
-        description: "Règle métier violée (marque/modèle introuvable, code-barres déjà utilisé, catégorie/rôle/type de ressource invalide, etc.)",
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: "success", type: "boolean", example: false),
-                new OA\Property(property: "message", type: "string", example: "Ce code-barres est déjà utilisé par un autre produit."),
-            ]
-        )
-    )]
-    public function store(CreateProductRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
+    )
+)]
+#[OA\Response(
+    response: 201,
+    description: "Produit créé avec succès",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "message", type: "string", example: "Produit créé avec succès"),
+            new OA\Property(
+                property: "data",
+                type: "object",
+                properties: [
+                    new OA\Property(property: "ID", type: "integer", example: 452),
+                    new OA\Property(property: "VendorID", type: "integer", example: 10),
+                    new OA\Property(property: "BrandID", type: "integer", nullable: true, example: 5),
+                    new OA\Property(property: "ModelID", type: "integer", nullable: true, example: 124),
+                    new OA\Property(property: "Name", type: "string", example: "Wireless Bluetooth Headphones Pro"),
+                    new OA\Property(property: "Barcode", type: "string", example: "8806090123456"),
+                    new OA\Property(property: "Description", type: "string", nullable: true),
+                    new OA\Property(property: "BasePrice", type: "number", format: "float", example: 149.99),
+                    new OA\Property(property: "Stock", type: "integer", example: 250),
+                    new OA\Property(property: "Status", type: "integer", example: 1),
+                    new OA\Property(property: "IsActive", type: "boolean", example: true),
+                    new OA\Property(property: "CreatedAt", type: "string", format: "date-time"),
+                    new OA\Property(property: "UpdatedAt", type: "string", format: "date-time"),
+                ]
+            ),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 401,
+    description: "Non authentifié",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Non authentifié."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 403,
+    description: "Accès refusé",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Accès refusé."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 404,
+    description: "Utilisateur ou profil vendeur introuvable",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Profil vendeur introuvable pour cet utilisateur."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 422,
+    description: "Règle métier violée (marque/modèle introuvable, code-barres déjà utilisé, catégorie/rôle/type de ressource invalide, combinaison invalide ou dupliquée, etc.)",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Ce code-barres est déjà utilisé par un autre produit."),
+        ]
+    )
+)]
+public function store(CreateProductRequest $request): JsonResponse
+{
+    $validated = $request->validated();
 
-        // PublicID récupéré depuis le middleware JWT
-        $publicId = $request->attributes->get('user_id');
+    // PublicID récupéré depuis le middleware JWT
+    $publicId = $request->attributes->get('user_id');
 
-        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
 
-        if (!$userInfo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur introuvable.'
-            ], 404);
-        }
-
-        $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
-
-        if (!$vendorProfile) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Profil vendeur introuvable pour cet utilisateur.'
-            ], 404);
-        }
-        if (!$vendorProfile->isApproved) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Votre profil vendeur n\'est pas encore approuvé.'
-            ], 403);
-        }
-
-        if ($vendorProfile->isSuspended) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Votre profil vendeur est suspendu.'
-            ], 403);
-        }
-
-        if ($vendorProfile->verificationStatus !== 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Votre profil vendeur n\'est pas vérifié.'
-            ], 403);
-        }
-        $validated['VendorID'] = $vendorProfile->vendorProfileId;
-
-        if (!empty($validated['BrandID'])) {
-            if (!$this->brandService->existsById($validated['BrandID'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'La marque spécifiée n\'existe pas.'
-                ], 422);
-            }
-        }
-
-        if (!empty($validated['ModelID'])) {
-            if (!$this->productModelService->existsById($validated['ModelID'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Le modèle spécifié n\'existe pas.'
-                ], 422);
-            }
-        }
-
-        $resourceInputs = $request->input('Ressource', []);
-        $resources = [];
-        foreach ($request->file('Ressource', []) as $index => $fileGroup) {
-            $storedPath = $this->fileUploadService->storeAvatar($fileGroup['file']);
-            $resourceMeta = $resourceInputs[$index] ?? $validated['Ressource'][$index] ?? [];
-
-            $resources[] = [
-                'type' => $resourceMeta['type'] ?? null,
-                'Role' => $resourceMeta['Role'] ?? null,
-                'Path' => $storedPath,
-            ];
-        }
-        $validated['Ressource'] = $resources;
-
-        $dto = CreateProductDto::fromArray($validated);
-
-        try {
-            $product = $this->productService->createProduct($dto);
-        } catch (\App\Exceptions\BusinessValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-
+    if (!$userInfo) {
         return response()->json([
-            'success' => true,
-            'message' => 'Produit créé avec succès',
-            'data' => $product
-        ], 201);
+            'success' => false,
+            'message' => 'Utilisateur introuvable.'
+        ], 404);
     }
+
+    $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+    if (!$vendorProfile) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Profil vendeur introuvable pour cet utilisateur.'
+        ], 404);
+    }
+    if (!$vendorProfile->isApproved) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Votre profil vendeur n\'est pas encore approuvé.'
+        ], 403);
+    }
+
+    if ($vendorProfile->isSuspended) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Votre profil vendeur est suspendu.'
+        ], 403);
+    }
+
+    if ($vendorProfile->verificationStatus !== 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Votre profil vendeur n\'est pas vérifié.'
+        ], 403);
+    }
+    $validated['VendorID'] = $vendorProfile->vendorProfileId;
+
+    if (!empty($validated['BrandID'])) {
+        if (!$this->brandService->existsById($validated['BrandID'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La marque spécifiée n\'existe pas.'
+            ], 422);
+        }
+    }
+
+    if (!empty($validated['ModelID'])) {
+        if (!$this->productModelService->existsById($validated['ModelID'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le modèle spécifié n\'existe pas.'
+            ], 422);
+        }
+    }
+
+    // ---- Product resources (images/videos) ----
+    $resourceInputs = $request->input('Ressource', []);
+    $resources = [];
+    foreach ($request->file('Ressource', []) as $index => $fileGroup) {
+        $storedPath = $this->fileUploadService->storeAvatar($fileGroup['file']);
+        $resourceMeta = $resourceInputs[$index] ?? $validated['Ressource'][$index] ?? [];
+
+        $resources[] = [
+            'type' => $resourceMeta['type'] ?? null,
+            'Role' => $resourceMeta['Role'] ?? null,
+            'Path' => $storedPath,
+        ];
+    }
+    $validated['Ressource'] = $resources;
+
+    // ---- Combination images (variant-specific images) ----
+    $combinationInputs = $validated['Combinations'] ?? [];
+    $combinations = [];
+    foreach ($combinationInputs as $index => $combo) {
+        $imagePath = null;
+        if ($request->hasFile("Combinations.$index.Image")) {
+            $imagePath = $this->fileUploadService->storeAvatar($request->file("Combinations.$index.Image"));
+        }
+
+        $combinations[] = array_merge($combo, ['ImagePath' => $imagePath]);
+    }
+    $validated['Combinations'] = $combinations;
+
+    $dto = CreateProductDto::fromArray($validated);
+
+    try {
+        $product = $this->productService->createProduct($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 422);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Produit créé avec succès',
+        'data' => $product
+    ], 201);
+}
     #[OA\Get(
         path: "/api/products/admin",
         tags: ["Products"],
