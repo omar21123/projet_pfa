@@ -1,19 +1,25 @@
 import 'package:connectia/Core/DI/locator.dart';
+import 'package:connectia/Core/shared/Models/BrandModel.dart';
+import 'package:connectia/Core/shared/Views/BrandInfoPage.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
 import 'package:connectia/Features/Account/views/AboutPage.dart';
 import 'package:connectia/Features/Account/views/AddressesView.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
+import 'package:connectia/Features/Account/views/OrdersHistory.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
 import 'package:connectia/Features/Account/views/PreferencesPage.dart';
+import 'package:connectia/Features/Account/views/ProductsLoved.dart';
 import 'package:connectia/Features/Account/views/SecuritySetting.dart';
+import 'package:connectia/Features/Account/views/WishLists.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/Views/ProductDetailsPage.dart';
 import 'package:connectia/Features/Login/Login.dart';
+import 'package:connectia/Features/Notifications/presentation/View/NotificationsPage.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
 import 'package:connectia/Features/Register/RegisterScreen.dart';
 import 'package:connectia/Features/Search/Views/SearchResultsPage.dart';
@@ -131,15 +137,46 @@ class CustomNavigator {
         },
       ),
       GoRoute(
-  path: '/ProductDetailsPage',
-  builder: (context, state) {
-    final product = state.extra as ProductModel?;
-    if (product == null) {
-      return const Scaffold(body: Center(child: Text('Produit introuvable')));
-    }
-    return ProductDetailsPage(product: product);
-  },
-),
+        path: '/ProductDetailsPage',
+        builder: (context, state) {
+          final product = state.extra as ProductModel?;
+          if (product == null) {
+            return const Scaffold(
+              body: Center(child: Text('Produit introuvable')),
+            );
+          }
+          return ProductDetailsPage(product: product);
+        },
+      ),
+      GoRoute(
+        path: '/BrandInfoPage',
+        builder: (context, state) {
+          final brand = state.extra as BrandModel?;
+          if (brand == null) {
+            return const Scaffold(
+              body: Center(child: Text('Marque introuvable')),
+            );
+          }
+          return BrandInfoPage(brand: brand);
+        },
+      ),
+       GoRoute(
+        path: '/Wishlists',
+        builder: (context, state) => const Wishlists(),
+      ),
+    
+       GoRoute(
+        path: '/Productsloved',
+        builder: (context, state) => const Productsloved(),
+      ),
+       GoRoute(
+        path: '/Ordershistory',
+        builder: (context, state) => const Ordershistory(),
+      ),
+       GoRoute(
+        path: '/NotificationsPage',
+        builder: (context, state) => const NotificationsPage(),
+      ),
     ],
   );
 
@@ -189,11 +226,30 @@ class CustomNavigator {
   }
 
   static Future navigateSearchResultsPage(String suggestion) async {
-    await router.push('/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}');
+    await router.push(
+      '/SearchResultsPage?q=${Uri.encodeComponent(suggestion)}',
+    );
   }
+
   static Future navigateProductDetailsPage(ProductModel product) async {
-  await router.push('/ProductDetailsPage', extra: product);
-}
+    await router.push('/ProductDetailsPage', extra: product);
+  }
+
+  static Future navigateBrandInfoPage(BrandModel brand) async {
+    await router.push('/BrandInfoPage', extra: brand);
+  }
+  static Future navigateWishlistsPage( ) async {
+    await router.push('/Wishlists');
+  }
+   static Future navigateProductslovedPage( ) async {
+    await router.push('/Productsloved');
+  }
+   static Future navigateOrdershistoryPage( ) async {
+    await router.push('/Ordershistory');
+  }
+   static Future navigateNotificationsPagePage( ) async {
+    await router.push('/NotificationsPage');
+  }
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');

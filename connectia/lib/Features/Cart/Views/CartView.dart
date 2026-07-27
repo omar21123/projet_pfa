@@ -1,3 +1,4 @@
+import 'package:connectia/Features/Cart/Widgets/CartItemWidget.dart';
 import 'package:flutter/material.dart';
 
 class Cartview extends StatelessWidget {
@@ -8,7 +9,12 @@ class Cartview extends StatelessWidget {
     return Container(
       height: double.infinity,
       width: double.infinity,
-      child: Center(child: Text("Cart")),
+      child: ListView.builder(
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return Cartitemwidget();
+        },
+      ),
     );
   }
 }

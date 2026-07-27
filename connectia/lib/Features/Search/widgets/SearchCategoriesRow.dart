@@ -1,4 +1,3 @@
-
 import 'package:connectia/Features/Search/widgets/SearchCategoryChip.dart';
 import 'package:flutter/material.dart';
 

@@ -1,4 +1,5 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/Navigations/CustomNavigator.dart';
 import 'package:connectia/Features/Home/data/Models/CategoryModel.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:connectia/Features/Home/widgets/CategoryCard.dart';
@@ -81,7 +82,9 @@ class _HomeviewState extends State<Homeview> {
               child: HomeHeaderBar(
                 userName: 'Mohammed',
                 notificationCount: 4,
-                onNotificationTap: () {},
+                onNotificationTap: () async {
+                await  CustomNavigator.navigateNotificationsPagePage();
+                },
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 16)),

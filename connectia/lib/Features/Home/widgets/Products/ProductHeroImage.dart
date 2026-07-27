@@ -32,36 +32,46 @@ class ProductHeroImage extends StatelessWidget {
       children: [
         Hero(
           tag: 'product-image-$productId',
-          child: Image.network(
-            imageUrl,
-            height: height,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
-              height: height,
-              color: AppColors.accent20(context),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.image_not_supported_outlined,
-                color: AppColors.secondary(context),
-                size: 48,
-              ),
+          child: ClipRRect(
+            borderRadius: BorderRadiusGeometry.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+            child: Stack(
+              children: [
+                Image.network(
+                  imageUrl,
+                  height: height,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: height,
+                    color: AppColors.accent20(context),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.secondary(context),
+                      size: 48,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         Positioned(
-          top: 25,
+          top: 12,
           left: 12,
           child: SafeArea(
             child: CircleIconButton(
-              icon: Icons.cancel_outlined,
+              icon: Icons.arrow_back_ios_new_rounded,
               color: AppColors.primaryText(context),
               onTap: onBackTap,
             ),
           ),
         ),
         Positioned(
-          top: 25,
+          top: 12,
           right: 12,
           child: SafeArea(
             child: Row(

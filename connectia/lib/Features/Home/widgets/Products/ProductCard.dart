@@ -4,17 +4,24 @@ import 'package:connectia/Core/widgets/Buttons/StatChip.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
 import 'package:flutter/material.dart';
 
-/// Carte produit pour le feed Home (carrousels horizontaux).
+/// Carte produit pour le feed Home (carrousels horizontaux) — et réutilisable
+/// dans une grille (ex: Liste de souhaits) en passant `width` dynamiquement.
 class ProductCard extends StatefulWidget {
   final ProductModel product;
   final VoidCallback onTap;
   final double width;
+  // Optionnels : permettent au parent de réagir aux changements
+  // (ex: retirer la carte de la liste quand elle est dé-likée/wishlistée).
+  final ValueChanged<bool>? onLikeChanged;
+  final ValueChanged<bool>? onWishlistChanged;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.onTap,
     this.width = 190,
+    this.onLikeChanged,
+    this.onWishlistChanged,
   });
 
   @override
@@ -101,6 +108,7 @@ class _ProductCardState extends State<ProductCard> {
                                 ? _totalLikes + 1
                                 : _totalLikes - 1;
                           });
+                          widget.onLikeChanged?.call(_isLiked);
                         },
                       ),
                       const SizedBox(width: 6),
@@ -118,6 +126,7 @@ class _ProductCardState extends State<ProductCard> {
                                 ? _totalWishlists + 1
                                 : _totalWishlists - 1;
                           });
+                          widget.onWishlistChanged?.call(_isWishedList);
                         },
                       ),
                     ],

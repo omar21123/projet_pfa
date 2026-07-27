@@ -244,11 +244,17 @@ class Accountview extends StatelessWidget {
     );
   }
 
-  void onWishlistTap() {}
+  void onWishlistTap() async {
+    await CustomNavigator.navigateWishlistsPage();
+  }
 
-  void onLikedProductsTap() {}
+  void onLikedProductsTap() async {
+    await CustomNavigator.navigateProductslovedPage();
+  }
 
-  void onOrderHistoryTap() {}
+  void onOrderHistoryTap() async {
+    await CustomNavigator.navigateOrdershistoryPage();
+  }
 
   void onPersonalInfoTap() async {
     await CustomNavigator.navigateToSettingPersonalinformationsView();

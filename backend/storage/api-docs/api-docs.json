@@ -3058,14 +3058,14 @@
                 ]
             }
         },
-        "/api/products/create": {
+        "/api/products": {
             "post": {
                 "tags": [
                     "Products"
                 ],
-                "summary": "Créer un produit",
-                "description": "Crée un nouveau produit avec ses ressources (vidéos/images), catégories, attributs de configuration (avec options), tags et modes de paiement autorisés. Le VendorID est résolu automatiquement depuis le token JWT (PublicID -> UserID -> VendorID). Toutes les ressources doivent être envoyées en tant que fichiers via multipart/form-data.",
-                "operationId": "0de1e9e77a5db493469dad2fd9cf486e",
+                "summary": "Créer un nouveau produit",
+                "description": "Crée un nouveau produit avec ses ressources, catégories, attributs de configuration, combinaisons (variantes) et tags. Le fournisseur doit être approuvé, non suspendu et vérifié. VendorID est déduit du token JWT.",
+                "operationId": "e8185e307706e2cd84bbcf5171e2f09d",
                 "requestBody": {
                     "description": "Données du produit à créer. Envoyé en multipart/form-data car les ressources contiennent des fichiers binaires (vidéos/images). Le VendorID n'est pas à envoyer, il est déduit du token d'authentification.",
                     "required": true,
@@ -3193,6 +3193,72 @@
                                                                 "description": "Indique si cette option est la valeur par défaut pour l'attribut.",
                                                                 "type": "boolean",
                                                                 "example": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "Combinations": {
+                                        "description": "Liste des combinaisons d'options (variantes) du produit. Chaque combinaison référence des attributs/options déjà déclarés dans 'Attribute'.",
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "SKU": {
+                                                    "description": "Référence unique de la variante.",
+                                                    "type": "string",
+                                                    "example": "TSH-501-RED-M",
+                                                    "nullable": true,
+                                                    "maxLength": 64
+                                                },
+                                                "Price": {
+                                                    "description": "Prix de cette combinaison.",
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 149,
+                                                    "minimum": 0
+                                                },
+                                                "CompareAtPrice": {
+                                                    "description": "Prix barré (promo), facultatif.",
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 179,
+                                                    "nullable": true
+                                                },
+                                                "Stock": {
+                                                    "description": "Stock disponible pour cette combinaison.",
+                                                    "type": "integer",
+                                                    "example": 20,
+                                                    "minimum": 0
+                                                },
+                                                "IsDefault": {
+                                                    "description": "Indique si cette combinaison est la variante par défaut du produit.",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "Image": {
+                                                    "description": "Image spécifique à cette combinaison (optionnelle).",
+                                                    "type": "string",
+                                                    "format": "binary",
+                                                    "nullable": true
+                                                },
+                                                "Options": {
+                                                    "description": "Options qui composent cette combinaison. ConfigName/OptionName doivent correspondre à un attribut déclaré dans 'Attribute'.",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "ConfigName": {
+                                                                "type": "string",
+                                                                "example": "Color",
+                                                                "maxLength": 150
+                                                            },
+                                                            "OptionName": {
+                                                                "type": "string",
+                                                                "example": "Red",
+                                                                "maxLength": 150
                                                             }
                                                         },
                                                         "type": "object"
@@ -3373,7 +3439,7 @@
                         }
                     },
                     "422": {
-                        "description": "Règle métier violée (marque/modèle introuvable, code-barres déjà utilisé, catégorie/rôle/type de ressource invalide, etc.)",
+                        "description": "Règle métier violée (marque/modèle introuvable, code-barres déjà utilisé, catégorie/rôle/type de ressource invalide, combinaison invalide ou dupliquée, etc.)",
                         "content": {
                             "application/json": {
                                 "schema": {
