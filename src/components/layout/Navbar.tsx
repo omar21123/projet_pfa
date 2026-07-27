@@ -1,3 +1,4 @@
+// src/components/navigation/Navbar.tsx
 import {
   Search,
   Plus,
@@ -114,7 +115,8 @@ const CartBadge = ({ count }: { count: number }) => {
    ────────────────────────────────────────────── */
 
 const Navbar = () => {
-  const { isAuthenticated, logout } = useAuth();
+  // Récupération de isBootstrapping pour gérer l'état d'attente initial du token
+  const { isAuthenticated, isBootstrapping, logout } = useAuth();
   const { totalItems } = useCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -206,7 +208,7 @@ const Navbar = () => {
 
         {/* ═══════════════════════════════════════
             ZONE ACTIONS (DROITE)
-            Ordre : Dark → Langue → Panier → Login/Compte → Publier
+            Ordre : Dark → Langue → Panier → Auth (Loading / Connecté / Non-connecté) → Publier
             ═══════════════════════════════════════ */}
         <TooltipProvider>
           <div className="flex items-center gap-2 md:gap-3 text-xs font-medium shrink-0">
@@ -235,10 +237,13 @@ const Navbar = () => {
               </TooltipContent>
             </Tooltip>
 
-            {/* 4. Auth : Connecté vs Non-connecté */}
-            {isAuthenticated ? (
+            {/* 4. Auth : Bootstrap vs Connecté vs Non-connecté */}
+            {isBootstrapping ? (
+              /* Squelette de chargement élégant pendant la vérification du cookie HTTP-Only */
+              <div className="h-8 w-24 bg-muted/60 animate-pulse rounded-lg shrink-0" />
+            ) : isAuthenticated ? (
               <>
-                {/* Favoris — accent promo (rouge) au survol */}
+                {/* Favoris */}
                 <NavIconLink
                   to="/favorites"
                   icon={Heart}
@@ -254,13 +259,6 @@ const Navbar = () => {
                   label="Messages"
                   tooltip="Messagerie"
                 />
-
-                {/* Notifications */}
-                {/* 
-<div className="shrink-0">
-  <NotificationDropdown />
-</div>
-*/}
 
                 {/* Menu Compte */}
                 <DropdownMenu>
@@ -298,7 +296,7 @@ const Navbar = () => {
                 </DropdownMenu>
               </>
             ) : (
-              /* Non connecté : bouton contour teal, tactile (lift + press) */
+              /* Non connecté */
               <Link to="/login" className="shrink-0">
                 <button
                   type="button"
@@ -310,7 +308,7 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* 5. Publier — bouton plein teal, tactile (lift + press + reflet) */}
+            {/* 5. Publier */}
             <Link to="/create" className="shrink-0">
               <button
                 type="button"

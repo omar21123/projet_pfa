@@ -17,26 +17,21 @@ let accessToken: string | null = localStorage.getItem(AUTH_TOKEN_KEY);
 let isRefreshing = false;
 let refreshQueue: QueuedRequest[] = [];
 
-const extractRefreshData = (payload: unknown): RefreshTokenData | null => {
-  const direct = payload as { accessToken?: string; data?: RefreshTokenData };
-  if (direct?.accessToken) {
-    return { accessToken: direct.accessToken };
-  }
+/**
+ * Supporte à la fois 'access_token' (Laravel) et 'accessToken' (JS/TS)
+ */
+const extractRefreshData = (payload: any): RefreshTokenData | null => {
+  if (!payload) return null;
 
-  if (direct?.data?.accessToken) {
-    return { accessToken: direct.data.accessToken };
-  }
+  const token =
+    payload.access_token ||
+    payload.accessToken ||
+    payload.data?.access_token ||
+    payload.data?.accessToken ||
+    payload.data?.data?.access_token ||
+    payload.data?.data?.accessToken;
 
-  const nested = payload as { data?: { accessToken?: string; data?: RefreshTokenData } };
-  if (nested?.data?.accessToken) {
-    return { accessToken: nested.data.accessToken };
-  }
-
-  if (nested?.data?.data?.accessToken) {
-    return { accessToken: nested.data.data.accessToken };
-  }
-
-  return null;
+  return token ? { accessToken: token } : null;
 };
 
 const processRefreshQueue = (error: unknown = null, token: string | null = null): void => {
@@ -51,11 +46,21 @@ const processRefreshQueue = (error: unknown = null, token: string | null = null)
   refreshQueue = [];
 };
 
+/**
+ * 🟢 FIX 1 : Synchronise la variable locale ET localStorage
+ */
 export const setAuthAccessToken = (token: string | null): void => {
   accessToken = token;
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  }
 };
 
-export const getAuthAccessToken = (): string | null => accessToken;
+export const getAuthAccessToken = (): string | null => {
+  return accessToken || localStorage.getItem(AUTH_TOKEN_KEY);
+};
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -67,9 +72,11 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (accessToken) {
+    // S'assurer de toujours récupérer le token le plus récent
+    const currentToken = getAuthAccessToken();
+    if (currentToken) {
       config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization = `Bearer ${currentToken}`;
     }
 
     return config;
@@ -84,12 +91,13 @@ axiosInstance.interceptors.response.use(
     const status = error?.response?.status;
     const requestUrl = (originalRequest?.url ?? "").toLowerCase();
 
-    // Skip refresh for auth endpoints
+    // 🟢 FIX 2 : Ne pas tenter de refresh si l'erreur provient de la finalisation Google
     const isAuthEndpoint =
-      requestUrl.includes("/api/auth/login") ||
-      requestUrl.includes("/api/auth/refresh") ||
-      requestUrl.includes("/api/auth/logout") ||
-      requestUrl.includes("/api/auth/register");
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/logout") ||
+      requestUrl.includes("/auth/register") ||
+      requestUrl.includes("/google/complete-profile");
 
     if (status !== 401 || !originalRequest || originalRequest._retry || isAuthEndpoint) {
       return Promise.reject(error);
@@ -112,8 +120,9 @@ axiosInstance.interceptors.response.use(
     isRefreshing = true;
 
     try {
+      // 🟢 FIX 3 : URL alignée avec vos routes Laravel (/api/auth/web/refresh)
       const response = await axios.post(
-        `${API_BASE_URL}/api/Auth/refresh`,
+        `${API_BASE_URL}/api/auth/web/refresh`,
         {},
         {
           withCredentials: true,
@@ -130,7 +139,6 @@ axiosInstance.interceptors.response.use(
       }
 
       setAuthAccessToken(innerData.accessToken);
-      localStorage.setItem(AUTH_TOKEN_KEY, innerData.accessToken);
 
       // Process queued requests
       processRefreshQueue(null, innerData.accessToken);
@@ -143,7 +151,6 @@ axiosInstance.interceptors.response.use(
     } catch (refreshError) {
       processRefreshQueue(refreshError, null);
       setAuthAccessToken(null);
-      localStorage.removeItem(AUTH_TOKEN_KEY);
       window.dispatchEvent(new Event("unauthorized"));
       return Promise.reject(refreshError);
     } finally {

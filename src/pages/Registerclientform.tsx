@@ -1,10 +1,11 @@
-// src/components/auth/RegisterClientForm.tsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { GoogleLogin } from "@react-oauth/google";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, User, Mail, Phone, Lock, Calendar, ArrowRight } from "lucide-react";
 import { useAuthForm } from "@/features/auth/useAuthForm";
+import { useAuth } from "@/contexts/AuthContext";
 import type { RegisterRequestClient } from "@/types/user.types";
 
 interface RegisterClientFormProps {
@@ -34,10 +35,19 @@ const emptyState: ClientFormState = {
 };
 
 const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
+  const navigate = useNavigate();
   const [data, setData] = useState<ClientFormState>(emptyState);
-  
-  // Intégration du hook d'authentification Laravel
-  const { submitRegisterClient, isLoading, error, setError } = useAuthForm();
+
+  const {
+    submitRegisterClient,
+    isLoading: isFormLoading,
+    error: formError,
+    setError: setFormError,
+  } = useAuthForm();
+  const { loginWithGoogle } = useAuth();
+
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const isLoading = isFormLoading || googleLoading;
 
   const update = (patch: Partial<ClientFormState>) => {
     setData((prev) => ({ ...prev, ...patch }));
@@ -47,26 +57,25 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFormError("");
 
     if (!data.first_name || !data.last_name || !data.email || !data.password) {
-      setError("Veuillez remplir les champs obligatoires (nom, prénom, email, mot de passe).");
+      setFormError("Veuillez remplir les champs obligatoires (nom, prénom, email, mot de passe).");
       return;
     }
     if (!validateEmail(data.email)) {
-      setError("Adresse email invalide.");
+      setFormError("Adresse email invalide.");
       return;
     }
     if (data.password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setFormError("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
     if (data.password !== data.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+      setFormError("Les mots de passe ne correspondent pas.");
       return;
     }
 
-    // Construction du payload attendu par CustomerRegisterRequest de Laravel
     const payload: RegisterRequestClient = {
       first_name: data.first_name,
       last_name: data.last_name,
@@ -74,14 +83,45 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
       password: data.password,
       ...(data.phone_number ? { phone_number: data.phone_number } : {}),
       ...(data.birth_date ? { birth_date: data.birth_date } : {}),
-      ...(data.gender ? { gender: data.gender } : {}),
+      ...(data.gender !== null ? { gender: data.gender } : {}),
     };
 
     try {
       await submitRegisterClient(payload);
-      // Optionnel : Rediriger l'utilisateur ici après succès (ex: navigate("/dashboard"))
+      navigate("/");
     } catch {
-      // L'erreur globale est déjà interceptée et stockée dans 'error' par le hook useAuthForm
+      // Géré par useAuthForm
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) {
+      setFormError("Échec de l'authentification Google.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setFormError("");
+
+    try {
+      // 🟢 Inscription Google en 1 seul appel : rôle + infos envoyés directement,
+      // plus besoin de completeGoogleProfile en 2e étape (le backend gère
+      // l'attribution du rôle et la création du profil CUSTOMER en une requête).
+      await loginWithGoogle({
+        id_token: credentialResponse.credential,
+        role: "CUSTOMER",
+        phone_number: data.phone_number || undefined,
+        birth_date: data.birth_date || undefined,
+        gender: data.gender ?? undefined,
+      });
+
+      navigate("/");
+    } catch (err: any) {
+      setFormError(
+        err?.response?.data?.message || err?.message || "Erreur lors de l'inscription via Google."
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -105,7 +145,7 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <AnimatePresence mode="wait">
-          {error && (
+          {formError && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -114,7 +154,7 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
               className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-3 font-medium flex items-center gap-2 border border-red-100"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-              {error}
+              {formError}
             </motion.div>
           )}
         </AnimatePresence>
@@ -125,7 +165,10 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
               Nom
             </label>
             <div className="mt-1.5 relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <User
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={15}
+              />
               <input
                 type="text"
                 value={data.last_name}
@@ -173,7 +216,10 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
               Mot de passe
             </label>
             <div className="mt-1.5 relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Lock
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={15}
+              />
               <input
                 type="password"
                 value={data.password}
@@ -188,7 +234,10 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
               Confirmer
             </label>
             <div className="mt-1.5 relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Lock
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={15}
+              />
               <input
                 type="password"
                 value={data.confirmPassword}
@@ -205,7 +254,10 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
             Téléphone <span className="normal-case text-slate-300">(optionnel)</span>
           </label>
           <div className="mt-1.5 relative">
-            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <Phone
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={15}
+            />
             <input
               type="tel"
               value={data.phone_number}
@@ -222,7 +274,10 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
               Date de naissance <span className="normal-case text-slate-300">(opt.)</span>
             </label>
             <div className="mt-1.5 relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Calendar
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={15}
+              />
               <input
                 type="date"
                 value={data.birth_date}
@@ -237,7 +292,9 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
             </label>
             <select
               value={data.gender ?? ""}
-              onChange={(e) => update({ gender: e.target.value === "" ? null : Number(e.target.value) })}
+              onChange={(e) =>
+                update({ gender: e.target.value === "" ? null : Number(e.target.value) })
+              }
               className="mt-1.5 w-full h-12 px-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
             >
               <option value="">—</option>
@@ -261,6 +318,27 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
             </>
           )}
         </Button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-[#f8fafc] px-3 font-semibold text-slate-400">
+              Ou continuer avec
+            </span>
+          </div>
+        </div>
+
+        <div className="flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setFormError("Erreur lors de l'authentification Google.")}
+            theme="outline"
+            shape="rectangular"
+            width="100%"
+          />
+        </div>
 
         <p className="text-xs text-slate-500 text-center pt-4 font-medium">
           Déjà un compte ?{" "}

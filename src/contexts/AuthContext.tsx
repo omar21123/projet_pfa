@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import {
   createContext,
   useCallback,
@@ -11,14 +10,15 @@ import {
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authApi } from "@/api/auth.api";
+import { authApi, type GoogleLoginPayload } from "@/api/auth.api";
 import { setAuthAccessToken, silentRefresh } from "@/api/axiosInstances";
 import type {
   LaravelAuthResponse,
   LoginRequest,
   RegisterRequestClient,
   ApiMessageResponse,
-} from "@/types/users.types";
+  CompleteGoogleProfilePayload,
+} from "@/types/user.types";
 import { useToast } from "@/hooks/use-toast";
 
 const AUTH_EMAIL_KEY = "authEmail";
@@ -28,7 +28,7 @@ interface AccessTokenPayload {
   role?: string | string[];
   roles?: string | string[];
   exp?: number;
-  email?: string; // Ajouté si présent dans le JWT
+  email?: string;
   [key: string]: unknown;
 }
 
@@ -54,8 +54,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   registerClient: (data: RegisterRequestClient) => Promise<void>;
   registerVendor: (formData: FormData) => Promise<void>;
-  // 💡 NOUVELLE MÉTHODE : Pour l'authentification Google via l'ID Token
-  loginWithGoogle: (idToken: string) => Promise<LaravelAuthResponse>;
+  loginWithGoogle: (payload: GoogleLoginPayload) => Promise<LaravelAuthResponse>;
+  completeGoogleProfile: (data: CompleteGoogleProfilePayload) => Promise<LaravelAuthResponse>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,7 +70,7 @@ const getErrorMessage = (error: unknown): string => {
     if (data?.errors && typeof data.errors === "object") {
       const firstErrorArray = Object.values(data.errors)[0];
       if (Array.isArray(firstErrorArray) && firstErrorArray.length > 0) {
-        return firstErrorArray[0];
+        return firstErrorArray[0] as string;
       }
     }
     return data?.message ?? error.message ?? "Une erreur est survenue";
@@ -96,18 +96,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem(AUTH_EMAIL_KEY);
   }, []);
 
-  // 💡 NOUVELLE MUTATION : Envoi de l'ID Token à votre endpoint POST
-  const googleLoginMutation = useMutation<LaravelAuthResponse, Error, string>({
+  const resolveRoles = (responseRole: unknown, token: string): string[] => {
+    if (responseRole) {
+      return Array.isArray(responseRole) ? (responseRole as string[]) : [responseRole as string];
+    }
+    return extractRolesFromToken(token);
+  };
+
+  // Mutation Connexion Google
+  const googleLoginMutation = useMutation<LaravelAuthResponse, Error, GoogleLoginPayload>({
     mutationFn: authApi.loginWithGoogle,
     onSuccess: (response) => {
       const token = response.access_token;
-      const responseRole = response.role as string | string[] | undefined;
-      const resolvedRoles = responseRole
-        ? Array.isArray(responseRole) ? responseRole : [responseRole]
-        : extractRolesFromToken(token);
+      const resolvedRoles = resolveRoles(response.role, token);
 
-      // L'email vient directement de la réponse backend (voir GoogleAuthController).
-      // Fallback sur le JWT au cas où, mais ne devrait pas être nécessaire.
       let userEmail = response.email ?? "";
       if (!userEmail) {
         try {
@@ -145,10 +147,64 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   });
 
   const loginWithGoogle = useCallback(
-    async (idToken: string): Promise<LaravelAuthResponse> => {
-      return await googleLoginMutation.mutateAsync(idToken);
+    async (payload: GoogleLoginPayload): Promise<LaravelAuthResponse> => {
+      return await googleLoginMutation.mutateAsync(payload);
     },
     [googleLoginMutation],
+  );
+
+  // Mutation Finalisation du Profil Google
+  const completeGoogleProfileMutation = useMutation<
+    LaravelAuthResponse,
+    Error,
+    CompleteGoogleProfilePayload
+  >({
+    mutationFn: authApi.completeGoogleProfile,
+    onSuccess: (response) => {
+      const token = response.access_token;
+      const resolvedRoles = resolveRoles(response.role, token);
+
+      let userEmail = response.email ?? email ?? "";
+      if (!userEmail) {
+        try {
+          const decoded = jwtDecode<AccessTokenPayload>(token);
+          userEmail = decoded.email ?? "";
+        } catch {}
+      }
+
+      setAccessToken(token);
+      if (userEmail) {
+        setEmail(userEmail);
+        localStorage.setItem(AUTH_EMAIL_KEY, userEmail);
+      }
+      setRoles(resolvedRoles);
+      setAuthAccessToken(token);
+
+      window.dispatchEvent(
+        new CustomEvent("auth:login", {
+          detail: { token, roles: resolvedRoles, user: null },
+        }),
+      );
+
+      toast({
+        title: "Profil configuré",
+        description: response.message ?? "Bienvenue sur votre espace.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur de configuration",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const completeGoogleProfile = useCallback(
+    async (data: CompleteGoogleProfilePayload): Promise<LaravelAuthResponse> => {
+      return await completeGoogleProfileMutation.mutateAsync(data);
+    },
+    [completeGoogleProfileMutation],
   );
 
   // Mutation Connexion Classique
@@ -156,10 +212,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     mutationFn: authApi.login,
     onSuccess: (response, variables) => {
       const token = response.access_token;
-      const responseRole = response.role as string | string[] | undefined;   
-      const resolvedRoles = responseRole
-        ? Array.isArray(responseRole) ? responseRole : [responseRole]
-        : extractRolesFromToken(token);
+      const resolvedRoles = resolveRoles(response.role, token);
 
       setAccessToken(token);
       setEmail(variables.email);
@@ -194,7 +247,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [loginMutation],
   );
 
-  // Mutation Déconnexion
+  // Déconnexion
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -207,7 +260,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [clearAuthState, queryClient]);
 
-  // Mutation Inscription Client
+  // Inscription Client
   const registerClientMutation = useMutation<ApiMessageResponse, Error, RegisterRequestClient>({
     mutationFn: authApi.registerClient,
     onSuccess: (response) => {
@@ -232,7 +285,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [registerClientMutation],
   );
 
-  // Mutation Inscription Fournisseur
+  // Inscription Fournisseur
   const registerVendorMutation = useMutation<ApiMessageResponse, Error, FormData>({
     mutationFn: authApi.registerVendor,
     onSuccess: (response) => {
@@ -257,7 +310,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [registerVendorMutation],
   );
 
-  // Bootstrap initial de l'authentification au montage
+  // Silent Refresh au chargement
   useEffect(() => {
     let isMounted = true;
 
@@ -274,10 +327,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setEmail(storedEmail);
         }
       } else {
-        setAccessToken(null);
-        setEmail(null);
-        setRoles([]);
-        localStorage.removeItem(AUTH_EMAIL_KEY);
+        clearAuthState();
       }
 
       setIsBootstrapping(false);
@@ -288,18 +338,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [clearAuthState]);
 
-  // Écoute de l'événement de déconnexion globale
+  // Écouteur déconnexion non-autorisée
   useEffect(() => {
     const onUnauthorized = () => {
       clearAuthState();
-      
+
       const privateRoutes = [
-        "/admin", "/dashboard", "/create", "/messages", 
-        "/favorites", "/profile", "/ads", "/settings", "/my-ads"
+        "/admin",
+        "/dashboard",
+        "/create",
+        "/messages",
+        "/favorites",
+        "/profile",
+        "/ads",
+        "/settings",
+        "/my-ads",
       ];
-      
+
       const currentPath = window.location.pathname;
       const isPrivateRoute = privateRoutes.some((route) => currentPath.startsWith(route));
 
@@ -327,9 +384,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       logout,
       registerClient,
       registerVendor,
-      loginWithGoogle, // 💡 EXPOSITION DE LA MÉTHODE
+      loginWithGoogle,
+      completeGoogleProfile,
     }),
-    [accessToken, email, roles, isBootstrapping, hasRole, login, logout, registerClient, registerVendor, loginWithGoogle],
+    [
+      accessToken,
+      email,
+      roles,
+      isBootstrapping,
+      hasRole,
+      login,
+      logout,
+      registerClient,
+      registerVendor,
+      loginWithGoogle,
+      completeGoogleProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,437 +1,556 @@
-// src/components/auth/RegisterVendorForm.tsx
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { useAuthForm } from "@/features/auth/useAuthForm";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  User,
-  Store,
-  Mail,
-  Phone,
-  Lock,
-  Calendar,
-  Upload,
-} from "lucide-react";
+import React, { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface RegisterVendorFormProps {
-  onBack: () => void;
-}
-
-// Correction du mapping : Modification de store_name en company_name pour correspondre à Laravel
-interface VendorRegisterPayload {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-  phone_number: string;
-  birth_date: string;
-  gender: number | null;
-  avatar: File | null;
-  store_name: string;
-  description: string;
-}
-
-const STEPS = [
-  { key: "account", label: "Compte", icon: User },
-  { key: "store", label: "Boutique", icon: Store },
-] as const;
-
-const emptyPayload: VendorRegisterPayload = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  password: "",
-  phone_number: "",
-  birth_date: "",
-  gender: null,
-  avatar: null,
-  store_name: "",
-  description: "",
+// Décodage simple du JWT Google pour afficher le Nom / Prénom / Email
+const decodeJwt = (token: string) => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
 };
 
-const RegisterVendorForm = ({ onBack }: RegisterVendorFormProps) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [data, setData] = useState<VendorRegisterPayload>(emptyPayload);
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Numéro international souple : + optionnel, 8 à 15 chiffres
+const PHONE_REGEX = /^\+?[0-9]{8,15}$/;
+const MAX_AVATAR_SIZE_MB = 4;
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-  // Branchement du Hook personnalisé de l'API Laravel
-  const { submitRegisterVendor, isLoading, error, setError } = useAuthForm();
+export const RegisterVendorForm: React.FC = () => {
+  const navigate = useNavigate();
+  const { registerVendor, loginWithGoogle } = useAuth();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const isLastStep = currentStep === STEPS.length - 1;
+  // Champs du formulaire — alignés sur le schéma exact de /api/auth/web/vendor/register
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState<number | null>(null);
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState("");
+  const [description, setDescription] = useState("");
 
-  const update = (patch: Partial<VendorRegisterPayload>) => {
-    setData((prev) => ({ ...prev, ...patch }));
+  // Erreurs de validation par champ (affichage inline, en plus du message global)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Jeton Google temporaire
+  const [googleIdToken, setGoogleIdToken] = useState<string | null>(null);
+
+  // États UI
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
+  // 1. Étape d'authentification Google (Bouton Google)
+  const handleGoogleSuccess = (credentialResponse: any) => {
+    const idToken = credentialResponse.credential;
+    if (!idToken) {
+      setErrorMessage("Échec du traitement du compte Google.");
+      return;
+    }
+
+    const decoded = decodeJwt(idToken);
+    if (decoded) {
+      setFirstName(decoded.given_name || decoded.name || "");
+      setLastName(decoded.family_name || "");
+      setEmail(decoded.email || "");
+    }
+
+    setGoogleIdToken(idToken);
+    setErrorMessage(null);
+    setFieldErrors({});
+    setInfoMessage(
+      "Compte Google associé ! Prénom, Nom et Email ont été verrouillés. Veuillez saisir le Nom de votre boutique pour finaliser.",
+    );
   };
 
-  const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
 
-  const validateCurrentStep = () => {
-    if (currentStep === 0) {
-      const { first_name, last_name, email, password } = data;
-      if (!first_name || !last_name || !email || !password) {
-        return "Veuillez remplir les champs obligatoires (nom, prénom, email, mot de passe).";
+    if (!file) {
+      setAvatar(null);
+      setAvatarPreview(null);
+      return;
+    }
+
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        avatar: "Format non supporté. Utilisez une image JPEG, PNG ou WebP.",
+      }));
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+      setAvatar(null);
+      setAvatarPreview(null);
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_MB * 1024 * 1024) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        avatar: `L'image est trop volumineuse (max ${MAX_AVATAR_SIZE_MB} Mo).`,
+      }));
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+      setAvatar(null);
+      setAvatarPreview(null);
+      return;
+    }
+
+    setFieldErrors((prev) => {
+      const { avatar: _omit, ...rest } = prev;
+      return rest;
+    });
+    setAvatar(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const removeAvatar = () => {
+    setAvatar(null);
+    setAvatarPreview(null);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
+
+  /**
+   * Validation frontend complète, alignée sur les contraintes attendues par
+   * /api/auth/web/vendor/register (multipart/form-data) :
+   * first_name*, last_name*, email*, password*, phone_number, birth_date,
+   * gender, avatar, store_name*, description
+   */
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // Champs verrouillés par Google : déjà garantis non vides (extraits du token)
+    if (!googleIdToken) {
+      if (!firstName.trim()) errors.firstName = "Le prénom est obligatoire.";
+      if (!lastName.trim()) errors.lastName = "Le nom est obligatoire.";
+
+      if (!email.trim()) {
+        errors.email = "L'adresse email est obligatoire.";
+      } else if (!EMAIL_REGEX.test(email.trim())) {
+        errors.email = "Adresse email invalide.";
       }
-      if (!validateEmail(email)) return "Adresse email invalide.";
-      if (password.length < 6) return "Le mot de passe doit contenir au moins 6 caractères.";
+
+      if (!password) {
+        errors.password = "Le mot de passe est obligatoire.";
+      } else if (password.length < 8) {
+        errors.password = "Le mot de passe doit contenir au moins 8 caractères.";
+      }
+
+      if (!confirmPassword) {
+        errors.confirmPassword = "Veuillez confirmer le mot de passe.";
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = "Les mots de passe ne correspondent pas.";
+      }
     }
-    if (currentStep === 1) {
-      if (!data.store_name) return "Le nom de la boutique/entreprise est requis.";
+
+    if (!storeName.trim()) {
+      errors.storeName = "Le nom de la boutique est obligatoire.";
+    } else if (storeName.trim().length < 2) {
+      errors.storeName = "Le nom de la boutique doit contenir au moins 2 caractères.";
     }
-    return "";
+
+    if (description && description.length > 1000) {
+      errors.description = "La description ne peut pas dépasser 1000 caractères.";
+    }
+
+    // Champs optionnels : validés seulement si renseignés
+    if (phoneNumber.trim() && !PHONE_REGEX.test(phoneNumber.trim())) {
+      errors.phoneNumber = "Numéro de téléphone invalide (8 à 15 chiffres, + optionnel).";
+    }
+
+    if (birthDate) {
+      const date = new Date(birthDate);
+      const today = new Date();
+      if (Number.isNaN(date.getTime())) {
+        errors.birthDate = "Date de naissance invalide.";
+      } else if (date > today) {
+        errors.birthDate = "La date de naissance ne peut pas être dans le futur.";
+      } else {
+        const age = today.getFullYear() - date.getFullYear();
+        if (age < 18) errors.birthDate = "Vous devez avoir au moins 18 ans.";
+      }
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const goNext = () => {
-    const validationError = validateCurrentStep();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setError("");
-    setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
-  };
-
-  const goPrev = () => {
-    setError("");
-    if (currentStep === 0) {
-      onBack();
-      return;
-    }
-    setCurrentStep((s) => Math.max(s - 1, 0));
-  };
-
+  // 2. Soumission finale du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationError = validateCurrentStep();
-    if (validationError) {
-      setError(validationError);
+    setErrorMessage(null);
+
+    if (!validate()) {
+      setErrorMessage("Veuillez corriger les champs indiqués ci-dessous.");
       return;
     }
 
-    // Création du FormData obligatoire pour le téléversement de l'avatar (Multipart file upload)
-    const formData = new FormData();
-    formData.append("first_name", data.first_name);
-    formData.append("last_name", data.last_name);
-    formData.append("email", data.email);
-    formData.append("password", data.password);
-    formData.append("store_name", data.store_name); // Envoyé à Laravel
-
-    if (data.phone_number) formData.append("phone_number", data.phone_number);
-    if (data.birth_date) formData.append("birth_date", data.birth_date);
-    if (data.gender !== null) formData.append("gender", String(data.gender));
-    if (data.description) formData.append("description", data.description);
-    if (data.avatar) formData.append("avatar", data.avatar); // Fichier binaire
+    setLoading(true);
 
     try {
-      await submitRegisterVendor(formData);
-    } catch {
-      // Erreur interceptée automatiquement par useAuthForm
+      if (googleIdToken) {
+        // Inscription Google en 1 seul appel : rôle + infos boutique envoyés directement
+        await loginWithGoogle({
+          id_token: googleIdToken,
+          role: "VENDOR",
+          store_name: storeName.trim(),
+          description: description.trim() || undefined,
+          phone_number: phoneNumber.trim() || undefined,
+          birth_date: birthDate || undefined,
+          gender: gender ?? undefined,
+        });
+
+        navigate("/vendor/dashboard");
+      } else {
+        // Inscription classique par email / mot de passe — multipart/form-data
+        const formData = new FormData();
+        formData.append("first_name", firstName.trim());
+        formData.append("last_name", lastName.trim());
+        formData.append("email", email.trim());
+        formData.append("password", password);
+        formData.append("store_name", storeName.trim());
+
+        if (phoneNumber.trim()) formData.append("phone_number", phoneNumber.trim());
+        if (birthDate) formData.append("birth_date", birthDate);
+        if (gender !== null) formData.append("gender", String(gender));
+        if (description.trim()) formData.append("description", description.trim());
+        if (avatar) formData.append("avatar", avatar);
+
+        await registerVendor(formData);
+        navigate("/login");
+      }
+    } catch (error: any) {
+      console.error("Erreur d'inscription :", error);
+
+      // Remonte les erreurs de validation renvoyées par le backend (422) sur les bons champs
+      const backendErrors = error?.response?.data?.errors;
+      if (backendErrors && typeof backendErrors === "object") {
+        const mapped: Record<string, string> = {};
+        Object.entries(backendErrors).forEach(([key, messages]) => {
+          const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+          mapped[camelKey] = Array.isArray(messages) ? String(messages[0]) : String(messages);
+        });
+        setFieldErrors((prev) => ({ ...prev, ...mapped }));
+      }
+
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Une erreur est survenue lors de l'inscription.",
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
+  const fieldClass = (hasError: boolean, disabled = false) =>
+    `w-full p-3.5 border rounded-xl text-sm transition-colors ${
+      disabled
+        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed font-medium"
+        : hasError
+          ? "bg-white border-red-400 focus:outline-none focus:border-red-500"
+          : "bg-white border-gray-200 focus:outline-none focus:border-slate-800"
+    }`;
+
   return (
-    <div>
-      {/* Indicateur d'étapes */}
-      <div className="flex items-center gap-1.5 mb-8">
-        {STEPS.map((step, index) => {
-          const isDone = index < currentStep;
-          const isActive = index === currentStep;
-          return (
-            <div key={step.key} className="flex items-center flex-1 last:flex-none">
-              <div
-                className={`size-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors ${
-                  isDone
-                    ? "bg-[#2c3e50] text-white"
-                    : isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-400"
-                }`}
-              >
-                {isDone ? <Check size={12} /> : index + 1}
-              </div>
-              {index < STEPS.length - 1 && (
-                <div
-                  className={`h-px flex-1 mx-1.5 transition-colors ${
-                    isDone ? "bg-[#2c3e50]" : "bg-slate-200"
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+    <div className="w-full max-w-lg mx-auto p-8 bg-white rounded-3xl shadow-sm border border-gray-100">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Créer un compte Vendeur</h2>
 
-      <button
-        type="button"
-        onClick={goPrev}
-        className="mb-6 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
-      >
-        <ChevronLeft size={14} />
-        {currentStep === 0 ? "Changer de rôle" : "Étape précédente"}
-      </button>
+      {infoMessage && (
+        <div className="p-3.5 mb-5 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-medium flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+          {infoMessage}
+        </div>
+      )}
 
-      <div className="mb-8">
-        <h2 className="text-3xl font-black tracking-tight text-slate-900">Compte fournisseur</h2>
-        <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-          Étape {currentStep + 1} sur {STEPS.length} — {STEPS[currentStep].label}
-        </p>
-      </div>
+      {errorMessage && (
+        <div className="p-3.5 mb-5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-medium flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+          {errorMessage}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              role="alert"
-              className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-3 font-medium flex items-center gap-2 border border-red-100"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {/* Prénom & Nom */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+              Prénom <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={!!googleIdToken}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={fieldClass(!!fieldErrors.firstName, !!googleIdToken)}
+              placeholder="Jean"
+            />
+            {fieldErrors.firstName && (
+              <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.firstName}</p>
+            )}
+          </div>
 
-        <AnimatePresence mode="wait">
-          {currentStep === 0 && (
-            <motion.div
-              key="account"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Nom
-                  </label>
-                  <div className="mt-1.5 relative">
-                    <User
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={15}
-                    />
-                    <input
-                      type="text"
-                      value={data.last_name}
-                      onChange={(e) => update({ last_name: e.target.value })}
-                      placeholder="Bourass"
-                      className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Prénom
-                  </label>
-                  <div className="mt-1.5 relative">
-                    <input
-                      type="text"
-                      value={data.first_name}
-                      onChange={(e) => update({ first_name: e.target.value })}
-                      placeholder="Mohammed"
-                      className="w-full h-12 px-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                    />
-                  </div>
-                </div>
-              </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+              Nom <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={!!googleIdToken}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={fieldClass(!!fieldErrors.lastName, !!googleIdToken)}
+              placeholder="Dupont"
+            />
+            {fieldErrors.lastName && (
+              <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.lastName}</p>
+            )}
+          </div>
+        </div>
 
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Email
-                </label>
-                <div className="mt-1.5 relative">
-                  <Mail
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="email"
-                    value={data.email}
-                    onChange={(e) => update({ email: e.target.value })}
-                    placeholder="vendor@example.com"
-                    className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Mot de passe
-                </label>
-                <div className="mt-1.5 relative">
-                  <Lock
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="password"
-                    value={data.password}
-                    onChange={(e) => update({ password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Téléphone <span className="normal-case text-slate-300">(optionnel)</span>
-                </label>
-                <div className="mt-1.5 relative">
-                  <Phone
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="tel"
-                    value={data.phone_number}
-                    onChange={(e) => update({ phone_number: e.target.value })}
-                    placeholder="+212612345078"
-                    className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Date de naissance <span className="normal-case text-slate-300">(opt.)</span>
-                  </label>
-                  <div className="mt-1.5 relative">
-                    <Calendar
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={15}
-                    />
-                    <input
-                      type="date"
-                      value={data.birth_date}
-                      onChange={(e) => update({ birth_date: e.target.value })}
-                      className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Genre <span className="normal-case text-slate-300">(opt.)</span>
-                  </label>
-                  <select
-                    value={data.gender ?? ""}
-                    onChange={(e) =>
-                      update({ gender: e.target.value === "" ? null : Number(e.target.value) })
-                    }
-                    className="mt-1.5 w-full h-12 px-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                  >
-                    <option value="">—</option>
-                    <option value={1}>Homme</option>
-                    <option value={2}>Femme</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Avatar <span className="normal-case text-slate-300">(optionnel)</span>
-                </label>
-                <label className="mt-1.5 flex items-center gap-3 h-12 px-3.5 rounded-xl bg-white border border-dashed border-slate-300 hover:border-slate-900 cursor-pointer transition text-sm font-medium text-slate-500">
-                  <Upload size={15} className="text-slate-400 shrink-0" />
-                  <span className="truncate">
-                    {data.avatar ? data.avatar.name : "Choisir une image"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => update({ avatar: e.target.files?.[0] ?? null })}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </motion.div>
-          )}
-
-          {currentStep === 1 && (
-            <motion.div
-              key="store"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Nom de la boutique
-                </label>
-                <div className="mt-1.5 relative">
-                  <Store
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="text"
-                    value={data.store_name}
-                    onChange={(e) => update({ store_name: e.target.value })}
-                    placeholder="eByte Store"
-                    className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Description <span className="normal-case text-slate-300">(optionnel)</span>
-                </label>
-                <textarea
-                  value={data.description}
-                  onChange={(e) => update({ description: e.target.value })}
-                  placeholder="Décrivez votre activité en quelques mots..."
-                  rows={4}
-                  className="mt-1.5 w-full px-3.5 py-3 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none text-sm font-medium transition resize-none"
-                />
-              </div>
-
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Vous pourrez compléter votre profil (logo, bannière, documents de vérification)
-                depuis votre tableau de bord après l'inscription.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="flex gap-3 pt-2">
-          {!isLastStep ? (
-            <Button
-              type="button"
-              onClick={goNext}
-              className="w-full h-12 bg-gradient-to-r from-[#2c3e50] to-[#1d2a36] hover:from-[#1d2a36] hover:to-[#111921] text-white font-bold rounded-xl transition-all shadow-md active:scale-[0.99] gap-2 flex items-center justify-center"
-            >
-              Continuer
-              <ChevronRight className="size-4" />
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-12 bg-gradient-to-r from-[#2c3e50] to-[#1d2a36] hover:from-[#1d2a36] hover:to-[#111921] text-white font-bold rounded-xl transition-all shadow-md active:scale-[0.99] gap-2 flex items-center justify-center disabled:opacity-50"
-            >
-              {isLoading ? (
-                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                "Créer mon compte fournisseur"
-              )}
-            </Button>
+        {/* Email */}
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+            Adresse Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            disabled={!!googleIdToken}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={fieldClass(!!fieldErrors.email, !!googleIdToken)}
+            placeholder="vendeur@exemple.com"
+          />
+          {fieldErrors.email && (
+            <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.email}</p>
           )}
         </div>
 
-        <p className="text-xs text-slate-500 text-center pt-4 font-medium">
-          Déjà un compte ?{" "}
-          <Link to="/login" className="text-slate-900 font-bold hover:underline ml-1">
-            Se connecter
-          </Link>
-        </p>
+        {/* Mot de passe + confirmation : masqués si Google est utilisé */}
+        {!googleIdToken && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+                Mot de passe <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={fieldClass(!!fieldErrors.password)}
+                placeholder="••••••••"
+              />
+              {fieldErrors.password && (
+                <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.password}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+                Confirmer <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={fieldClass(!!fieldErrors.confirmPassword)}
+                placeholder="••••••••"
+              />
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-[11px] text-red-600 font-medium">
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Téléphone & Date de naissance */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+              Téléphone <span className="text-gray-400 font-normal lowercase">(opt.)</span>
+            </label>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              className={fieldClass(!!fieldErrors.phoneNumber)}
+              placeholder="+212612345678"
+            />
+            {fieldErrors.phoneNumber && (
+              <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.phoneNumber}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+              Naissance <span className="text-gray-400 font-normal lowercase">(opt.)</span>
+            </label>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className={fieldClass(!!fieldErrors.birthDate)}
+            />
+            {fieldErrors.birthDate && (
+              <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.birthDate}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Genre */}
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+            Genre <span className="text-gray-400 font-normal lowercase">(optionnel)</span>
+          </label>
+          <select
+            value={gender ?? ""}
+            onChange={(e) => setGender(e.target.value === "" ? null : Number(e.target.value))}
+            className="w-full p-3.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 transition-colors"
+          >
+            <option value="">—</option>
+            <option value={1}>Homme</option>
+            <option value={2}>Femme</option>
+          </select>
+        </div>
+
+        {/* Avatar (uniquement pour l'inscription classique — Google fournit déjà une photo) */}
+        {!googleIdToken && (
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+              Photo de profil <span className="text-gray-400 font-normal lowercase">(optionnel)</span>
+            </label>
+            <div className="flex items-center gap-4">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Aperçu avatar"
+                  className="w-14 h-14 rounded-full object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-[10px] font-semibold uppercase">
+                  Photo
+                </div>
+              )}
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarChange}
+                  className="text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                />
+                {avatar && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="text-[11px] font-bold text-red-500 hover:underline shrink-0"
+                  >
+                    Retirer
+                  </button>
+                )}
+              </div>
+            </div>
+            {fieldErrors.avatar && (
+              <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.avatar}</p>
+            )}
+          </div>
+        )}
+
+        {/* Nom de la boutique */}
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+            Nom de la boutique <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            className={`w-full p-3.5 bg-white border-2 rounded-xl text-sm focus:outline-none transition-colors font-medium ${
+              fieldErrors.storeName
+                ? "border-red-400 focus:border-red-500"
+                : "border-slate-800 focus:border-black"
+            }`}
+            placeholder="Nom de votre boutique"
+          />
+          {fieldErrors.storeName && (
+            <p className="mt-1 text-[11px] text-red-600 font-medium">{fieldErrors.storeName}</p>
+          )}
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wider">
+            Description <span className="text-gray-400 font-normal lowercase">(optionnel)</span>
+          </label>
+          <textarea
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={1000}
+            className={fieldClass(!!fieldErrors.description) + " resize-none"}
+            placeholder="Décrivez vos produits..."
+          />
+          <div className="mt-1 flex items-center justify-between">
+            {fieldErrors.description ? (
+              <p className="text-[11px] text-red-600 font-medium">{fieldErrors.description}</p>
+            ) : (
+              <span />
+            )}
+            <span className="text-[10px] text-gray-400">{description.length}/1000</span>
+          </div>
+        </div>
+
+        {/* Bouton de soumission */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-4 bg-[#1e293b] hover:bg-[#0f172a] text-white font-semibold text-sm rounded-2xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center"
+        >
+          {loading
+            ? "Traitement..."
+            : googleIdToken
+              ? "Finaliser mon inscription Vendeur"
+              : "Créer mon compte Vendeur"}
+        </button>
       </form>
+
+      {/* Bouton Google SSO (Masqué dès que Google est connecté) */}
+      {!googleIdToken && (
+        <>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-3 font-semibold text-gray-400">Ou continuer avec</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setErrorMessage("Erreur lors de l'authentification Google.")}
+              theme="outline"
+              shape="rectangular"
+              width="100%"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };

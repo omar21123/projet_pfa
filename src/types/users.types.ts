@@ -1,5 +1,3 @@
-// src/types/user.types.ts
-
 export interface User {
   public_id: string;
   email: string;
@@ -12,7 +10,7 @@ export interface LoginRequest {
   password: string;
 }
 
-// Inscription Client (Alignée sur CustomerRegisterRequest)
+// Inscription Client
 export interface RegisterRequestClient {
   first_name: string;
   last_name: string;
@@ -23,9 +21,9 @@ export interface RegisterRequestClient {
   gender?: number | null; // 1 = Homme, 2 = Femme
 }
 
-// Inscription Fournisseur (Correction : company_name à la place de store_name)
+// Inscription Fournisseur
 export interface RegisterRequestVendor {
-  company_name: string;
+  store_name: string;
   description?: string;
   first_name: string;
   last_name: string;
@@ -37,21 +35,32 @@ export interface RegisterRequestVendor {
   avatar?: File | null;
 }
 
-// Réponses d'authentification directes de Laravel
+// Réponses d'authentification Laravel
 export interface LaravelAuthResponse {
-  message: string;
-  role: "CUSTOMER" | "VENDOR" | "ADMIN";
+  message?: string;
+  role?: "CUSTOMER" | "VENDOR" | "ADMIN" | string | string[] | null;
   access_token: string;
-  unreadNotifications: number;
-  displayName: string;
-  // Absents de la réponse /auth/*/google (pas de notion de vérif. email/tel pour un compte Google)
+  unreadNotifications?: number;
+  displayName?: string;
   verify_email?: boolean;
   verify_phone?: boolean;
-  public_id: string;
-  // Présents uniquement sur la réponse /auth/*/google
+  public_id?: string;
   email?: string;
   is_new_user?: boolean;
+  requires_onboarding?: boolean;
 }
+
+export interface CompleteGoogleProfilePayload {
+  role: "CUSTOMER" | "VENDOR";
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  birth_date?: string;
+  gender?: number | null;
+  store_name?: string;
+  description?: string;
+}
+
 export interface AuthResponse {
   token: string;
   user?: User;

@@ -11,6 +11,11 @@ const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
 const AuthCallback = lazy(() => import("@/pages/AuthCallback"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const CompleteGoogleProfile = lazy(() =>
+  import("@/pages/CompleteGoogleProfile").then((module) => ({
+    default: module.CompleteGoogleProfile ?? module.default,
+  })),
+);
 const CreateAd = lazy(() => import("@/pages/NouvelleAnnoncePage"));
 const UserDashboard = lazy(() => import("@/pages/UserDashboard"));
 const Messages = lazy(() => import("@/pages/Messages"));
@@ -21,6 +26,8 @@ const Unauthorized = lazy(() => import("@/pages/Unauthorized"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const MyAds = lazy(() => import("@/pages/MyAds"));
+import VendorDashboard from "@/pages/vendor/VendorDashboard";
+import MainLayout from "@/components/layout/MainLayout";
 
 // --- IMPORTS DES PAGES ADMIN (Vérifie bien la casse de tes fichiers sous /pages/admin/) ---
 const AppLayoutAdmin = lazy(() => import("@/pages/admin/AppLayout"));
@@ -40,7 +47,7 @@ const ProductDetailsPage = lazy(() => import("@/pages/admin/ProductDetailsPage")
 export const AppRouter = () => {
   return (
     <Suspense
-      /*fallback={
+    /*fallback={
         <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
           Chargement de l'application...
         </div>
@@ -55,6 +62,10 @@ export const AppRouter = () => {
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/oauth-callback" element={<AuthCallback />} />
+        {/* 🟢 FIX : route manquante — c'est ici que GoogleAuthController::handleGoogleCallback
+            redirige quand requires_onboarding est vrai (flow de redirection navigateur classique,
+            GET /auth/google). Sans cette route, l'utilisateur tombait sur la page 404. */}
+        <Route path="/complete-profile" element={<CompleteGoogleProfile />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Routes Utilisateurs Sécurisées */}
@@ -148,7 +159,9 @@ export const AppRouter = () => {
           <Route path="/admin/products/:id" element={<ProductDetailsPage />} />
         </Route>
         {/* ==================================================================== */}
-
+        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+        <Route path="/dashboard" element={<VendorDashboard />} />
+        <Route element={<MainLayout />}></Route>
         {/* Erreurs de routage */}
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<NotFound />} />
