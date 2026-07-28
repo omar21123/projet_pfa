@@ -50,7 +50,11 @@ const Login = () => {
     if (response.role === "VENDOR") {
       navigate("/vendor/dashboard");
     } else {
-      navigate("/");
+      if (response.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     }
   };
 
@@ -72,10 +76,7 @@ const Login = () => {
       const response = await login(email, password);
       handleAuthSuccess(response);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          "Identifiants invalides. Veuillez réessayer."
-      );
+      setError(err.response?.data?.message || "Identifiants invalides. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -98,10 +99,7 @@ const Login = () => {
       const response = await loginWithGoogle(credentialResponse.credential);
       handleAuthSuccess(response);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          "Erreur lors de la connexion avec Google."
-      );
+      setError(err.response?.data?.message || "Erreur lors de la connexion avec Google.");
     } finally {
       setIsLoading(false);
     }
@@ -116,9 +114,7 @@ const Login = () => {
     >
       <div>
         <div className="mb-8">
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">
-            Se connecter
-          </h2>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900">Se connecter</h2>
           <p className="mt-2 text-sm text-slate-500 leading-relaxed">
             Entrez vos identifiants pour accéder à votre compte.
           </p>
@@ -229,10 +225,7 @@ const Login = () => {
 
         <p className="text-xs text-slate-500 text-center pt-6 font-medium">
           Pas encore de compte ?{" "}
-          <Link
-            to="/register"
-            className="text-slate-900 font-bold hover:underline ml-1"
-          >
+          <Link to="/register" className="text-slate-900 font-bold hover:underline ml-1">
             S'inscrire
           </Link>
         </p>

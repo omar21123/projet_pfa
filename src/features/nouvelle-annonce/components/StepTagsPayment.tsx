@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { FormState } from "@/types/types";
-import { MOCK_PAYMENTS } from "@/types/types";
+import type { FormState } from "@/features/nouvelle-annonce/types";
+import { MOCK_PAYMENTS } from "@/features/nouvelle-annonce/types";
 import { SectionTitle, inputCls } from "./shared";
 
-export function StepTagsPayment({ form, setField }: { form: FormState; setField: any }) {
+interface StepTagsPaymentProps {
+  form: FormState;
+  setField: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
+}
+
+export function StepTagsPayment({ form, setField }: StepTagsPaymentProps) {
   const [newTag, setNewTag] = useState("");
 
-  // Permet d'ajouter plusieurs tags en une seule saisie (ex: "neuf, promo, flash")
   const commitTags = (raw: string) => {
     const parts = raw
       .split(",")

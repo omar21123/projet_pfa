@@ -152,7 +152,9 @@ const Navbar = () => {
             LOGO
             ═══════════════════════════════════════ */}
         <Link to="/" className="shrink-0">
-          <span className="text-xl font-black tracking-tight text-teal font-heading">CONNECTIA</span>
+          <span className="text-xl font-black tracking-tight text-teal font-heading">
+            CONNECTIA
+          </span>
         </Link>
 
         {/* ═══════════════════════════════════════
@@ -283,6 +285,12 @@ const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/my-ads" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        {t("my-ads")}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/settings" className="cursor-pointer">
                         <Settings className="mr-2 h-4 w-4" />
                         {t("settings")}
@@ -325,7 +333,7 @@ const Navbar = () => {
       {/* ═══════════════════════════════════════
           CATÉGORIES (sous-navbar)
           ═══════════════════════════════════════ */}
-      <Categories onFilter={handleCategoryFilter} />
+      {/* <Categories onFilter={handleCategoryFilter} /> */}
     </header>
   );
 };

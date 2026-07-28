@@ -1,33 +1,69 @@
-import type { FormState } from "@/types/types";
+import type { FormState } from "@/features/nouvelle-annonce/types";
 
 export function validateStep(step: number, form: FormState): string[] {
-  const errs: string[] = [];
+  const errors: string[] = [];
 
+  // Étape 1 : Informations générales & Prix
   if (step === 1) {
-    if (!form.name.trim()) errs.push("Le nom du produit est obligatoire.");
-    if (!form.barcode.trim()) errs.push("Le code-barres est obligatoire.");
-    if (!form.basePrice || Number(form.basePrice) < 0) errs.push("Le prix doit être valide.");
-    if (form.stock === "" || Number(form.stock) < 0) errs.push("Le stock initial est requis.");
-    if (!form.brandId) errs.push("La sélection de la marque est requise.");
-    if (!form.modelId) errs.push("La sélection du modèle est requise.");
+    if (!form.name.trim()) errors.push("Le nom du produit est requis.");
+    if (!form.barcode.trim()) errors.push("Le code-barres est requis.");
+    if (!form.basePrice || Number(form.basePrice) <= 0) errors.push("Le prix de base doit être supérieur à 0.");
+    if (!form.stock || Number(form.stock) < 0) errors.push("Le stock doit être supérieur ou égal à 0.");
+    if (!form.brandId) errors.push("Veuillez sélectionner une marque.");
+    if (!form.modelId) errors.push("Veuillez sélectionner un modèle.");
+
+    if (form.promotionType && form.promotionType !== "none") {
+      if (!form.promotionValue || Number(form.promotionValue) <= 0) {
+        errors.push("Veuillez saisir une valeur de promotion valide.");
+      }
+      if (form.promotionType === "percentage" && Number(form.promotionValue) > 100) {
+        errors.push("La réduction en pourcentage ne peut pas dépasser 100%.");
+      }
+      if (!form.promotionEndDate) {
+        errors.push("La date limite de la promotion est requise.");
+      }
+    }
   }
 
+  // Étape 2 : Médias (images + vidéo)
   if (step === 2) {
-    // 🎯 Règle d'obligation : 1 image + 1 vidéo de validation
     const hasImage = form.resources.some((r) => r.kind === "image");
+    if (!hasImage) errors.push("Ajoutez au moins une image du produit.");
     const hasVideo = form.resources.some((r) => r.kind === "video");
-
-    if (!hasImage) errs.push("Au moins une image du produit est obligatoire.");
-    if (!hasVideo) errs.push("Une vidéo de validation du produit est obligatoire.");
+    if (!hasVideo) errors.push("Une vidéo de présentation/validation est requise.");
   }
 
-  if (step === 3 && form.categories.length === 0) {
-    errs.push("Veuillez choisir au moins une catégorie.");
+  // Étape 3 : Catégories
+  if (step === 3) {
+    if (form.categories.length === 0) errors.push("Sélectionnez au moins une catégorie.");
   }
 
-  if (step === 5 && form.allowedPayment.length === 0) {
-    errs.push("Sélectionnez au moins un moyen de paiement.");
+  // Étape 4 : Attributs & Options
+  if (step === 4) {
+    if (form.attributes.length > 0) {
+      const hasEmptyGroup = form.attributes.some((g) => g.options.length === 0);
+      if (hasEmptyGroup) {
+        errors.push("Chaque attribut sélectionné doit avoir au moins une option cochée.");
+      }
+    }
   }
 
-  return errs;
+  // Étape 5 : Matrice des combinaisons
+  if (step === 5) {
+    if (form.attributes.length > 0) {
+      if (form.combinations.length === 0) {
+        errors.push("Veuillez générer au moins une combinaison pour vos attributs.");
+      } else {
+        const hasDefault = form.combinations.some((c) => c.isDefault);
+        if (!hasDefault) errors.push("Veuillez définir au moins une variante par défaut.");
+      }
+    }
+  }
+
+  // Étape 6 : Règlement & Tags
+  if (step === 6) {
+    if (form.allowedPayment.length === 0) errors.push("Sélectionnez au moins un mode de paiement.");
+  }
+
+  return errors;
 }

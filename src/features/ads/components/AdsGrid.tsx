@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAds } from "@/features/ads/hooks/useAds";
-import { resolveImageUrl } from "@/utils/image";
+import { getMediaUrl } from "@/utils/mediaUtils";
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -102,7 +102,7 @@ const AdsGrid = () => {
         title: ad.titre,
         price: ad.prix,
         city: ad.ville || "Non renseignée",
-        image: resolveImageUrl(ad.photosUrls[0]),
+        image: getMediaUrl(ad.photosUrls[0]),
         date: formatDate(ad.datepublication),
         ownerId: ad.idutilisateur,
         favoritesCount: ad.numberoffavorites,

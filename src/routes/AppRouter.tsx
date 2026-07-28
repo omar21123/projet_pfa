@@ -25,8 +25,9 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const Unauthorized = lazy(() => import("@/pages/Unauthorized"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
-const MyAds = lazy(() => import("@/pages/MyAds"));
-import VendorDashboard from "@/pages/vendor/VendorDashboard";
+const MyAds = lazy(() => import("@/pages/vendor/MyAdsPage"));
+const VendorDashboard = lazy(() => import("@/pages/vendor/VendorDashboard"));
+const VendorProductDetailPage = lazy(() => import("@/pages/vendor/VendorProductDetailPage"));
 import MainLayout from "@/components/layout/MainLayout";
 
 // --- IMPORTS DES PAGES ADMIN (Vérifie bien la casse de tes fichiers sous /pages/admin/) ---
@@ -111,14 +112,6 @@ export const AppRouter = () => {
           }
         />
         <Route
-          path="/ads"
-          element={
-            <ProtectedRoute>
-              <MyAds />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/settings"
           element={
             <ProtectedRoute>
@@ -126,14 +119,43 @@ export const AppRouter = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/my-ads"
-          element={
-            <ProtectedRoute>
-              <MyAds />
-            </ProtectedRoute>
-          }
-        />
+        {/* ==================================================================== */}
+        {/*   ESPACE VENDEUR (avec Navbar via MainLayout)                      */}
+        {/* ==================================================================== */}
+        <Route element={<MainLayout />}>
+          <Route
+            path="/my-ads"
+            element={
+              <RoleProtectedRoute allowedRoles={["VENDOR"]}>
+                <MyAds />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard"
+            element={
+              <RoleProtectedRoute allowedRoles={["VENDOR"]}>
+                <VendorDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/:id"
+            element={
+              <RoleProtectedRoute allowedRoles={["VENDOR"]}>
+                <VendorProductDetailPage />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/:id/edit"
+            element={
+              <RoleProtectedRoute allowedRoles={["VENDOR"]}>
+                <VendorProductDetailPage />
+              </RoleProtectedRoute>
+            }
+          />
+        </Route>
 
         {/* ==================================================================== */}
         {/*   ESPACE ADMINISTRATION CONTÔLÉ                                      */}
@@ -158,10 +180,6 @@ export const AppRouter = () => {
           <Route path="brands-models" element={<BrandsModelsPage />} />
           <Route path="/admin/products/:id" element={<ProductDetailsPage />} />
         </Route>
-        {/* ==================================================================== */}
-        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-        <Route path="/dashboard" element={<VendorDashboard />} />
-        <Route element={<MainLayout />}></Route>
         {/* Erreurs de routage */}
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<NotFound />} />

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useFavoriteAds } from "@/features/ads/hooks/useFavoriteAds";
 import { FavoriteButton } from "@/features/favorites";
-import { resolveImageUrl } from "@/utils/image";
+import { getMediaUrl } from "@/utils/mediaUtils";
 
 interface FavoriteAd {
   id: string;
@@ -144,7 +144,7 @@ const Favorites = () => {
       price: ad.prix,
       city: ad.ville || "Non renseignée",
       date: formatDate(ad.datepublication),
-      image: resolveImageUrl(ad.photosUrls[0]),
+      image: getMediaUrl(ad.photosUrls[0]),
       category: ad.categorie,
       isFollowed: ad.isFollowed,
       numberoffavorites: ad.numberoffavorites,

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAds } from "@/features/ads/hooks/useAds";
 import { FavoriteButton } from "@/features/favorites";
-import { resolveImageUrl } from "@/utils/image";
+import { getMediaUrl } from "@/utils/mediaUtils";
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -32,7 +32,7 @@ const FeaturedAds = () => {
         title: ad.titre,
         price: `${ad.prix.toLocaleString()} DH`,
         location: ad.ville || "Non renseignée",
-        image: resolveImageUrl(ad.photosUrls[0]),
+        image: getMediaUrl(ad.photosUrls[0]),
         category: ad.categorie,
         isNew: i % 2 === 0,
         date: formatDate(ad.datepublication),

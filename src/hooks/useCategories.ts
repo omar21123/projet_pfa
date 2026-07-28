@@ -59,8 +59,13 @@ const fetchNavbarCategories = async (): Promise<CategoryNode[]> => {
       },
     );
 
+    const raw = response.data;
     const items =
-      response.data?.success && Array.isArray(response.data?.data) ? response.data.data : [];
+      Array.isArray(raw?.data)
+        ? raw.data
+        : Array.isArray(raw)
+          ? raw
+          : [];
 
     // Tri par DisplayOrder, appliqué récursivement (le backend renvoie déjà les enfants imbriqués
     // dans `children`, donc on ne fait plus de reconstruction manuelle du type parent/enfant)

@@ -65,6 +65,12 @@ export interface ProductDetails extends ProductListItem {
   allowed_payments: PaymentMethod[];
   categories: CategoryItem[];
   configs: ConfigItem[];
+  main_image?: string | null;
+  image_path?: string | null;
+  video_path?: string | null;
+  video?: string | null;
+  videos?: any[] | null;
+  images?: any[] | null;
 }
 
 export interface FilterParams {

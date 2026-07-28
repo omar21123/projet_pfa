@@ -1,5 +1,4 @@
 // src/pages/vendor/VendorDashboard.tsx
-import Navbar from "@/components/layout/Navbar"; // 👈 Ajustez le chemin vers votre Navbar si nécessaire
 import { useAuth } from "@/contexts";
 import { 
   ShoppingBag, 
@@ -13,9 +12,6 @@ export const VendorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
-      {/* 🟢 Affichage de la Navbar globale */}
-      <Navbar />
-
       {/* Contenu du Dashboard Vendeur */}
       <main className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Banner de bienvenue */}

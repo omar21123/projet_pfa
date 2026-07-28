@@ -4,24 +4,30 @@ import { ProductDetails, ConfigItem } from '../../types/moderation';
 import { moderationApi } from '../../api/moderationApi';
 import { StatusBadge } from '../../components/moderation/StatusBadge';
 import { ActionModal } from '../../components/moderation/ActionModal';
+import { getMediaUrl } from '@/utils/mediaUtils';
+import { VideoPlayer } from '@/components/VideoPlayer';
 
 export const ProductDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<ProductDetails | null>(null);
+  const [combinations, setCombinations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
-  // États Modaux
+  // États Modaux d'Action Produit
   const [modalType, setModalType] = useState<'validate' | 'refuse' | 'block'>('validate');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Utilitaire pour formater la date sans risque d'erreur "Invalid Date"
+  // États Modal Détails Combinaison
+  const [selectedCombo, setSelectedCombo] = useState<any | null>(null);
+  const [loadingComboDetail, setLoadingComboDetail] = useState(false);
+  const [isComboModalOpen, setIsComboModalOpen] = useState(false);
+
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return '—';
     try {
-      // Remplace l'espace par 'T' pour la compatibilité Safari / ISO
       const isoDate = dateString.replace(' ', 'T');
       return new Date(isoDate).toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -35,23 +41,16 @@ export const ProductDetailsPage: React.FC = () => {
     }
   };
 
-  // 🎯 Extraction défensive de l'URL d'un média, quel que soit le nom de champ renvoyé par l'API
-  // (accepte aussi une simple chaîne si l'API renvoie un tableau de strings)
-  const getMediaUrl = (item: any): string | null => {
+  const extractMediaField = (item: any): string | null => {
     if (!item) return null;
     if (typeof item === 'string') return item;
     return (
       item.url ??
       item.Url ??
-      item.URL ??
       item.path ??
       item.Path ??
+      item.image_path ??
       item.image_url ??
-      item.ImageURL ??
-      item.video_url ??
-      item.VideoURL ??
-      item.file_path ??
-      item.FilePath ??
       item.src ??
       null
     );
@@ -68,28 +67,37 @@ export const ProductDetailsPage: React.FC = () => {
     setErrorStatus(null);
 
     try {
+      // 1. Récupération des détails du produit[cite: 8]
       const res = await moderationApi.getProductDetails(id);
-      
-      // Adaptation selon la structure exacte du Swagger JSON
       const payload = res?.data || res;
-      const rawDetails = payload?.details;
+      const rawDetails = payload?.details || payload;
 
       if (rawDetails) {
-        // Fusion de `details` avec `categories`, `configs`, `tags` et `allowed_payments`
-        const fullProductData: ProductDetails = {
+        setDetails({
           ...rawDetails,
-          categories: payload.categories || [],
-          configs: payload.configs || [],
-          tags: payload.tags || [],
-          allowed_payments: payload.allowed_payments || [],
+          categories: payload.categories || rawDetails.categories || [],
+          configs: payload.configs || rawDetails.configs || [],
+          tags: payload.tags || rawDetails.tags || [],
+          allowed_payments: payload.allowed_payments || rawDetails.allowed_payments || [],
           images: payload.images || rawDetails.images || [],
           videos: payload.videos || rawDetails.videos || [],
-        };
-
-        setDetails(fullProductData);
+        });
       } else {
         setErrorStatus(404);
+        setLoading(false);
+        return;
       }
+
+      // 2. Récupération des combinaisons via l'endpoint dédié
+      try {
+        const comboRes = await moderationApi.getProductCombinations(id);
+        const comboList = comboRes?.data || (Array.isArray(comboRes) ? comboRes : []);
+        setCombinations(comboList);
+      } catch (comboErr) {
+        console.warn("⚠️ Impossible de charger les combinaisons :", comboErr);
+        setCombinations([]);
+      }
+
     } catch (err: any) {
       console.error("❌ Erreur chargement produit :", err);
       setErrorStatus(err.response?.status || 500);
@@ -102,10 +110,26 @@ export const ProductDetailsPage: React.FC = () => {
     fetchDetailData();
   }, [id]);
 
+  // Ouverture et chargement du détail d'une combinaison
+  const handleOpenComboDetails = async (combinationId: number) => {
+    setIsComboModalOpen(true);
+    setLoadingComboDetail(true);
+    setSelectedCombo(null);
+
+    try {
+      const res = await moderationApi.getCombinationDetails(combinationId);
+      setSelectedCombo(res?.data || res);
+    } catch (err) {
+      console.error("❌ Erreur chargement détail combinaison :", err);
+    } finally {
+      setLoadingComboDetail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-12 text-center text-slate-500 font-semibold animate-pulse">
-        Chargement des fiches techniques...
+        Chargement des informations du produit...
       </div>
     );
   }
@@ -126,18 +150,6 @@ export const ProductDetailsPage: React.FC = () => {
     );
   }
 
-  if (errorStatus) {
-    return (
-      <div className="p-12 text-center text-rose-600 space-y-3">
-        <div>Erreur serveur (#{errorStatus}).</div>
-        <button onClick={fetchDetailData} className="underline text-sm font-semibold">
-          Réessayer
-        </button>
-      </div>
-    );
-  }
-
-  // Regroupement sécurisé des configurations par attribut
   const configsList = details.configs || [];
   const groupedConfigs = configsList.reduce((acc: Record<string, ConfigItem[]>, item) => {
     if (item && item.attribute) {
@@ -192,11 +204,6 @@ export const ProductDetailsPage: React.FC = () => {
             >
               Refuser la soumission
             </button>
-            {(details.refuse_attempt || 0) > 0 && (
-              <div className="p-3 bg-amber-50 border rounded-lg text-xs text-amber-800">
-                <strong>Historique :</strong> Déjà refusé {details.refuse_attempt} fois précédemment.
-              </div>
-            )}
           </div>
         );
       case 'Validé':
@@ -249,6 +256,7 @@ export const ProductDetailsPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Colonne Principale */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+          
           {/* Entête Produit */}
           <div className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-slate-100">
             <div>
@@ -280,7 +288,7 @@ export const ProductDetailsPage: React.FC = () => {
               <strong className="font-mono text-xs">{details.barcode || '—'}</strong>
             </div>
             <div>
-              <span className="block text-xs text-slate-400 font-medium">Stock disponible</span>
+              <span className="block text-xs text-slate-400 font-medium">Stock Global</span>
               <strong className="text-slate-700">{details.stock ?? 0} unités</strong>
             </div>
             <div>
@@ -288,48 +296,122 @@ export const ProductDetailsPage: React.FC = () => {
               <strong className="text-slate-700">{formatDate(details.created_at)}</strong>
             </div>
             <div>
-              <span className="block text-xs text-slate-400 font-medium">Tentatives de refus</span>
-              <strong className="text-amber-700">{details.refuse_attempt || 0} / 4</strong>
+              <span className="block text-xs text-slate-400 font-medium">Prix de base</span>
+              <strong className="text-slate-900">{details.base_price ?? "—"} DH</strong>
             </div>
           </div>
 
-          {/* 🎯 Section Médias (Photos / Vidéos) — c'est ce qui manquait dans le rendu */}
+          {/* Section Galerie Médias */}
           <div>
             <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">
-              Médias ({imagesList.length + videosList.length})
+              Galerie Médias ({imagesList.length + videosList.length})
             </h4>
             {imagesList.length > 0 || videosList.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                 {imagesList.map((img: any, i: number) => {
-                  const url = getMediaUrl(img);
+                  const url = getMediaUrl(extractMediaField(img));
                   if (!url) return null;
                   return (
-                    <div
-                      key={`img-${i}`}
-                      className="aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-50"
-                    >
+                    <div key={`img-${i}`} className="aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
                       <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                     </div>
                   );
                 })}
                 {videosList.map((vid: any, i: number) => {
-                  const url = getMediaUrl(vid);
-                  if (!url) return null;
+                  const url = getMediaUrl(extractMediaField(vid));
                   return (
-                    <div
-                      key={`vid-${i}`}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-900"
-                    >
+                    <div key={`vid-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-900">
                       <video src={url} controls className="w-full h-full object-cover" />
-                      <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
-                        Vidéo
-                      </span>
+                      <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">Vidéo</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 italic">Aucun média fourni pour ce produit.</p>
+              <p className="text-xs text-slate-400 italic">Aucun média principal fourni pour ce produit.</p>
+            )}
+          </div>
+
+          {/* Section Vidéo Démo */}
+          <div className="mt-6 space-y-2">
+            <h3 className="text-sm font-bold text-slate-800">Vidéo de démonstration</h3>
+            <VideoPlayer src={details?.video_path || details?.video || extractMediaField(videosList?.[0])} />
+          </div>
+
+          {/* TABLEAU DES COMBINAISONS / VARIANTES */}
+          <div>
+            <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3">
+              Combinaisons & Variantes SKU ({combinations.length})
+            </h4>
+            {combinations.length > 0 ? (
+              <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-3">Visuel</th>
+                      <th className="p-3">Options</th>
+                      <th className="p-3">SKU</th>
+                      <th className="p-3">Prix</th>
+                      <th className="p-3">Stock</th>
+                      <th className="p-3 text-center">Défaut</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {combinations.map((combo) => {
+                      const imgUrl = getMediaUrl(combo.image_path) || getMediaUrl(extractMediaField(combo));
+                      return (
+                        <tr key={combo.combination_id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3">
+                            <div className="size-10 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+                              {imgUrl ? (
+                                <img src={imgUrl} alt={combo.sku} className="size-full object-cover" />
+                              ) : (
+                                <span className="text-[10px] text-slate-400 font-medium">—</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 font-medium text-slate-800">
+                            {Array.isArray(combo.options) && combo.options.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {combo.options.map((opt: any, oIdx: number) => (
+                                  <span key={oIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">
+                                    {opt.config_name}: <span className="text-slate-900">{opt.option_name || opt.option_value}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">Variante standard</span>
+                            )}
+                          </td>
+                          <td className="p-3 font-mono text-slate-600">{combo.sku}</td>
+                          <td className="p-3 font-bold text-slate-800">{combo.price} DH</td>
+                          <td className="p-3 font-semibold text-slate-700">{combo.stock} u.</td>
+                          <td className="p-3 text-center">
+                            {combo.is_default ? (
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                Oui
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">Non</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => handleOpenComboDetails(combo.combination_id)}
+                              className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              Voir détails
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Aucune combinaison/variante enregistrée pour ce produit.</p>
             )}
           </div>
 
@@ -338,7 +420,7 @@ export const ProductDetailsPage: React.FC = () => {
             <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Catégories assignées</h4>
             {categoriesList.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {categoriesList.map((cat, i) => (
+                {categoriesList.map((cat: any, i: number) => (
                   <span
                     key={i}
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border ${
@@ -353,36 +435,6 @@ export const ProductDetailsPage: React.FC = () => {
               </div>
             ) : (
               <p className="text-xs text-slate-400 italic">Aucune catégorie rattachée à ce produit.</p>
-            )}
-          </div>
-
-          {/* Spécifications Techniques (Configs) */}
-          <div>
-            <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3">Spécifications techniques</h4>
-            {Object.keys(groupedConfigs).length > 0 ? (
-              <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border">
-                {Object.entries(groupedConfigs).map(([attr, options]) => (
-                  <div key={attr} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-slate-200/60 pb-2 last:border-none last:pb-0">
-                    <span className="w-36 text-xs font-bold text-slate-600">{attr} :</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {options.map((opt, i) => (
-                        <span
-                          key={i}
-                          className={`px-2.5 py-1 rounded-md text-xs border ${
-                            opt.is_default
-                              ? 'bg-slate-800 text-white font-bold border-slate-800'
-                              : 'bg-white text-slate-600 border-slate-200'
-                          }`}
-                        >
-                          {opt.option} {opt.is_default && '📌 (Par défaut)'}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">Aucune spécification technique configurée pour le moment.</p>
             )}
           </div>
 
@@ -420,7 +472,7 @@ export const ProductDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Panneau Latéral de Décision */}
+        {/* Panneau Latéral de Décision Modérateur */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 lg:sticky lg:top-4">
           <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider border-b pb-2">
             Panneau d'action modérateur
@@ -429,6 +481,116 @@ export const ProductDetailsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* BOÎTE MODALE DE DÉTAILS COMBINAISON (GET /api/products/combinations/{combination}) */}
+      {isComboModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="text-lg font-bold text-slate-800">
+                Détails de la combinaison #{selectedCombo?.combination_id || ''}
+              </h3>
+              <button
+                onClick={() => setIsComboModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingComboDetail ? (
+              <div className="py-12 text-center text-slate-500 font-semibold animate-pulse">
+                Chargement des détails de la variante...
+              </div>
+            ) : selectedCombo ? (
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border">
+                  <div className="size-16 rounded-lg border bg-white overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {getMediaUrl(selectedCombo.image_path) ? (
+                      <img
+                        src={getMediaUrl(selectedCombo.image_path)!}
+                        alt={selectedCombo.sku}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400">Sans image</span>
+                    )}
+                  </div>
+                  <div>
+                    <h5 className="font-mono font-bold text-slate-800">{selectedCombo.sku}</h5>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedCombo.is_active ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {selectedCombo.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      {selectedCombo.is_default && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                          Variante par défaut
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+                  <div>
+                    <span className="text-slate-400 block">Prix de vente</span>
+                    <strong className="text-slate-800 text-sm">{selectedCombo.price} DH</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Prix barré (compare_at)</span>
+                    <strong className="text-slate-500 line-through">
+                      {selectedCombo.compare_at_price ? `${selectedCombo.compare_at_price} DH` : '—'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Stock disponible</span>
+                    <strong className="text-slate-800">{selectedCombo.stock} unités</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">ID Produit parent</span>
+                    <strong className="font-mono text-slate-800">#{selectedCombo.product_id}</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Options associées</h4>
+                  {Array.isArray(selectedCombo.options) && selectedCombo.options.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {selectedCombo.options.map((opt: any, i: number) => (
+                        <div key={i} className="flex justify-between items-center bg-slate-100 p-2 rounded text-xs">
+                          <span className="font-semibold text-slate-600">{opt.config_name}</span>
+                          <span className="font-bold text-slate-800">{opt.option_name || opt.option_value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">Aucune option configurée.</p>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-400 border-t pt-2 flex justify-between">
+                  <span>Créé le : {formatDate(selectedCombo.created_at)}</span>
+                  <span>Modifié le : {formatDate(selectedCombo.updated_at)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="py-6 text-center text-red-600">
+                Impossible de charger les détails de cette combinaison.
+              </div>
+            )}
+
+            <div className="pt-2">
+              <button
+                onClick={() => setIsComboModalOpen(false)}
+                className="w-full py-2 bg-slate-800 text-white font-semibold rounded-lg text-xs hover:bg-slate-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'action modérateur (Valider / Refuser / Bloquer) */}
       <ActionModal
         isOpen={isModalOpen}
         type={modalType}

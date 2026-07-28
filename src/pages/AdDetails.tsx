@@ -22,7 +22,7 @@ import { getDefaultAds } from "@/data";
 import { AvisSection } from "@/features/avis";
 import { useAds } from "@/features/ads/hooks/useAds";
 import { FavoriteButton } from "@/features/favorites";
-import { resolveImageUrl } from "@/utils/image";
+import { getMediaUrl } from "@/utils/mediaUtils";
 import type { AnnonceDto } from "@/types";
 import type { Ad as LocalAd } from "@/types/ad.types";
 
@@ -109,7 +109,7 @@ const normalizeApiAd = (ad: AnnonceDto, index: number): DetailAd => ({
   title: ad.titre,
   description: ad.description,
   price: ad.prix,
-  images: (ad.photosUrls.length > 0 ? ad.photosUrls : ["/placeholder-ad.png"]).map(resolveImageUrl),
+  images: (ad.photosUrls.length > 0 ? ad.photosUrls : ["/placeholder-ad.png"]).map(getMediaUrl),
   city: ad.ville || CITIES[index % CITIES.length],
   date: formatDate(ad.datepublication),
   seller: buildSeller(ad.vendeur, SELLERS[index % SELLERS.length]),

@@ -1,19 +1,14 @@
-// src/api/moderationApi.ts
-
 import { apiClient } from "./client";
-import {
+import type {
   ApiResponse,
   ProductListItem,
-  ProductDetails,
   RefuseResponse,
 } from "../types/moderation";
+import type { VendorCombination, VendorCombinationDetail, VendorProductDetailResponse } from "@/types/prodcut";
 
 export const moderationApi = {
-  /**
-   * Liste des produits à modérer
-   */
   getProducts: async (
-    params: Record<string, any>
+    params: Record<string, unknown>
   ): Promise<ApiResponse<ProductListItem[]>> => {
     const cleanedParams = Object.fromEntries(
       Object.entries(params).filter(
@@ -32,69 +27,61 @@ export const moderationApi = {
     return data;
   },
 
-  /**
-   * Détails d'un produit
-   */
- /**
-   * Détails d'un produit (Route Admin)
-   */
   getProductDetails: async (
-    id: number | string
-  ): Promise<ApiResponse<any>> => {
-    // Utilisation de la route d'administration au lieu de la route publique
-    const { data } = await apiClient.get(`/api/products/${id}`);
-
+    id: number
+  ): Promise<VendorProductDetailResponse> => {
+    const { data } = await apiClient.get<VendorProductDetailResponse>(`/api/products/${id}`);
     return data;
   },
 
-  /**
-   * Validation d'un produit
-   */
   validateProduct: async (
     id: number,
     notes: string | null
   ): Promise<ApiResponse<null>> => {
     const { data } = await apiClient.patch(
       `/api/products/${id}/validate`,
-      {
-        ValidationNotes: notes,
-      }
+      { ValidationNotes: notes }
     );
-
     return data;
   },
 
-  /**
-   * Refus d'un produit
-   */
   refuseProduct: async (
     id: number,
     notes: string
   ): Promise<RefuseResponse> => {
     const { data } = await apiClient.patch(
       `/api/products/${id}/refuse`,
-      {
-        RefuseNotes: notes,
-      }
+      { RefuseNotes: notes }
     );
-
     return data;
   },
 
-  /**
-   * Blocage d'un produit
-   */
   blockProduct: async (
     id: number,
     notes: string
   ): Promise<ApiResponse<null>> => {
     const { data } = await apiClient.patch(
       `/api/products/${id}/block`,
-      {
-        BlockedNotes: notes,
-      }
+      { BlockedNotes: notes }
     );
+    return data;
+  },
 
+  getProductCombinations: async (
+    productId: number
+  ): Promise<{ data: VendorCombination[] }> => {
+    const { data } = await apiClient.get<{ data: VendorCombination[] }>(
+      `/api/products/${productId}/combinations`
+    );
+    return data;
+  },
+
+  getCombinationDetails: async (
+    combinationId: number
+  ): Promise<{ data: VendorCombinationDetail }> => {
+    const { data } = await apiClient.get<{ data: VendorCombinationDetail }>(
+      `/api/products/combinations/${combinationId}`
+    );
     return data;
   },
 };

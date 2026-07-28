@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { ChevronRight, ArrowLeft, Check, X } from "lucide-react";
+import { ChevronRight, ArrowLeft, Check, X, RefreshCw } from "lucide-react";
 import { useNavbarCategories } from "@/hooks/useCategories";
-import type { FormState } from "@/types/types";
-import { getCatId, getCatName } from "@/types/types";
+import type { FormState } from "@/features/nouvelle-annonce/types";
+import { getCatId, getCatName } from "@/features/nouvelle-annonce/types";
 import { CategoryChip, SectionTitle } from "./shared";
 
-export function StepCategories({ form, setField }: { form: FormState; setField: any }) {
-  const { data: categories = [], isLoading } = useNavbarCategories();
+interface StepCategoriesProps {
+  form: FormState;
+  setField: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
+}
 
-  // État pour la catégorie parent active/cliquée
+export function StepCategories({ form, setField }: StepCategoriesProps) {
+  const { data: categories = [], isLoading, refetch, isRefetching } = useNavbarCategories();
   const [selectedParentId, setSelectedParentId] = useState<number | null>(null);
 
   const toggle = (id: number) => {
@@ -16,9 +19,6 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
     setField("categories", exists ? form.categories.filter((c) => c !== id) : [...form.categories, id]);
   };
 
-  if (isLoading) return <div className="p-4 animate-pulse bg-slate-100 rounded-xl h-24" />;
-
-  // Recherche de la catégorie parent sélectionnée
   const activeParent = categories.find((cat) => getCatId(cat) === selectedParentId);
 
   return (
@@ -28,10 +28,31 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
         subtitle="Cliquez sur une catégorie principale pour explorer et choisir ses sous-catégories."
       />
 
-      {/* ============================================================ */}
-      {/* VUE 1 : LISTE DES CATÉGORIES PRINCIPALES                      */}
-      {/* ============================================================ */}
-      {!selectedParentId ? (
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-xl border border-slate-200 bg-white animate-pulse">
+              <div className="h-4 bg-slate-200 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-slate-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="text-center py-10 space-y-4">
+          <p className="text-sm text-slate-400 italic">
+            Aucune catégorie disponible pour le moment.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#375260] text-white text-xs font-semibold hover:bg-[#2c424e] disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={`size-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+            {isRefetching ? "Chargement..." : "Réessayer"}
+          </button>
+        </div>
+      ) : !selectedParentId ? (
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {categories.map((cat) => {
             const catId = getCatId(cat);
@@ -69,11 +90,7 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
           })}
         </div>
       ) : (
-        /* ============================================================ */
-        /* VUE 2 : SOUS-CATÉGORIES D'UNE CATÉGRIE SÉLECTIONNÉE           */
-        /* ============================================================ */
         <div className="space-y-5 bg-slate-50/70 p-5 rounded-xl border border-slate-200">
-          {/* En-tête avec bouton retour */}
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <button
               type="button"
@@ -89,7 +106,6 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
             </span>
           </div>
 
-          {/* Option pour cocher la catégorie principale elle-même */}
           {activeParent && (
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase block mb-2">
@@ -103,7 +119,6 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
             </div>
           )}
 
-          {/* Liste des sous-catégories */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase block mb-2">
               Sous-catégories disponibles
@@ -131,9 +146,6 @@ export function StepCategories({ form, setField }: { form: FormState; setField: 
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* RÉSUMÉ DES CATÉGORIES SÉLECTIONNÉES                          */}
-      {/* ============================================================ */}
       {form.categories.length > 0 && (
         <div className="pt-4 border-t border-slate-100">
           <p className="text-xs font-semibold text-slate-500 mb-2">
