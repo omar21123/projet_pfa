@@ -10,6 +10,7 @@ use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
+use App\DTOs\Product\ProductCombinationDto;
 
 interface ProductServiceInterface
 {
@@ -20,4 +21,9 @@ interface ProductServiceInterface
     public function validateProduct(ValidateProductDto $dto): void;
     public function blockProduct(BlockProductDto $dto): void;
     public function refuseProduct(RefuseProductDto $dto): RefuseProductResultDto;
+    // ... dans l'interface, à côté des autres méthodes
+/**
+ * @return ProductCombinationDto[]
+ */
+    public function getProductCombinationsForVendor(string $userPublicId, int $productId): array;
 }

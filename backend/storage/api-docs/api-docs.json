@@ -4232,6 +4232,166 @@
                 ]
             }
         },
+        "/api/products/{product}/combinations": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Lister les combinaisons (variantes) d'un produit",
+                "description": "Retourne toutes les combinaisons actives d'un produit avec leur SKU, prix, stock et options (ex: Couleur=Rouge, Taille=M). Réservé au vendeur propriétaire du produit — l'appartenance est vérifiée via le token JWT.",
+                "operationId": "99afc30c59585fea05836863d0649252",
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "description": "Identifiant du produit.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Combinaisons récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "combination_id": {
+                                                        "type": "integer",
+                                                        "example": 12
+                                                    },
+                                                    "sku": {
+                                                        "type": "string",
+                                                        "example": "TSH-501-RED-M",
+                                                        "nullable": true
+                                                    },
+                                                    "price": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 149
+                                                    },
+                                                    "stock": {
+                                                        "type": "integer",
+                                                        "example": 20
+                                                    },
+                                                    "image_path": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "is_default": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "options": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "config_name": {
+                                                                    "type": "string",
+                                                                    "example": "Color"
+                                                                },
+                                                                "option_name": {
+                                                                    "type": "string",
+                                                                    "example": "Red"
+                                                                },
+                                                                "option_value": {
+                                                                    "type": "string",
+                                                                    "example": "Red"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'utilisateur n'est pas propriétaire de ce produit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de ce produit"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou profil vendeur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profil vendeur introuvable pour cet utilisateur"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [

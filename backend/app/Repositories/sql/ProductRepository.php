@@ -14,6 +14,7 @@ use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
+use App\DTOs\Product\ProductCombinationDto;
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -289,5 +290,15 @@ class ProductRepository implements ProductRepositoryInterface
             message: $result->message,
             autoBlocked: (bool) $result->autoBlocked,
         );
+    }
+
+    public function getProductCombinationsForVendor(string $userPublicId, int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCombinationsForVendor(?, ?)', [
+            $userPublicId,
+            $productId,
+        ]);
+
+        return ProductCombinationDto::fromRows($rows);
     }
 }

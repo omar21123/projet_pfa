@@ -6,6 +6,7 @@ use App\DTOs\Product\BlockProductDto;
 use App\DTOs\Product\CreateProductDto;
 use App\DTOs\Product\GetAllProductsAdminDto;
 use App\DTOs\Product\PaginatedProductAdminResponseDto;
+use App\DTOs\Product\ProductCombinationDto;
 use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
@@ -48,5 +49,13 @@ class ProductService implements ProductServiceInterface
     public function refuseProduct(RefuseProductDto $dto): RefuseProductResultDto
     {
         return $this->productRepository->refuse($dto);
+    }
+
+    /**
+     * @return ProductCombinationDto[]
+     */
+    public function getProductCombinationsForVendor(string $userPublicId, int $productId): array
+    {
+        return $this->productRepository->getProductCombinationsForVendor($userPublicId, $productId);
     }
 }

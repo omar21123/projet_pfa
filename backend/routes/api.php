@@ -154,7 +154,7 @@ Route::prefix('products')->group(function () {
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
-
+        Route::get('/{product}/combinations', [ProductController::class, 'getCombinations']);
     });
 
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {

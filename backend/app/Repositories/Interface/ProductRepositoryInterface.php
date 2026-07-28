@@ -20,4 +20,5 @@ interface ProductRepositoryInterface
     public function validate(ValidateProductDto $dto): void;
     public function block(BlockProductDto $dto): void;
     public function refuse(RefuseProductDto $dto): RefuseProductResultDto;
+    public function getProductCombinationsForVendor(string $userPublicId, int $productId): array;
 }

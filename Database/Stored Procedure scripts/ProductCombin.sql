@@ -90,3 +90,71 @@ BEGIN
 END $$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductCombinationsForVendor(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_ProductID INT
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_ProductExists INT;
+
+    -- Résolution de l'UserID interne à partir de l'ID public
+    SELECT UserID INTO v_UserID
+    FROM Users
+    WHERE UserPublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Utilisateur introuvable';
+    END IF;
+
+    -- Résolution du VendorProfileID
+    SELECT VendorProfileID INTO v_VendorProfileID
+    FROM VendorProfiles
+    WHERE UserID = v_UserID;
+
+    IF v_VendorProfileID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Profil vendeur introuvable pour cet utilisateur';
+    END IF;
+
+    -- Vérification de propriété du produit
+    SELECT COUNT(*) INTO v_ProductExists
+    FROM Products
+    WHERE ProductID = v_ProductID
+      AND VendorID = v_VendorProfileID;
+
+    IF v_ProductExists = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Accès refusé : vous n\'êtes pas propriétaire de ce produit';
+    END IF;
+
+    -- Retour des combinaisons
+    SELECT
+        c.CombinationID,
+        c.SKU,
+        COALESCE(c.Price, pd.BasePrice) AS Price,
+        COALESCE(c.Stock, pd.Stock) AS Stock,
+        c.ImagePath,
+        c.IsDefault,
+        pa.Name AS ConfigName,
+        o.OptionLabel AS OptionName,
+        o.OptionValue AS OptionValue
+    FROM ProductOptionsCombiniason c
+    INNER JOIN ProductOptionsCombiniasonDetails d ON c.CombinationID = d.CombinationID
+    INNER JOIN Products pd ON pd.ProductID = c.ProductID
+    INNER JOIN ProductsConfigAttribute pa ON pa.ProductsConfigAttributeID = d.ProductsConfigAttributeID
+    INNER JOIN ConfigAttributeOptions o ON o.OptionID = d.OptionID
+    WHERE c.IsActive = 1
+      AND pa.IsActive = 1
+      AND o.IsActive = 1
+      AND c.ProductID = v_ProductID;
+
+END$$
+
+DELIMITER ;
