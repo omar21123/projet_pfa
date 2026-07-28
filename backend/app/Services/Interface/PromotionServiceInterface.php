@@ -7,6 +7,7 @@ use App\DTOs\Promotion\LookupItemDto;
 use App\DTOs\Promotion\CreatePromotionForProductDto;
 use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
+use App\DTOs\Promotion\UpdatePromotionDto;
 
 interface PromotionServiceInterface
 {
@@ -21,4 +22,6 @@ interface PromotionServiceInterface
     public function createForProduct(CreatePromotionForProductDto $dto): PromotionDto;
     // App\Services\Interface\PromotionRepositoryInterface (or wherever it lives)
     public function createForCategory(CreatePromotionForCategoryDto $dto): PromotionResultDto;
+    public function update(UpdatePromotionDto $dto): void;
+
 }

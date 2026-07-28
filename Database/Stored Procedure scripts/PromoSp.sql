@@ -299,3 +299,156 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+CREATE PROCEDURE SP_UpdatePromotion(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_PromotionID INT UNSIGNED,
+    IN v_Name VARCHAR(150),
+    IN v_Description VARCHAR(500),
+    IN v_PromoCode VARCHAR(50),
+    IN v_DiscountTypeCode VARCHAR(30),
+    IN v_DiscountValue DECIMAL(10,2),
+    IN v_MaxDiscountAmount DECIMAL(10,2),
+    IN v_MinOrderAmount DECIMAL(10,2),
+    IN v_UsageLimitTotal INT UNSIGNED,
+    IN v_UsageLimitPerUser INT UNSIGNED,
+    IN v_StartDate DATETIME,
+    IN v_EndDate DATETIME,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_UserRoleCode VARCHAR(30);
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_PromoVendorID INT;
+    DECLARE v_ScopeCode VARCHAR(30);
+    DECLARE v_DiscountTypeID INT UNSIGNED;
+    DECLARE v_DuplicateCode INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_UpdatePromotion',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'PromotionID', v_PromotionID, 'PromoCode', v_PromoCode)
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la mise à jour de la promotion.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Résolution utilisateur + rôle (via UserRoles -> Roles)
+    SELECT u.UserID, r.Code
+    INTO v_UserID, v_UserRoleCode
+    FROM Users u
+    JOIN UserRoles ur ON ur.UserID = u.UserID
+    JOIN Roles r ON r.RoleID = ur.RoleID
+    WHERE u.PublicID = v_UserPublicID
+    LIMIT 1;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Résolution de la promotion + son scope
+        SELECT p.VendorID, st.Code
+        INTO v_PromoVendorID, v_ScopeCode
+        FROM Promotions p
+        JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+        WHERE p.PromotionID = v_PromotionID AND p.DeletedAt IS NULL;
+
+        IF v_ScopeCode IS NULL THEN
+            SET v_Message = 'Promotion introuvable';
+        ELSEIF v_ScopeCode = 'PRODUCT' THEN
+            IF v_UserRoleCode <> 'VENDOR' THEN
+                SET v_Message = 'Accès refusé : réservé au vendeur propriétaire';
+            ELSE
+                SELECT VendorProfileID INTO v_VendorProfileID
+                FROM VendorProfiles WHERE UserID = v_UserID;
+
+                IF v_VendorProfileID IS NULL OR v_VendorProfileID <> v_PromoVendorID THEN
+                    SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de cette promotion';
+                END IF;
+            END IF;
+        ELSEIF v_ScopeCode = 'CATEGORY' THEN
+            IF v_UserRoleCode <> 'ADMIN' THEN
+                SET v_Message = 'Accès refusé : réservé aux administrateurs';
+            END IF;
+        ELSE
+            SET v_Message = 'Portée de promotion non gérée';
+        END IF;
+
+        IF v_Message = '' THEN
+            -- Validations métier (mêmes règles qu'à la création)
+            SELECT DiscountTypeID INTO v_DiscountTypeID
+            FROM PromotionDiscountTypes
+            WHERE Code = v_DiscountTypeCode AND IsActive = 1;
+
+            IF v_DiscountTypeID IS NULL THEN
+                SET v_Message = 'Type de réduction invalide';
+            ELSEIF v_DiscountValue IS NULL OR v_DiscountValue <= 0 THEN
+                SET v_Message = 'La valeur de la réduction doit être supérieure à 0';
+            ELSEIF v_DiscountTypeCode = 'PERCENTAGE' AND v_DiscountValue > 100 THEN
+                SET v_Message = 'Le pourcentage de réduction ne peut pas dépasser 100';
+            ELSEIF v_MinOrderAmount IS NOT NULL AND v_MinOrderAmount < 0 THEN
+                SET v_Message = 'Le montant minimum de commande doit être supérieur ou égal à 0';
+            ELSEIF v_StartDate IS NULL OR v_EndDate IS NULL THEN
+                SET v_Message = 'Les dates de début et de fin sont obligatoires';
+            ELSEIF v_EndDate <= v_StartDate THEN
+                SET v_Message = 'La date de fin doit être postérieure à la date de début';
+            ELSE
+                IF v_PromoCode IS NOT NULL THEN
+                    SELECT COUNT(*) INTO v_DuplicateCode
+                    FROM Promotions
+                    WHERE PromoCode = v_PromoCode
+                      AND DeletedAt IS NULL
+                      AND PromotionID <> v_PromotionID;
+                ELSE
+                    SET v_DuplicateCode = 0;
+                END IF;
+
+                IF v_DuplicateCode > 0 THEN
+                    SET v_Message = 'Ce code promo est déjà utilisé';
+                ELSE
+                    START TRANSACTION;
+
+                    UPDATE Promotions
+                    SET Name              = v_Name,
+                        Description       = v_Description,
+                        PromoCode         = v_PromoCode,
+                        DiscountTypeID    = v_DiscountTypeID,
+                        DiscountValue     = v_DiscountValue,
+                        MaxDiscountAmount = v_MaxDiscountAmount,
+                        MinOrderAmount    = v_MinOrderAmount,
+                        UsageLimitTotal   = v_UsageLimitTotal,
+                        UsageLimitPerUser = IFNULL(v_UsageLimitPerUser, 1),
+                        StartDate         = v_StartDate,
+                        EndDate           = v_EndDate
+                    WHERE PromotionID = v_PromotionID;
+
+                    COMMIT;
+
+                    SET v_Success = TRUE;
+                    SET v_Message = 'Promotion mise à jour avec succès';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

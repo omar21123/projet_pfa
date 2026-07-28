@@ -5794,6 +5794,115 @@
                 ]
             }
         },
+        "/api/promotions/{promotion}": {
+            "put": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Mettre à jour une promotion",
+                "description": "Met à jour une promotion existante. Le vendeur propriétaire peut modifier ses promotions produit ; l'administrateur peut modifier les promotions catégorie.",
+                "operationId": "dc90c74a7201c4d8e9194cb441661f14",
+                "parameters": [
+                    {
+                        "name": "promotion",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "Name",
+                                    "DiscountTypeCode",
+                                    "DiscountValue",
+                                    "StartDate",
+                                    "EndDate"
+                                ],
+                                "properties": {
+                                    "Name": {
+                                        "type": "string",
+                                        "maxLength": 150
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 500
+                                    },
+                                    "PromoCode": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 50
+                                    },
+                                    "DiscountTypeCode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "PERCENTAGE",
+                                            "FIXED_AMOUNT"
+                                        ]
+                                    },
+                                    "DiscountValue": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "MaxDiscountAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "MinOrderAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "UsageLimitTotal": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "UsageLimitPerUser": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "StartDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "EndDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Promotion mise à jour avec succès"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    },
+                    "404": {
+                        "description": "Promotion introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [

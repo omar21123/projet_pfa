@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\DTOs\Promotion\CreatePromotionForProductDto;
 use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
+use App\DTOs\Promotion\UpdatePromotionDto;
 
 class PromotionRepository implements PromotionRepositoryInterface
 {
@@ -109,4 +110,31 @@ class PromotionRepository implements PromotionRepositoryInterface
             'Message'     => $result->Message,
         ]);
     }
+    public function update(UpdatePromotionDto $dto): void
+{
+    DB::statement('CALL SP_UpdatePromotion(?,?,?,?,?,?,?,?,?,?,?,?,?,@Success,@Message)', [
+        $dto->userPublicId,
+        $dto->promotionId,
+        $dto->name,
+        $dto->description,
+        $dto->promoCode,
+        $dto->discountTypeCode,
+        $dto->discountValue,
+        $dto->maxDiscountAmount,
+        $dto->minOrderAmount,
+        $dto->usageLimitTotal,
+        $dto->usageLimitPerUser,
+        $dto->startDate,
+        $dto->endDate,
+    ]);
+
+    $result = DB::selectOne('SELECT @Success AS Success, @Message AS Message');
+
+    if (!$result->Success) {
+        $status = str_contains($result->Message, 'introuvable') ? 404
+                : (str_contains($result->Message, 'Accès refusé') ? 403 : 422);
+
+        throw new \App\Exceptions\BusinessValidationException($result->Message, $status);
+    }
+}
 }

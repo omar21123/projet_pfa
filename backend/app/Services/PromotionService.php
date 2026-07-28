@@ -9,6 +9,7 @@ use App\Services\Interface\PromotionServiceInterface;
 use App\DTOs\Promotion\CreatePromotionForProductDto;
 use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
+use App\DTOs\Promotion\UpdatePromotionDto;
 
 class PromotionService implements PromotionServiceInterface
 {
@@ -37,5 +38,9 @@ class PromotionService implements PromotionServiceInterface
     public function createForCategory(CreatePromotionForCategoryDto $dto): PromotionResultDto
     {
         return $this->promotionRepository->createForCategory($dto);
+    }
+    public function update(UpdatePromotionDto $dto): void
+    {
+        $this->promotionRepository->update($dto);
     }
 }

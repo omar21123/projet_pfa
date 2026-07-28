@@ -166,6 +166,9 @@ Route::prefix('products')->group(function () {
 
 Route::prefix('promotions')->group(function () {
     Route::get('/lookups', [PromotionController::class, 'lookups']); 
+    Route::middleware(['jwt.custom'])->group(function () {
+         Route::put('/{promotion}', [PromotionController::class, 'update']);
+    });
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
        Route::post('/product', [PromotionController::class, 'createForProduct']);
     });

@@ -9,8 +9,10 @@ use App\Services\Interface\VendorServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 use App\DTOs\Promotion\CreatePromotionForProductDto;
+use App\DTOs\Promotion\UpdatePromotionDto;
 use App\Http\Requests\Promotion\CreatePromotionForCategoryRequest;
 use App\Http\Requests\Promotion\CreatePromotionForProductRequest;
+use App\Http\Requests\Promotion\UpdatePromotionRequest;
 
 #[OA\Tag(name: "Promotions", description: "Gestion des promotions")]
 class PromotionController extends Controller
@@ -175,73 +177,143 @@ class PromotionController extends Controller
         ], 201);
     }
     #[OA\Post(
-    path: "/api/promotions/category",
-    tags: ["Promotions"],
-    summary: "Créer une promotion sur une catégorie (Admin)",
-    description: "Crée une promotion ciblant toute une catégorie de produits. Réservé aux administrateurs. La promotion est directement validée.",
-    security: [["bearerAuth" => []]]
-)]
-#[OA\RequestBody(
-    required: true,
-    content: new OA\JsonContent(
-        required: ["CategoryID", "Name", "DiscountTypeCode", "DiscountValue", "StartDate", "EndDate"],
-        properties: [
-            new OA\Property(property: "CategoryID", type: "integer", example: 12),
-            new OA\Property(property: "Name", type: "string", maxLength: 150, example: "Promo rentrée -15% Électronique"),
-            new OA\Property(property: "Description", type: "string", nullable: true, maxLength: 500),
-            new OA\Property(property: "PromoCode", type: "string", nullable: true, maxLength: 50, example: "RENTREE15"),
-            new OA\Property(property: "DiscountTypeCode", type: "string", enum: ["PERCENTAGE", "FIXED_AMOUNT"], example: "PERCENTAGE"),
-            new OA\Property(property: "DiscountValue", type: "number", format: "float", example: 15.00),
-            new OA\Property(property: "MaxDiscountAmount", type: "number", format: "float", nullable: true),
-            new OA\Property(property: "MinOrderAmount", type: "number", format: "float", nullable: true),
-            new OA\Property(property: "UsageLimitTotal", type: "integer", nullable: true),
-            new OA\Property(property: "UsageLimitPerUser", type: "integer", nullable: true),
-            new OA\Property(property: "StartDate", type: "string", format: "date-time"),
-            new OA\Property(property: "EndDate", type: "string", format: "date-time"),
-        ]
-    )
-)]
-#[OA\Response(response: 201, description: "Promotion créée avec succès")]
-#[OA\Response(response: 404, description: "Utilisateur ou catégorie introuvable")]
-#[OA\Response(response: 422, description: "Règle métier violée")]
-public function createForCategory(CreatePromotionForCategoryRequest $request): JsonResponse
-{
-    $publicId = request()->attributes->get('user_id');
+        path: "/api/promotions/category",
+        tags: ["Promotions"],
+        summary: "Créer une promotion sur une catégorie (Admin)",
+        description: "Crée une promotion ciblant toute une catégorie de produits. Réservé aux administrateurs. La promotion est directement validée.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["CategoryID", "Name", "DiscountTypeCode", "DiscountValue", "StartDate", "EndDate"],
+            properties: [
+                new OA\Property(property: "CategoryID", type: "integer", example: 12),
+                new OA\Property(property: "Name", type: "string", maxLength: 150, example: "Promo rentrée -15% Électronique"),
+                new OA\Property(property: "Description", type: "string", nullable: true, maxLength: 500),
+                new OA\Property(property: "PromoCode", type: "string", nullable: true, maxLength: 50, example: "RENTREE15"),
+                new OA\Property(property: "DiscountTypeCode", type: "string", enum: ["PERCENTAGE", "FIXED_AMOUNT"], example: "PERCENTAGE"),
+                new OA\Property(property: "DiscountValue", type: "number", format: "float", example: 15.00),
+                new OA\Property(property: "MaxDiscountAmount", type: "number", format: "float", nullable: true),
+                new OA\Property(property: "MinOrderAmount", type: "number", format: "float", nullable: true),
+                new OA\Property(property: "UsageLimitTotal", type: "integer", nullable: true),
+                new OA\Property(property: "UsageLimitPerUser", type: "integer", nullable: true),
+                new OA\Property(property: "StartDate", type: "string", format: "date-time"),
+                new OA\Property(property: "EndDate", type: "string", format: "date-time"),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: "Promotion créée avec succès")]
+    #[OA\Response(response: 404, description: "Utilisateur ou catégorie introuvable")]
+    #[OA\Response(response: 422, description: "Règle métier violée")]
+    public function createForCategory(CreatePromotionForCategoryRequest $request): JsonResponse
+    {
+        $publicId = request()->attributes->get('user_id');
 
-    if (!$publicId) {
-        return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+        if (!$publicId) {
+            return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+        }
+
+        $validated = $request->validated();
+
+        $dto = CreatePromotionForCategoryDto::fromArray([
+            'UserPublicID'      => $publicId,
+            'CategoryID'        => $validated['CategoryID'],
+            'Name'              => $validated['Name'],
+            'Description'       => $validated['Description'] ?? null,
+            'PromoCode'         => $validated['PromoCode'] ?? null,
+            'DiscountTypeCode'  => $validated['DiscountTypeCode'],
+            'DiscountValue'     => $validated['DiscountValue'],
+            'MaxDiscountAmount' => $validated['MaxDiscountAmount'] ?? null,
+            'MinOrderAmount'    => $validated['MinOrderAmount'] ?? null,
+            'UsageLimitTotal'   => $validated['UsageLimitTotal'] ?? null,
+            'UsageLimitPerUser' => $validated['UsageLimitPerUser'] ?? null,
+            'StartDate'         => $validated['StartDate'],
+            'EndDate'           => $validated['EndDate'],
+        ]);
+
+        try {
+            $result = $this->promotionService->createForCategory($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion créée avec succès',
+            'data' => $result->toArray(),
+        ], 201);
     }
+    #[OA\Put(
+        path: "/api/promotions/{promotion}",
+        tags: ["Promotions"],
+        summary: "Mettre à jour une promotion",
+        description: "Met à jour une promotion existante. Le vendeur propriétaire peut modifier ses promotions produit ; l'administrateur peut modifier les promotions catégorie.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "promotion", in: "path", required: true, schema: new OA\Schema(type: "integer"))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["Name", "DiscountTypeCode", "DiscountValue", "StartDate", "EndDate"],
+            properties: [
+                new OA\Property(property: "Name", type: "string", maxLength: 150),
+                new OA\Property(property: "Description", type: "string", nullable: true, maxLength: 500),
+                new OA\Property(property: "PromoCode", type: "string", nullable: true, maxLength: 50),
+                new OA\Property(property: "DiscountTypeCode", type: "string", enum: ["PERCENTAGE", "FIXED_AMOUNT"]),
+                new OA\Property(property: "DiscountValue", type: "number", format: "float"),
+                new OA\Property(property: "MaxDiscountAmount", type: "number", format: "float", nullable: true),
+                new OA\Property(property: "MinOrderAmount", type: "number", format: "float", nullable: true),
+                new OA\Property(property: "UsageLimitTotal", type: "integer", nullable: true),
+                new OA\Property(property: "UsageLimitPerUser", type: "integer", nullable: true),
+                new OA\Property(property: "StartDate", type: "string", format: "date-time"),
+                new OA\Property(property: "EndDate", type: "string", format: "date-time"),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: "Promotion mise à jour avec succès")]
+    #[OA\Response(response: 403, description: "Accès refusé")]
+    #[OA\Response(response: 404, description: "Promotion introuvable")]
+    #[OA\Response(response: 422, description: "Règle métier violée")]
+    public function update(UpdatePromotionRequest $request, int $promotion): JsonResponse
+    {
+        $publicId = request()->attributes->get('user_id');
 
-    $validated = $request->validated();
+        if (!$publicId) {
+            return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+        }
 
-    $dto = CreatePromotionForCategoryDto::fromArray([
-        'UserPublicID'      => $publicId,
-        'CategoryID'        => $validated['CategoryID'],
-        'Name'              => $validated['Name'],
-        'Description'       => $validated['Description'] ?? null,
-        'PromoCode'         => $validated['PromoCode'] ?? null,
-        'DiscountTypeCode'  => $validated['DiscountTypeCode'],
-        'DiscountValue'     => $validated['DiscountValue'],
-        'MaxDiscountAmount' => $validated['MaxDiscountAmount'] ?? null,
-        'MinOrderAmount'    => $validated['MinOrderAmount'] ?? null,
-        'UsageLimitTotal'   => $validated['UsageLimitTotal'] ?? null,
-        'UsageLimitPerUser' => $validated['UsageLimitPerUser'] ?? null,
-        'StartDate'         => $validated['StartDate'],
-        'EndDate'           => $validated['EndDate'],
-    ]);
+        $validated = $request->validated();
 
-    try {
-        $result = $this->promotionService->createForCategory($dto);
-    } catch (\App\Exceptions\BusinessValidationException $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
-    } catch (\Throwable $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        $dto = UpdatePromotionDto::fromArray([
+            'UserPublicID'      => $publicId,
+            'PromotionID'       => $promotion,
+            'Name'              => $validated['Name'],
+            'Description'       => $validated['Description'] ?? null,
+            'PromoCode'         => $validated['PromoCode'] ?? null,
+            'DiscountTypeCode'  => $validated['DiscountTypeCode'],
+            'DiscountValue'     => $validated['DiscountValue'],
+            'MaxDiscountAmount' => $validated['MaxDiscountAmount'] ?? null,
+            'MinOrderAmount'    => $validated['MinOrderAmount'] ?? null,
+            'UsageLimitTotal'   => $validated['UsageLimitTotal'] ?? null,
+            'UsageLimitPerUser' => $validated['UsageLimitPerUser'] ?? null,
+            'StartDate'         => $validated['StartDate'],
+            'EndDate'           => $validated['EndDate'],
+        ]);
+
+        try {
+            $this->promotionService->update($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion mise à jour avec succès',
+        ], 200);
     }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Promotion créée avec succès',
-        'data' => $result->toArray(),
-    ], 201);
-}
 }
