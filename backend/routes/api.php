@@ -99,7 +99,7 @@ Route::prefix('units')->group(function () {
     });
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -148,14 +148,17 @@ Route::prefix('config-attribute-options')->group(function () {
 Route::prefix('products')->group(function () {
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
-    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
         Route::get('/{product}/combinations', [ProductController::class, 'getCombinations']);
         Route::get('/combinations/{combination}', [ProductController::class, 'showCombination']);
         Route::put('/combinations/{combination}', [ProductController::class, 'updateCombination']);
     });
+    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+        Route::get('/vendor/me', [ProductController::class, 'getVendorProducts']);
+    });
 
-    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
         Route::get('/admin', [ProductController::class, 'index']);
         Route::get('/{product}', [ProductController::class, 'show']);
         Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);
@@ -165,12 +168,12 @@ Route::prefix('products')->group(function () {
 });
 
 Route::prefix('promotions')->group(function () {
-    Route::get('/lookups', [PromotionController::class, 'lookups']); 
+    Route::get('/lookups', [PromotionController::class, 'lookups']);
     Route::middleware(['jwt.custom'])->group(function () {
-         Route::put('/{promotion}', [PromotionController::class, 'update']);
+        Route::put('/{promotion}', [PromotionController::class, 'update']);
     });
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
-       Route::post('/product', [PromotionController::class, 'createForProduct']);
+        Route::post('/product', [PromotionController::class, 'createForProduct']);
     });
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/category', [PromotionController::class, 'createForCategory']);

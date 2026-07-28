@@ -4716,6 +4716,184 @@
                 ]
             }
         },
+        "/api/products/vendor/me": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Lister les produits du vendeur connecté",
+                "description": "Retourne la liste paginée de tous les produits créés par le vendeur authentifié via JWT. Filtrable par statut, recherche (nom/code-barres), actif et bloqué.",
+                "operationId": "397616968f648a442247dd263c5772ca",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "Earphones"
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "is_blocked",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des produits du vendeur récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "product_id": {
+                                                        "type": "integer",
+                                                        "example": 45
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "Wireless Bluetooth Headphones"
+                                                    },
+                                                    "barcode": {
+                                                        "type": "string",
+                                                        "example": "8806090123456"
+                                                    },
+                                                    "base_price": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 120
+                                                    },
+                                                    "stock": {
+                                                        "type": "integer",
+                                                        "example": 50
+                                                    },
+                                                    "status": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "status_label": {
+                                                        "type": "string",
+                                                        "example": "En attente"
+                                                    },
+                                                    "is_active": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "is_blocked": {
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    },
+                                                    "brand_name": {
+                                                        "type": "string",
+                                                        "example": "Sony",
+                                                        "nullable": true
+                                                    },
+                                                    "model_name": {
+                                                        "type": "string",
+                                                        "example": "WH-1000XM5",
+                                                        "nullable": true
+                                                    },
+                                                    "main_image": {
+                                                        "type": "string",
+                                                        "example": "/uploads/avatars/img.jpg",
+                                                        "nullable": true
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Profil vendeur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [

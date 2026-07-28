@@ -18,6 +18,10 @@ use App\DTOs\Product\ProductCombinationDto;
     use App\DTOs\Product\ProductCombinationDetailDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\Exceptions\NotFoundException; // adapte si tu as une exception dédiée 404
+use App\DTOs\Product\vendor\GetVendorProductsDto;
+use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
+use App\DTOs\Product\vendor\VendorProductItemDto;
+
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -362,5 +366,38 @@ public function updateCombination(UpdateProductCombinationDto $dto): ProductComb
     }
 
     return ProductCombinationDetailDto::fromRow($row);
+}
+
+
+public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto
+{
+    $rows = DB::select(
+        'CALL SP_GetProductsForVendor(?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
+        [
+            $dto->userPublicId,
+            $dto->status,
+            $dto->search,
+            $dto->isActive === null ? null : (int) $dto->isActive,
+            $dto->isBlocked === null ? null : (int) $dto->isBlocked,
+            $dto->pageNumber,
+            $dto->pageSize,
+        ]
+    );
+
+    $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+    if (!$result->success) {
+        $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+        throw new BusinessValidationException($result->message, $status);
+    }
+
+    $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
+
+    return new PaginatedVendorProductResponseDto(
+        items: $items,
+        total: (int) $result->totalCount,
+        page: $dto->pageNumber,
+        pageSize: $dto->pageSize,
+    );
 }
 }

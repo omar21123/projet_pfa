@@ -13,6 +13,9 @@ use App\DTOs\Product\ValidateProductDto;
 use App\DTOs\Product\ProductCombinationDto;
 use App\DTOs\Product\ProductCombinationDetailDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
+use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
+use App\DTOs\Product\vendor\GetVendorProductsDto;
+
 
 
 interface ProductServiceInterface
@@ -32,4 +35,5 @@ interface ProductServiceInterface
 
     public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto;
     public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto;
+    public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto;
 }

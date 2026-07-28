@@ -23,6 +23,10 @@ use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\Http\Requests\Product\UpdateProductCombinationRequest;
+use App\DTOs\Product\vendor\GetVendorProductsDto;
+use App\Http\Requests\Product\GetVendorProductsRequest;
+
+// ...
 
 
 #[OA\Tag(
@@ -1360,4 +1364,89 @@ class ProductController extends Controller
             'data' => $result->toArray(),
         ], 200);
     }
+
+
+#[OA\Get(
+    path: "/api/products/vendor/me",
+    tags: ["Products"],
+    summary: "Lister les produits du vendeur connecté",
+    description: "Retourne la liste paginée de tous les produits créés par le vendeur authentifié via JWT. Filtrable par statut, recherche (nom/code-barres), actif et bloqué.",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Parameter(name: "status", in: "query", required: false, schema: new OA\Schema(type: "integer"), example: 1)]
+#[OA\Parameter(name: "search", in: "query", required: false, schema: new OA\Schema(type: "string"), example: "Earphones")]
+#[OA\Parameter(name: "is_active", in: "query", required: false, schema: new OA\Schema(type: "boolean"))]
+#[OA\Parameter(name: "is_blocked", in: "query", required: false, schema: new OA\Schema(type: "boolean"))]
+#[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+#[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+#[OA\Response(
+    response: 200,
+    description: "Liste des produits du vendeur récupérée avec succès",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(
+                property: "data",
+                type: "array",
+                items: new OA\Items(
+                    properties: [
+                        new OA\Property(property: "product_id", type: "integer", example: 45),
+                        new OA\Property(property: "name", type: "string", example: "Wireless Bluetooth Headphones"),
+                        new OA\Property(property: "barcode", type: "string", example: "8806090123456"),
+                        new OA\Property(property: "base_price", type: "number", format: "float", example: 120.00),
+                        new OA\Property(property: "stock", type: "integer", example: 50),
+                        new OA\Property(property: "status", type: "integer", example: 1),
+                        new OA\Property(property: "status_label", type: "string", example: "En attente"),
+                        new OA\Property(property: "is_active", type: "boolean", example: true),
+                        new OA\Property(property: "is_blocked", type: "boolean", example: false),
+                        new OA\Property(property: "brand_name", type: "string", nullable: true, example: "Sony"),
+                        new OA\Property(property: "model_name", type: "string", nullable: true, example: "WH-1000XM5"),
+                        new OA\Property(property: "main_image", type: "string", nullable: true, example: "/uploads/avatars/img.jpg"),
+                        new OA\Property(property: "created_at", type: "string", format: "date-time"),
+                        new OA\Property(property: "updated_at", type: "string", format: "date-time"),
+                    ]
+                )
+            ),
+            new OA\Property(
+                property: "meta",
+                type: "object",
+                properties: [
+                    new OA\Property(property: "total", type: "integer", example: 12),
+                    new OA\Property(property: "page", type: "integer", example: 1),
+                    new OA\Property(property: "page_size", type: "integer", example: 20),
+                    new OA\Property(property: "last_page", type: "integer", example: 1),
+                ]
+            ),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 401,
+    description: "Non authentifié"
+)]
+#[OA\Response(
+    response: 404,
+    description: "Profil vendeur introuvable"
+)]
+public function getVendorProducts(GetVendorProductsRequest $request): JsonResponse
+{
+    $publicId = $request->attributes->get('user_id');
+
+    $dto = GetVendorProductsDto::fromRequest($request->validated(), $publicId);
+
+    try {
+        $result = $this->productService->getProductsForVendor($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], $e->getCode() ?: 422);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+
+    return response()->json($result->toArray(), 200);
+}
 }

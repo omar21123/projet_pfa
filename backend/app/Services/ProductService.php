@@ -15,13 +15,15 @@ use App\Services\Interface\ProductServiceInterface;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\DTOs\Product\ProductCombinationDetailDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
-
+use App\DTOs\Product\vendor\GetVendorProductsDto;
+use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 
 class ProductService implements ProductServiceInterface
 {
     public function __construct(
         protected ProductRepositoryInterface $productRepository
-    ) {}
+    ) {
+    }
 
     public function createProduct(CreateProductDto $dto): object
     {
@@ -70,5 +72,9 @@ class ProductService implements ProductServiceInterface
     public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
     {
         return $this->productRepository->updateCombination($dto);
+    }
+    public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto
+    {
+        return $this->productRepository->getProductsForVendor($dto);
     }
 }
