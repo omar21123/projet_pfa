@@ -15,6 +15,7 @@ use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\PromotionController;
 
 Route::prefix('auth')->group(function () {
 
@@ -161,4 +162,19 @@ Route::prefix('products')->group(function () {
         Route::patch('/{product}/block', [ProductController::class, 'blockProduct']);
         Route::patch('/{product}/refuse', [ProductController::class, 'refuseProduct']);
     });
+});
+
+Route::prefix('promotions')->group(function () {
+    Route::get('/lookups', [PromotionController::class, 'lookups']);
+
+    // Les routes suivantes seront ajoutées au fur et à mesure des parties suivantes :
+    // Route::post('/product', [PromotionController::class, 'createForProduct']);
+    // Route::post('/category', [PromotionController::class, 'createForCategory']);
+    // Route::put('/{promotion}', [PromotionController::class, 'update']);
+    // Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
+    // Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
+    // Route::get('/{promotion}', [PromotionController::class, 'show']);
+    // Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
+    // Route::get('/category/{category}', [PromotionController::class, 'getByCategory']);
+    // Route::get('/', [PromotionController::class, 'index']);
 });

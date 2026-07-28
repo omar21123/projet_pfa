@@ -78,7 +78,13 @@ use App\Services\Interface\VendorServiceInterface;
 use App\Services\VendorService;
 use App\Repositories\Interface\UsergoogleRepositoryInterface;
 use App\Repositories\sql\UsergoogleRepository;
-
+// ==========================================================
+// 🎟️ AJOUT : Liaisons pour la gestion des Promotions
+// ==========================================================
+use App\Repositories\Interface\PromotionRepositoryInterface;
+use App\Repositories\sql\PromotionRepository;
+use App\Services\Interface\PromotionServiceInterface;
+use App\Services\PromotionService;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -244,7 +250,28 @@ class AppServiceProvider extends ServiceProvider
             UsergoogleRepositoryInterface::class,
             UsergoogleRepository::class
         );
+        $this->app->bind(
+            VendorServiceInterface::class,
+            VendorService::class
+        );
 
+        // ==========================================================
+        // 🎟️ AJOUT : Liaisons pour la gestion des Promotions
+        // ==========================================================
+        $this->app->bind(
+            PromotionRepositoryInterface::class,
+            PromotionRepository::class
+        );
+
+        $this->app->bind(
+            PromotionServiceInterface::class,
+            PromotionService::class
+        );
+
+        $this->app->bind(
+            UsergoogleRepositoryInterface::class,
+            UsergoogleRepository::class
+        );
     }
 
     /**

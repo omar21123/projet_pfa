@@ -5433,6 +5433,76 @@
                 }
             }
         },
+        "/api/promotions/lookups": {
+            "get": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Lister les valeurs de référence (types de réduction, portées, statuts)",
+                "description": "Retourne les listes de valeurs utilisées pour construire les formulaires de création/édition de promotions.",
+                "operationId": "fa2a676fb64218a8c25dd75bb74df170",
+                "responses": {
+                    "200": {
+                        "description": "Valeurs récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "discount_types": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "code": {
+                                                                "type": "string",
+                                                                "example": "PERCENTAGE"
+                                                            },
+                                                            "label": {
+                                                                "type": "string",
+                                                                "example": "Pourcentage"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "scope_types": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "statuses": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -6104,6 +6174,10 @@
         {
             "name": "ProductsConfigAttribute",
             "description": "Gestion des attributs de configuration produit"
+        },
+        {
+            "name": "Promotions",
+            "description": "Gestion des promotions"
         },
         {
             "name": "Tags",
