@@ -165,11 +165,14 @@ Route::prefix('products')->group(function () {
 });
 
 Route::prefix('promotions')->group(function () {
-    Route::get('/lookups', [PromotionController::class, 'lookups']);
-
+    Route::get('/lookups', [PromotionController::class, 'lookups']); 
+    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+       Route::post('/product', [PromotionController::class, 'createForProduct']);
+    });
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::post('/category', [PromotionController::class, 'createForCategory']);
+    });
     // Les routes suivantes seront ajoutées au fur et à mesure des parties suivantes :
-    // Route::post('/product', [PromotionController::class, 'createForProduct']);
-    // Route::post('/category', [PromotionController::class, 'createForCategory']);
     // Route::put('/{promotion}', [PromotionController::class, 'update']);
     // Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
     // Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);

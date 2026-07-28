@@ -2,7 +2,11 @@
 
 namespace App\Repositories\Interface;
 
+use App\DTOs\Promotion\CreatePromotionForCategoryDto;
 use App\DTOs\Promotion\LookupItemDto;
+use App\DTOs\Promotion\CreatePromotionForProductDto;
+use App\DTOs\Promotion\PromotionDto;
+use App\DTOs\Promotion\PromotionResultDto;
 
 interface PromotionRepositoryInterface
 {
@@ -14,4 +18,9 @@ interface PromotionRepositoryInterface
 
     /** @return LookupItemDto[] */
     public function getStatuses(): array;
+
+    public function createForProduct(CreatePromotionForProductDto $dto): PromotionDto;
+    public function createForCategory(CreatePromotionForCategoryDto $dto): PromotionResultDto;
+
+
 }

@@ -5503,6 +5503,297 @@
                 ]
             }
         },
+        "/api/promotions/product": {
+            "post": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Créer une promotion sur un produit",
+                "description": "Crée une promotion ciblant un produit spécifique. Le produit doit appartenir au vendeur authentifié (VendorID déduit du token JWT). La promotion démarre au statut 'En attente' et nécessite une validation admin avant application.",
+                "operationId": "be5d47ae5b6b1023aaf51860780b27c4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ProductID",
+                                    "Name",
+                                    "DiscountTypeCode",
+                                    "DiscountValue",
+                                    "StartDate",
+                                    "EndDate"
+                                ],
+                                "properties": {
+                                    "ProductID": {
+                                        "type": "integer",
+                                        "example": 452
+                                    },
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Soldes été -20%",
+                                        "maxLength": 150
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "example": "Réduction limitée sur les écouteurs sans fil.",
+                                        "nullable": true,
+                                        "maxLength": 500
+                                    },
+                                    "PromoCode": {
+                                        "type": "string",
+                                        "example": "ETE20",
+                                        "nullable": true,
+                                        "maxLength": 50
+                                    },
+                                    "DiscountTypeCode": {
+                                        "type": "string",
+                                        "example": "PERCENTAGE",
+                                        "enum": [
+                                            "PERCENTAGE",
+                                            "FIXED_AMOUNT"
+                                        ]
+                                    },
+                                    "DiscountValue": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 20
+                                    },
+                                    "MaxDiscountAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50,
+                                        "nullable": true
+                                    },
+                                    "MinOrderAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 100,
+                                        "nullable": true
+                                    },
+                                    "UsageLimitTotal": {
+                                        "type": "integer",
+                                        "example": 500,
+                                        "nullable": true
+                                    },
+                                    "UsageLimitPerUser": {
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "StartDate": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-08-01 00:00:00"
+                                    },
+                                    "EndDate": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-08-31 23:59:59"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Promotion créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Promotion créée avec succès"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'utilisateur n'est pas propriétaire de ce produit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de ce produit"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil vendeur ou produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (code promo dupliqué, montants/dates invalides)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce code promo est déjà utilisé"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/promotions/category": {
+            "post": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Créer une promotion sur une catégorie (Admin)",
+                "description": "Crée une promotion ciblant toute une catégorie de produits. Réservé aux administrateurs. La promotion est directement validée.",
+                "operationId": "0e312241efa1f5649c034ad437559bea",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "CategoryID",
+                                    "Name",
+                                    "DiscountTypeCode",
+                                    "DiscountValue",
+                                    "StartDate",
+                                    "EndDate"
+                                ],
+                                "properties": {
+                                    "CategoryID": {
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "Name": {
+                                        "type": "string",
+                                        "example": "Promo rentrée -15% Électronique",
+                                        "maxLength": 150
+                                    },
+                                    "Description": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 500
+                                    },
+                                    "PromoCode": {
+                                        "type": "string",
+                                        "example": "RENTREE15",
+                                        "nullable": true,
+                                        "maxLength": 50
+                                    },
+                                    "DiscountTypeCode": {
+                                        "type": "string",
+                                        "example": "PERCENTAGE",
+                                        "enum": [
+                                            "PERCENTAGE",
+                                            "FIXED_AMOUNT"
+                                        ]
+                                    },
+                                    "DiscountValue": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 15
+                                    },
+                                    "MaxDiscountAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "MinOrderAmount": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "UsageLimitTotal": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "UsageLimitPerUser": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "StartDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "EndDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Promotion créée avec succès"
+                    },
+                    "404": {
+                        "description": "Utilisateur ou catégorie introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [

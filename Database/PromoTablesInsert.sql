@@ -102,3 +102,7 @@ ALTER TABLE Promotions
 ADD COLUMN DeletedAt DATETIME NULL AFTER UpdatedAt;
 
 CREATE INDEX IX_Promotions_DeletedAt ON Promotions (DeletedAt);
+
+
+ALTER TABLE Promotions
+    MODIFY COLUMN VendorID INT NULL;

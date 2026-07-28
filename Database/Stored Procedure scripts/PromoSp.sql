@@ -23,3 +23,279 @@ BEGIN
     SELECT StatusID, Code, Label FROM PromotionStatuses WHERE IsActive = 1 ORDER BY StatusID;
 END$$
 DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_CreatePromotionForProduct(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_ProductID INT,
+    IN v_Name VARCHAR(150),
+    IN v_Description VARCHAR(500),
+    IN v_PromoCode VARCHAR(50),
+    IN v_DiscountTypeCode VARCHAR(30),
+    IN v_DiscountValue DECIMAL(10,2),
+    IN v_MaxDiscountAmount DECIMAL(10,2),
+    IN v_MinOrderAmount DECIMAL(10,2),
+    IN v_UsageLimitTotal INT UNSIGNED,
+    IN v_UsageLimitPerUser INT UNSIGNED,
+    IN v_StartDate DATETIME,
+    IN v_EndDate DATETIME,
+    OUT v_PromotionID INT UNSIGNED,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_OwnerVendorID INT;
+    DECLARE v_DiscountTypeID INT UNSIGNED;
+    DECLARE v_ScopeTypeID INT UNSIGNED;
+    DECLARE v_StatusID INT UNSIGNED;
+    DECLARE v_DuplicateCode INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_CreatePromotionForProduct',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'ProductID', v_ProductID, 'PromoCode', v_PromoCode)
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la création de la promotion.';
+        SET v_PromotionID = NULL;
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+    SET v_PromotionID = NULL;
+
+    -- Résolution utilisateur
+    SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Résolution profil vendeur
+        SELECT VendorProfileID INTO v_VendorProfileID
+        FROM VendorProfiles WHERE UserID = v_UserID;
+
+        IF v_VendorProfileID IS NULL THEN
+            SET v_Message = 'Profil vendeur introuvable pour cet utilisateur';
+        ELSE
+            -- Vérification de propriété du produit
+            SELECT VendorID INTO v_OwnerVendorID
+            FROM Products WHERE ProductID = v_ProductID;
+
+            IF v_OwnerVendorID IS NULL THEN
+                SET v_Message = 'Produit introuvable';
+            ELSEIF v_OwnerVendorID <> v_VendorProfileID THEN
+                SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de ce produit';
+            ELSE
+                -- Résolution du DiscountTypeID
+                SELECT DiscountTypeID INTO v_DiscountTypeID
+                FROM PromotionDiscountTypes
+                WHERE Code = v_DiscountTypeCode AND IsActive = 1;
+
+                IF v_DiscountTypeID IS NULL THEN
+                    SET v_Message = 'Type de réduction invalide';
+                ELSEIF v_DiscountValue IS NULL OR v_DiscountValue <= 0 THEN
+                    SET v_Message = 'La valeur de la réduction doit être supérieure à 0';
+                ELSEIF v_DiscountTypeCode = 'PERCENTAGE' AND v_DiscountValue > 100 THEN
+                    SET v_Message = 'Le pourcentage de réduction ne peut pas dépasser 100';
+                ELSEIF v_MinOrderAmount IS NOT NULL AND v_MinOrderAmount < 0 THEN
+                    SET v_Message = 'Le montant minimum de commande doit être supérieur ou égal à 0';
+                ELSEIF v_StartDate IS NULL OR v_EndDate IS NULL THEN
+                    SET v_Message = 'Les dates de début et de fin sont obligatoires';
+                ELSEIF v_EndDate <= v_StartDate THEN
+                    SET v_Message = 'La date de fin doit être postérieure à la date de début';
+                ELSE
+                    -- Unicité du PromoCode (si fourni)
+                    IF v_PromoCode IS NOT NULL THEN
+                        SELECT COUNT(*) INTO v_DuplicateCode
+                        FROM Promotions
+                        WHERE PromoCode = v_PromoCode AND DeletedAt IS NULL;
+                    ELSE
+                        SET v_DuplicateCode = 0;
+                    END IF;
+
+                    IF v_DuplicateCode > 0 THEN
+                        SET v_Message = 'Ce code promo est déjà utilisé';
+                    ELSE
+                        -- Résolution ScopeTypeID = PRODUCT, StatusID = PENDING
+                        SELECT ScopeTypeID INTO v_ScopeTypeID
+                        FROM PromotionScopeTypes WHERE Code = 'PRODUCT' AND IsActive = 1;
+
+                        SELECT StatusID INTO v_StatusID
+                        FROM PromotionStatuses WHERE Code = 'PENDING' AND IsActive = 1;
+
+                        START TRANSACTION;
+
+                        INSERT INTO Promotions (
+                            VendorID, Name, Description, PromoCode,
+                            DiscountTypeID, DiscountValue, MaxDiscountAmount, MinOrderAmount,
+                            ScopeTypeID, TargetProductID, TargetCategoryID,
+                            UsageLimitTotal, UsageLimitPerUser, UsageCount,
+                            StartDate, EndDate, StatusID, IsActive
+                        ) VALUES (
+                            v_VendorProfileID, v_Name, v_Description, v_PromoCode,
+                            v_DiscountTypeID, v_DiscountValue, v_MaxDiscountAmount, v_MinOrderAmount,
+                            v_ScopeTypeID, v_ProductID, NULL,
+                            v_UsageLimitTotal, IFNULL(v_UsageLimitPerUser, 1), 0,
+                            v_StartDate, v_EndDate, v_StatusID, b'1'
+                        );
+
+                        SET v_PromotionID = LAST_INSERT_ID();
+
+                        COMMIT;
+
+                        SET v_Success = TRUE;
+                        SET v_Message = 'Promotion créée avec succès';
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_CreatePromotionForCategory(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_CategoryID INT,
+    IN v_Name VARCHAR(150),
+    IN v_Description VARCHAR(500),
+    IN v_PromoCode VARCHAR(50),
+    IN v_DiscountTypeCode VARCHAR(30),
+    IN v_DiscountValue DECIMAL(10,2),
+    IN v_MaxDiscountAmount DECIMAL(10,2),
+    IN v_MinOrderAmount DECIMAL(10,2),
+    IN v_UsageLimitTotal INT UNSIGNED,
+    IN v_UsageLimitPerUser INT UNSIGNED,
+    IN v_StartDate DATETIME,
+    IN v_EndDate DATETIME,
+    OUT v_PromotionID INT UNSIGNED,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_CategoryExists INT;
+    DECLARE v_DiscountTypeID INT UNSIGNED;
+    DECLARE v_ScopeTypeID INT UNSIGNED;
+    DECLARE v_StatusID INT UNSIGNED;
+    DECLARE v_DuplicateCode INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_CreatePromotionForCategory',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'CategoryID', v_CategoryID, 'PromoCode', v_PromoCode)
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la création de la promotion.';
+        SET v_PromotionID = NULL;
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+    SET v_PromotionID = NULL;
+
+    -- Résolution utilisateur (admin)
+    SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Vérification existence de la catégorie
+        SELECT COUNT(*) INTO v_CategoryExists FROM Categories WHERE CategoryID = v_CategoryID;
+
+        IF v_CategoryExists = 0 THEN
+            SET v_Message = 'Catégorie introuvable';
+        ELSE
+            -- Résolution du DiscountTypeID
+            SELECT DiscountTypeID INTO v_DiscountTypeID
+            FROM PromotionDiscountTypes
+            WHERE Code = v_DiscountTypeCode AND IsActive = 1;
+
+            IF v_DiscountTypeID IS NULL THEN
+                SET v_Message = 'Type de réduction invalide';
+            ELSEIF v_DiscountValue IS NULL OR v_DiscountValue <= 0 THEN
+                SET v_Message = 'La valeur de la réduction doit être supérieure à 0';
+            ELSEIF v_DiscountTypeCode = 'PERCENTAGE' AND v_DiscountValue > 100 THEN
+                SET v_Message = 'Le pourcentage de réduction ne peut pas dépasser 100';
+            ELSEIF v_MinOrderAmount IS NOT NULL AND v_MinOrderAmount < 0 THEN
+                SET v_Message = 'Le montant minimum de commande doit être supérieur ou égal à 0';
+            ELSEIF v_StartDate IS NULL OR v_EndDate IS NULL THEN
+                SET v_Message = 'Les dates de début et de fin sont obligatoires';
+            ELSEIF v_EndDate <= v_StartDate THEN
+                SET v_Message = 'La date de fin doit être postérieure à la date de début';
+            ELSE
+                -- Unicité du PromoCode (si fourni)
+                IF v_PromoCode IS NOT NULL THEN
+                    SELECT COUNT(*) INTO v_DuplicateCode
+                    FROM Promotions
+                    WHERE PromoCode = v_PromoCode AND DeletedAt IS NULL;
+                ELSE
+                    SET v_DuplicateCode = 0;
+                END IF;
+
+                IF v_DuplicateCode > 0 THEN
+                    SET v_Message = 'Ce code promo est déjà utilisé';
+                ELSE
+                    SELECT ScopeTypeID INTO v_ScopeTypeID
+                    FROM PromotionScopeTypes WHERE Code = 'CATEGORY' AND IsActive = 1;
+
+                    SELECT StatusID INTO v_StatusID
+                    FROM PromotionStatuses WHERE Code = 'VALIDATED' AND IsActive = 1;
+
+                    START TRANSACTION;
+
+                    INSERT INTO Promotions (
+                        VendorID, Name, Description, PromoCode,
+                        DiscountTypeID, DiscountValue, MaxDiscountAmount, MinOrderAmount,
+                        ScopeTypeID, TargetProductID, TargetCategoryID,
+                        UsageLimitTotal, UsageLimitPerUser, UsageCount,
+                        StartDate, EndDate, StatusID, IsActive
+                    ) VALUES (
+                        NULL, v_Name, v_Description, v_PromoCode,
+                        v_DiscountTypeID, v_DiscountValue, v_MaxDiscountAmount, v_MinOrderAmount,
+                        v_ScopeTypeID, NULL, v_CategoryID,
+                        v_UsageLimitTotal, IFNULL(v_UsageLimitPerUser, 1), 0,
+                        v_StartDate, v_EndDate, v_StatusID, b'1'
+                    );
+
+                    SET v_PromotionID = LAST_INSERT_ID();
+
+                    COMMIT;
+
+                    SET v_Success = TRUE;
+                    SET v_Message = 'Promotion créée avec succès';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
