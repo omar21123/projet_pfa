@@ -4392,6 +4392,330 @@
                 ]
             }
         },
+        "/api/products/combinations/{combination}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Détails d'une combinaison (variante)",
+                "description": "Retourne les informations complètes d'une combinaison ainsi que ses options. Réservé au vendeur propriétaire du produit associé.",
+                "operationId": "c0adc66e95d827fc51e281843947fd4f",
+                "parameters": [
+                    {
+                        "name": "combination",
+                        "in": "path",
+                        "description": "Identifiant de la combinaison.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Combinaison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "combination_id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "product_id": {
+                                                    "type": "integer",
+                                                    "example": 452
+                                                },
+                                                "sku": {
+                                                    "type": "string",
+                                                    "example": "TSH-501-RED-M",
+                                                    "nullable": true
+                                                },
+                                                "price": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 149
+                                                },
+                                                "compare_at_price": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 179,
+                                                    "nullable": true
+                                                },
+                                                "stock": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "image_path": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "is_default": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "is_active": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "options": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "config_name": {
+                                                                "type": "string",
+                                                                "example": "Color"
+                                                            },
+                                                            "option_name": {
+                                                                "type": "string",
+                                                                "example": "Red"
+                                                            },
+                                                            "option_value": {
+                                                                "type": "string",
+                                                                "example": "Red"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'utilisateur n'est pas propriétaire de cette combinaison",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de cette combinaison"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil vendeur ou combinaison introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Combinaison introuvable"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Mettre à jour une combinaison (variante)",
+                "description": "Met à jour le SKU, le prix, le prix barré, le stock, l'image et les indicateurs par défaut/actif d'une combinaison. Réservé au vendeur propriétaire. Si IsDefault=true, toute autre combinaison par défaut du même produit est automatiquement désactivée.",
+                "operationId": "63a61c884844524a1c60010694ad89aa",
+                "parameters": [
+                    {
+                        "name": "combination",
+                        "in": "path",
+                        "description": "Identifiant de la combinaison à mettre à jour.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 12
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "Price",
+                                    "Stock"
+                                ],
+                                "properties": {
+                                    "SKU": {
+                                        "type": "string",
+                                        "example": "TSH-501-RED-M",
+                                        "nullable": true,
+                                        "maxLength": 64
+                                    },
+                                    "Price": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 149,
+                                        "minimum": 0
+                                    },
+                                    "CompareAtPrice": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 179,
+                                        "nullable": true,
+                                        "minimum": 0
+                                    },
+                                    "Stock": {
+                                        "type": "integer",
+                                        "example": 20,
+                                        "minimum": 0
+                                    },
+                                    "Image": {
+                                        "description": "Nouvelle image de la combinaison (optionnelle).",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    },
+                                    "IsDefault": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "IsActive": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Combinaison mise à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Combinaison mise à jour avec succès"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'utilisateur n'est pas propriétaire de cette combinaison",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de cette combinaison"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil vendeur ou combinaison introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Combinaison introuvable"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (SKU dupliqué, prix/stock invalide, prix barré < prix)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce SKU est déjà utilisé par une autre combinaison de ce produit"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [

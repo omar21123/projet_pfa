@@ -13,6 +13,9 @@ use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
 use App\Services\Interface\ProductServiceInterface;
 use App\Repositories\Interface\ProductRepositoryInterface;
+use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\UpdateProductCombinationDto;
+
 
 class ProductService implements ProductServiceInterface
 {
@@ -57,5 +60,15 @@ class ProductService implements ProductServiceInterface
     public function getProductCombinationsForVendor(string $userPublicId, int $productId): array
     {
         return $this->productRepository->getProductCombinationsForVendor($userPublicId, $productId);
+    }
+
+    public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto
+    {
+        return $this->productRepository->getCombinationById($userPublicId, $combinationId);
+    }
+
+    public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
+    {
+        return $this->productRepository->updateCombination($dto);
     }
 }

@@ -71,7 +71,6 @@ Route::prefix('brands')->group(function () {
         Route::put('/{id}/disable', [BrandController::class, 'disable']);
         Route::put('/{id}/enable', [BrandController::class, 'enable']);
     });
-
 });
 Route::prefix('models')->group(function () {
     // 🌐 Route Publique
@@ -97,10 +96,9 @@ Route::prefix('units')->group(function () {
         Route::put('/{id}/disable', [UnitController::class, 'disable']);
         Route::put('/{id}/enable', [UnitController::class, 'enable']);
     });
-
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -108,13 +106,12 @@ Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(funct
         Route::post('/vendors/{vendorProfileId}/approve', [AdminVendorController::class, 'AdminApproveVendor']);
         Route::post('/vendors/{vendorProfileId}/reject', [AdminVendorController::class, 'AdminRejectVendor']);
         Route::post('/vendors/{vendorProfileId}/reset-to-pending', [AdminVendorController::class, 'AdminResetVendorToPending']);
-    });// Ajouter un nouvel admin
+    }); // Ajouter un nouvel admin
 });
 
 Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
     // Route GET pour récupérer le profil complet de l'administrateur connecté
     Route::get('/admin/profile', [AdminProfileController::class, 'show']);
-
 });
 
 Route::get('/countries', [CountryController::class, 'index']);
@@ -130,7 +127,6 @@ Route::prefix('products-config-attributes')->group(function () {
         Route::put('/{id}/disable', [ProductsConfigAttributeController::class, 'disable']);
         Route::put('/{id}/enable', [ProductsConfigAttributeController::class, 'enable']);
     });
-
 });
 Route::prefix('config-attribute-options')->group(function () {
 
@@ -147,7 +143,6 @@ Route::prefix('config-attribute-options')->group(function () {
         Route::put('/{id}/disable', [ConfigAttributeOptionController::class, 'disable']);
         Route::put('/{id}/enable', [ConfigAttributeOptionController::class, 'enable']);
     });
-
 });
 Route::prefix('products')->group(function () {
 
@@ -155,6 +150,8 @@ Route::prefix('products')->group(function () {
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
         Route::get('/{product}/combinations', [ProductController::class, 'getCombinations']);
+        Route::get('/combinations/{combination}', [ProductController::class, 'showCombination']);
+        Route::put('/combinations/{combination}', [ProductController::class, 'updateCombination']);
     });
 
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -164,5 +161,4 @@ Route::prefix('products')->group(function () {
         Route::patch('/{product}/block', [ProductController::class, 'blockProduct']);
         Route::patch('/{product}/refuse', [ProductController::class, 'refuseProduct']);
     });
-
 });

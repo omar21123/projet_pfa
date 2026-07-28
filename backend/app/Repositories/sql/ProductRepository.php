@@ -15,6 +15,9 @@ use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
 use App\DTOs\Product\ProductCombinationDto;
+    use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\UpdateProductCombinationDto;
+use App\Exceptions\NotFoundException; // adapte si tu as une exception dédiée 404
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -301,4 +304,63 @@ class ProductRepository implements ProductRepositoryInterface
 
         return ProductCombinationDto::fromRows($rows);
     }
+
+
+public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto
+{
+    $pdo = DB::connection()->getPdo();
+
+    $stmt = $pdo->prepare('CALL SP_GetProductCombinationByID(?, ?, @success, @message)');
+    $stmt->bindValue(1, $userPublicId, \PDO::PARAM_STR);
+    $stmt->bindValue(2, $combinationId, \PDO::PARAM_INT);
+    $stmt->execute();
+
+    $combinationRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+    $combinationRow = $combinationRows[0] ?? null;
+
+    $optionRows = [];
+    if ($combinationRow) {
+        $stmt->nextRowset();
+        $optionRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    while ($stmt->nextRowset()) {
+        // drain
+    }
+    $stmt->closeCursor();
+
+    $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+    if (!$result->success) {
+        $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+        throw new BusinessValidationException($result->message, $status);
+    }
+
+    return ProductCombinationDetailDto::fromRow($combinationRow, $optionRows);
+}
+
+public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
+{
+    DB::select('CALL SP_UpdateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, ?, @success, @message)', [
+        $dto->userPublicId,
+        $dto->combinationId,
+        $dto->sku,
+        $dto->price,
+        $dto->compareAtPrice,
+        $dto->stock,
+        $dto->imagePath,
+        $dto->isDefault ? 1 : 0,
+        $dto->isActive ? 1 : 0,
+    ]);
+
+    $row = DB::selectOne('SELECT * FROM ProductOptionsCombiniason WHERE CombinationID = ?', [$dto->combinationId]);
+    $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+    if (!$result->success) {
+        $status = str_contains($result->message, 'Accès refusé') ? 403 : 422;
+        throw new BusinessValidationException($result->message, $status);
+    }
+
+    return ProductCombinationDetailDto::fromRow($row);
+}
 }

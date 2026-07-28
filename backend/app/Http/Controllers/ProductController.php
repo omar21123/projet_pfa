@@ -21,6 +21,9 @@ use App\Services\Interface\VendorServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
+use App\DTOs\Product\UpdateProductCombinationDto;
+use App\Http\Requests\Product\UpdateProductCombinationRequest;
+
 
 #[OA\Tag(
     name: "Products",
@@ -1126,5 +1129,235 @@ class ProductController extends Controller
         }
 
         return 'Une erreur est survenue lors de la récupération des combinaisons.';
+    }
+
+
+
+
+    #[OA\Get(
+        path: "/api/products/combinations/{combination}",
+        tags: ["Products"],
+        summary: "Détails d'une combinaison (variante)",
+        description: "Retourne les informations complètes d'une combinaison ainsi que ses options. Réservé au vendeur propriétaire du produit associé.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "combination",
+        in: "path",
+        required: true,
+        description: "Identifiant de la combinaison.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Combinaison récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "combination_id", type: "integer", example: 12),
+                        new OA\Property(property: "product_id", type: "integer", example: 452),
+                        new OA\Property(property: "sku", type: "string", nullable: true, example: "TSH-501-RED-M"),
+                        new OA\Property(property: "price", type: "number", format: "float", example: 149.00),
+                        new OA\Property(property: "compare_at_price", type: "number", format: "float", nullable: true, example: 179.00),
+                        new OA\Property(property: "stock", type: "integer", example: 20),
+                        new OA\Property(property: "image_path", type: "string", nullable: true),
+                        new OA\Property(property: "is_default", type: "boolean", example: true),
+                        new OA\Property(property: "is_active", type: "boolean", example: true),
+                        new OA\Property(property: "created_at", type: "string", format: "date-time"),
+                        new OA\Property(property: "updated_at", type: "string", format: "date-time"),
+                        new OA\Property(
+                            property: "options",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "config_name", type: "string", example: "Color"),
+                                    new OA\Property(property: "option_name", type: "string", example: "Red"),
+                                    new OA\Property(property: "option_value", type: "string", example: "Red"),
+                                ]
+                            )
+                        ),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "L'utilisateur n'est pas propriétaire de cette combinaison",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de cette combinaison"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil vendeur ou combinaison introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Combinaison introuvable"),
+            ]
+        )
+    )]
+    public function showCombination(int $combination): JsonResponse
+    {
+        if ($combination <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de combinaison invalide.',
+            ], 404);
+        }
+
+        $publicId = request()->attributes->get('user_id');
+
+        try {
+            $result = $this->productService->getCombinationById($publicId, $combination);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
+    }
+
+    #[OA\Put(
+        path: "/api/products/combinations/{combination}",
+        tags: ["Products"],
+        summary: "Mettre à jour une combinaison (variante)",
+        description: "Met à jour le SKU, le prix, le prix barré, le stock, l'image et les indicateurs par défaut/actif d'une combinaison. Réservé au vendeur propriétaire. Si IsDefault=true, toute autre combinaison par défaut du même produit est automatiquement désactivée.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "combination",
+        in: "path",
+        required: true,
+        description: "Identifiant de la combinaison à mettre à jour.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: "multipart/form-data",
+            schema: new OA\Schema(
+                required: ["Price", "Stock"],
+                properties: [
+                    new OA\Property(property: "SKU", type: "string", maxLength: 64, nullable: true, example: "TSH-501-RED-M"),
+                    new OA\Property(property: "Price", type: "number", format: "float", minimum: 0, example: 149.00),
+                    new OA\Property(property: "CompareAtPrice", type: "number", format: "float", nullable: true, minimum: 0, example: 179.00),
+                    new OA\Property(property: "Stock", type: "integer", minimum: 0, example: 20),
+                    new OA\Property(property: "Image", type: "string", format: "binary", nullable: true, description: "Nouvelle image de la combinaison (optionnelle)."),
+                    new OA\Property(property: "IsDefault", type: "boolean", example: true),
+                    new OA\Property(property: "IsActive", type: "boolean", example: true),
+                ]
+            )
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Combinaison mise à jour avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Combinaison mise à jour avec succès"),
+                new OA\Property(property: "data", type: "object"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "L'utilisateur n'est pas propriétaire de cette combinaison",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de cette combinaison"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil vendeur ou combinaison introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Combinaison introuvable"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Règle métier violée (SKU dupliqué, prix/stock invalide, prix barré < prix)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Ce SKU est déjà utilisé par une autre combinaison de ce produit"),
+            ]
+        )
+    )]
+    public function updateCombination(UpdateProductCombinationRequest $request, int $combination): JsonResponse
+    {
+        if ($combination <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de combinaison invalide.',
+            ], 404);
+        }
+
+        $publicId = request()->attributes->get('user_id');
+        $validated = $request->validated();
+
+        $imagePath = null;
+        if ($request->hasFile('Image')) {
+            $imagePath = $this->fileUploadService->storeAvatar($request->file('Image'));
+        }
+
+        $dto = UpdateProductCombinationDto::fromArray([
+            'UserPublicID'   => $publicId,
+            'CombinationID'  => $combination,
+            'SKU'            => $validated['SKU'] ?? null,
+            'Price'          => $validated['Price'],
+            'CompareAtPrice' => $validated['CompareAtPrice'] ?? null,
+            'Stock'          => $validated['Stock'],
+            'ImagePath'      => $imagePath,
+            'IsDefault'      => $validated['IsDefault'] ?? false,
+            'IsActive'       => $validated['IsActive'] ?? true,
+        ]);
+
+        try {
+            $result = $this->productService->updateCombination($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Combinaison mise à jour avec succès',
+            'data' => $result->toArray(),
+        ], 200);
     }
 }
