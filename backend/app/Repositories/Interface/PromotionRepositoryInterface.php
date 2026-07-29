@@ -12,6 +12,7 @@ use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
 
 
+
 interface PromotionRepositoryInterface
 {
     /** @return LookupItemDto[] */
@@ -28,5 +29,6 @@ interface PromotionRepositoryInterface
     public function update(UpdatePromotionDto $dto): void;
     public function softDelete(DeletePromotionDto $dto): void;
     public function deactivate(PromotionIdActionDto $dto): void;
+    public function getById(PromotionIdActionDto $dto): PromotionDto;
 
 }

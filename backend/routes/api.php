@@ -181,10 +181,10 @@ Route::prefix('promotions')->group(function () {
     });
     Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
          Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
+         Route::get('/{promotion}', [PromotionController::class, 'show']);
     });
    
     // Les routes suivantes seront ajoutées au fur et à mesure des parties suivantes :
-    // Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
     // Route::get('/{promotion}', [PromotionController::class, 'show']);
     // Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
     // Route::get('/category/{category}', [PromotionController::class, 'getByCategory']);

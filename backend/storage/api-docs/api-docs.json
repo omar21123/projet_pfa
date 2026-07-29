@@ -5973,6 +5973,212 @@
             }
         },
         "/api/promotions/{promotion}": {
+            "get": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Détails d'une promotion",
+                "description": "Retourne les informations complètes d'une promotion. Les promotions de catégorie sont réservées à l'administrateur. Les promotions produit/catalogue sont consultables par l'admin ou le vendeur propriétaire.",
+                "operationId": "30518c3d40546ec42cc8899119bf0192",
+                "parameters": [
+                    {
+                        "name": "promotion",
+                        "in": "path",
+                        "description": "Identifiant de la promotion.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Promotion récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "promotion_id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "vendor_id": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Soldes été -20%"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "promo_code": {
+                                                    "type": "string",
+                                                    "example": "ETE20",
+                                                    "nullable": true
+                                                },
+                                                "discount_type": {
+                                                    "properties": {
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "PERCENTAGE"
+                                                        },
+                                                        "label": {
+                                                            "type": "string",
+                                                            "example": "Pourcentage"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "discount_value": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 20
+                                                },
+                                                "max_discount_amount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "nullable": true
+                                                },
+                                                "min_order_amount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "nullable": true
+                                                },
+                                                "scope_type": {
+                                                    "properties": {
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "PRODUCT"
+                                                        },
+                                                        "label": {
+                                                            "type": "string",
+                                                            "example": "Produit spécifique"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "target_product_id": {
+                                                    "type": "integer",
+                                                    "example": 452,
+                                                    "nullable": true
+                                                },
+                                                "target_category_id": {
+                                                    "type": "integer",
+                                                    "nullable": true
+                                                },
+                                                "usage_limit_total": {
+                                                    "type": "integer",
+                                                    "example": 500,
+                                                    "nullable": true
+                                                },
+                                                "usage_limit_per_user": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "usage_count": {
+                                                    "type": "integer",
+                                                    "example": 47
+                                                },
+                                                "start_date": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "end_date": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "status": {
+                                                    "properties": {
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "VALIDATED"
+                                                        },
+                                                        "label": {
+                                                            "type": "string",
+                                                            "example": "Validée"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "is_active": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès refusé (promotion de catégorie réservée à l'admin, ou non propriétaire)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de cette promotion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil vendeur ou promotion introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Promotion introuvable"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "put": {
                 "tags": [
                     "Promotions"

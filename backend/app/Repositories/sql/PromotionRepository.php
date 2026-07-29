@@ -172,4 +172,30 @@ class PromotionRepository implements PromotionRepositoryInterface
             throw new BusinessValidationException($result->message, $status);
         }
     }
+    public function getById(PromotionIdActionDto $dto): PromotionDto
+    {
+        $pdo = DB::connection()->getPdo();
+
+        $stmt = $pdo->prepare('CALL SP_GetPromotionByID(?, ?, @success, @message)');
+        $stmt->bindValue(1, $dto->userPublicId, \PDO::PARAM_STR);
+        $stmt->bindValue(2, $dto->promotionId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        $row = $rows[0] ?? null;
+
+        while ($stmt->nextRowset()) {
+            // drain
+        }
+        $stmt->closeCursor();
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return PromotionDto::fromRow($row);
+    }
 }

@@ -502,4 +502,131 @@ class PromotionController extends Controller
             'message' => 'Promotion désactivée avec succès',
         ], 200);
     }
+    #[OA\Get(
+        path: "/api/promotions/{promotion}",
+        tags: ["Promotions"],
+        summary: "Détails d'une promotion",
+        description: "Retourne les informations complètes d'une promotion. Les promotions de catégorie sont réservées à l'administrateur. Les promotions produit/catalogue sont consultables par l'admin ou le vendeur propriétaire.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "promotion",
+        in: "path",
+        required: true,
+        description: "Identifiant de la promotion.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Promotion récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "promotion_id", type: "integer", example: 12),
+                        new OA\Property(property: "vendor_id", type: "integer", example: 10),
+                        new OA\Property(property: "name", type: "string", example: "Soldes été -20%"),
+                        new OA\Property(property: "description", type: "string", nullable: true),
+                        new OA\Property(property: "promo_code", type: "string", nullable: true, example: "ETE20"),
+                        new OA\Property(
+                            property: "discount_type",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "code", type: "string", example: "PERCENTAGE"),
+                                new OA\Property(property: "label", type: "string", example: "Pourcentage"),
+                            ]
+                        ),
+                        new OA\Property(property: "discount_value", type: "number", format: "float", example: 20.00),
+                        new OA\Property(property: "max_discount_amount", type: "number", format: "float", nullable: true),
+                        new OA\Property(property: "min_order_amount", type: "number", format: "float", nullable: true),
+                        new OA\Property(
+                            property: "scope_type",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "code", type: "string", example: "PRODUCT"),
+                                new OA\Property(property: "label", type: "string", example: "Produit spécifique"),
+                            ]
+                        ),
+                        new OA\Property(property: "target_product_id", type: "integer", nullable: true, example: 452),
+                        new OA\Property(property: "target_category_id", type: "integer", nullable: true),
+                        new OA\Property(property: "usage_limit_total", type: "integer", nullable: true, example: 500),
+                        new OA\Property(property: "usage_limit_per_user", type: "integer", example: 1),
+                        new OA\Property(property: "usage_count", type: "integer", example: 47),
+                        new OA\Property(property: "start_date", type: "string", format: "date-time"),
+                        new OA\Property(property: "end_date", type: "string", format: "date-time"),
+                        new OA\Property(
+                            property: "status",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "code", type: "string", example: "VALIDATED"),
+                                new OA\Property(property: "label", type: "string", example: "Validée"),
+                            ]
+                        ),
+                        new OA\Property(property: "is_active", type: "boolean", example: true),
+                        new OA\Property(property: "created_at", type: "string", format: "date-time"),
+                        new OA\Property(property: "updated_at", type: "string", format: "date-time"),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "Accès refusé (promotion de catégorie réservée à l'admin, ou non propriétaire)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de cette promotion"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil vendeur ou promotion introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Promotion introuvable"),
+            ]
+        )
+    )]
+    public function show(Request $request, int $promotion): JsonResponse
+    {
+        if ($promotion <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de promotion invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+
+        $dto = PromotionIdActionDto::fromArray([
+            'UserPublicID' => $publicId,
+            'PromotionID'  => $promotion,
+        ]);
+
+        try {
+            $result = $this->promotionService->getById($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
+    }
 }

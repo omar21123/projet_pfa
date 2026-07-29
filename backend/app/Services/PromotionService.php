@@ -56,4 +56,8 @@ class PromotionService implements PromotionServiceInterface
     {
         $this->promotionRepository->deactivate($dto);
     }
+    public function getById(PromotionIdActionDto $dto): PromotionDto
+    {
+        return $this->promotionRepository->getById($dto);
+    }
 }

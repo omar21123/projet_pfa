@@ -28,4 +28,5 @@ interface PromotionServiceInterface
 
     public function softDelete(DeletePromotionDto $dto): void;
     public function deactivate(PromotionIdActionDto $dto): void;
+    public function getById(PromotionIdActionDto $dto): PromotionDto;
 }
