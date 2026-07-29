@@ -9,6 +9,7 @@ use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\PromotionIdActionDto;
 
 interface PromotionServiceInterface
 {
@@ -26,4 +27,5 @@ interface PromotionServiceInterface
     public function update(UpdatePromotionDto $dto): void;
 
     public function softDelete(DeletePromotionDto $dto): void;
+    public function deactivate(PromotionIdActionDto $dto): void;
 }

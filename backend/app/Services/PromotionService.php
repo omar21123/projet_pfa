@@ -11,6 +11,8 @@ use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\PromotionIdActionDto;
+
 
 
 class PromotionService implements PromotionServiceInterface
@@ -49,5 +51,9 @@ class PromotionService implements PromotionServiceInterface
     public function softDelete(DeletePromotionDto $dto): void
     {
         $this->promotionRepository->softDelete($dto);
+    }
+    public function deactivate(PromotionIdActionDto $dto): void
+    {
+        $this->promotionRepository->deactivate($dto);
     }
 }

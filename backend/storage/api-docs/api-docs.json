@@ -6189,6 +6189,116 @@
                 ]
             }
         },
+        "/api/promotions/{promotion}/deactivate": {
+            "patch": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Désactiver une promotion",
+                "description": "Désactive temporairement une promotion (IsActive = 0) sans la supprimer. La promotion reste visible et peut être réactivée plus tard. Réservé au vendeur propriétaire.",
+                "operationId": "04031abbc89a635cb071e886142f50e0",
+                "parameters": [
+                    {
+                        "name": "promotion",
+                        "in": "path",
+                        "description": "Identifiant de la promotion à désactiver.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Promotion désactivée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Promotion désactivée avec succès"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'utilisateur n'est pas propriétaire de cette promotion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : vous n'êtes pas propriétaire de cette promotion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil vendeur ou promotion introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Promotion introuvable"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "La promotion est déjà désactivée ou a été supprimée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cette promotion est déjà désactivée"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [

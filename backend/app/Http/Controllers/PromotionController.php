@@ -15,6 +15,8 @@ use App\Http\Requests\Promotion\CreatePromotionForProductRequest;
 use App\Http\Requests\Promotion\UpdatePromotionRequest;
 use App\DTOs\Promotion\DeletePromotionDto;
 use Illuminate\Http\Request;
+use App\DTOs\Promotion\PromotionIdActionDto;
+
 
 #[OA\Tag(name: "Promotions", description: "Gestion des promotions")]
 class PromotionController extends Controller
@@ -408,6 +410,96 @@ class PromotionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Promotion supprimée avec succès',
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/promotions/{promotion}/deactivate",
+        tags: ["Promotions"],
+        summary: "Désactiver une promotion",
+        description: "Désactive temporairement une promotion (IsActive = 0) sans la supprimer. La promotion reste visible et peut être réactivée plus tard. Réservé au vendeur propriétaire.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "promotion",
+        in: "path",
+        required: true,
+        description: "Identifiant de la promotion à désactiver.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Promotion désactivée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Promotion désactivée avec succès"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "L'utilisateur n'est pas propriétaire de cette promotion",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de cette promotion"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil vendeur ou promotion introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Promotion introuvable"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "La promotion est déjà désactivée ou a été supprimée",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette promotion est déjà désactivée"),
+            ]
+        )
+    )]
+    public function deactivate(Request $request, int $promotion): JsonResponse
+    {
+        if ($promotion <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de promotion invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+
+        $dto = PromotionIdActionDto::fromArray([
+            'UserPublicID' => $publicId,
+            'PromotionID'  => $promotion,
+        ]);
+
+        try {
+            $this->promotionService->deactivate($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion désactivée avec succès',
         ], 200);
     }
 }

@@ -9,6 +9,7 @@ use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\PromotionIdActionDto;
 
 
 interface PromotionRepositoryInterface
@@ -26,6 +27,6 @@ interface PromotionRepositoryInterface
     public function createForCategory(CreatePromotionForCategoryDto $dto): PromotionResultDto;
     public function update(UpdatePromotionDto $dto): void;
     public function softDelete(DeletePromotionDto $dto): void;
-
+    public function deactivate(PromotionIdActionDto $dto): void;
 
 }

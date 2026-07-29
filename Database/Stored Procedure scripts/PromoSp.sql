@@ -452,3 +452,192 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_SoftDeletePromotion(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_PromotionID INT UNSIGNED,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_OwnerVendorID INT;
+    DECLARE v_AlreadyDeleted DATETIME;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_SoftDeletePromotion',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'PromotionID', v_PromotionID)
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la suppression de la promotion.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Résolution utilisateur
+    SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Résolution profil vendeur
+        SELECT VendorProfileID INTO v_VendorProfileID
+        FROM VendorProfiles WHERE UserID = v_UserID;
+
+        IF v_VendorProfileID IS NULL THEN
+            SET v_Message = 'Profil vendeur introuvable pour cet utilisateur';
+        ELSE
+            -- Résolution de la promotion + vérification de propriété + statut suppression
+            SELECT VendorID, DeletedAt
+            INTO v_OwnerVendorID, v_AlreadyDeleted
+            FROM Promotions
+            WHERE PromotionID = v_PromotionID;
+
+            IF v_OwnerVendorID IS NULL THEN
+                SET v_Message = 'Promotion introuvable';
+            ELSEIF v_AlreadyDeleted IS NOT NULL THEN
+                SET v_Message = 'Cette promotion est déjà supprimée';
+            ELSEIF v_OwnerVendorID <> v_VendorProfileID THEN
+                SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de cette promotion';
+            ELSE
+                START TRANSACTION;
+
+                UPDATE Promotions
+                SET DeletedAt = NOW(),
+                    IsActive = b'0'
+                WHERE PromotionID = v_PromotionID;
+
+                COMMIT;
+
+                SET v_Success = TRUE;
+                SET v_Message = 'Promotion supprimée avec succès';
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+DELIMITER $$
+CREATE PROCEDURE SP_DeactivatePromotion(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_PromotionID INT UNSIGNED,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_AdminID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_OwnerVendorID INT;
+    DECLARE v_ScopeTypeCode VARCHAR(30);
+    DECLARE v_DeletedAt DATETIME;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        ROLLBACK;
+        INSERT INTO SPErrorLogs
+        (
+            ProcedureName,
+            ErrorSQLState,
+            ErrorNumber,
+            ErrorMessage,
+            ContextData
+        )
+        VALUES
+        (
+            'SP_DeactivatePromotion',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'UserPublicID', v_UserPublicID,
+                'PromotionID', v_PromotionID
+            )
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la désactivation de la promotion.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Get user
+    SELECT UserID
+    INTO v_UserID
+    FROM Users
+    WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Check if user is Admin
+        SELECT AdminProfileID INTO v_AdminID
+        FROM AdminProfiles
+        WHERE UserID = v_UserID;
+
+        -- Resolve target promotion (vendor owner + scope)
+        SELECT p.VendorID, st.Code, p.DeletedAt
+        INTO v_OwnerVendorID, v_ScopeTypeCode, v_DeletedAt
+        FROM Promotions p
+        INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+        WHERE p.PromotionID = v_PromotionID;
+
+        IF v_OwnerVendorID IS NULL THEN
+            SET v_Message = 'Promotion introuvable';
+        ELSEIF v_DeletedAt IS NOT NULL THEN
+            SET v_Message = 'Cette promotion a été supprimée';
+        ELSEIF v_ScopeTypeCode = 'CATEGORY' AND v_AdminID IS NULL THEN
+            -- Promotions de catégorie : réservées à l'admin
+            SET v_Message = 'Accès refusé : seul un administrateur peut modifier une promotion de catégorie';
+        ELSEIF v_ScopeTypeCode <> 'CATEGORY' AND v_AdminID IS NULL THEN
+            -- Promotions produit/catalogue : admin OU vendeur propriétaire
+            SELECT VendorProfileID INTO v_VendorProfileID
+            FROM VendorProfiles WHERE UserID = v_UserID;
+
+            IF v_VendorProfileID IS NULL OR v_VendorProfileID <> v_OwnerVendorID THEN
+                SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de cette promotion';
+            ELSE
+                START TRANSACTION;
+                UPDATE Promotions
+                SET IsActive = b'0'
+                WHERE PromotionID = v_PromotionID;
+                COMMIT;
+
+                SET v_Success = TRUE;
+                SET v_Message = 'Promotion désactivée avec succès';
+            END IF;
+        ELSE
+            -- Admin : autorisé dans tous les cas
+            START TRANSACTION;
+            UPDATE Promotions
+            SET IsActive = b'0'
+            WHERE PromotionID = v_PromotionID;
+            COMMIT;
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Promotion désactivée avec succès';
+        END IF;
+    END IF;
+END$$
+DELIMITER ;

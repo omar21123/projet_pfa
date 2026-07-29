@@ -12,6 +12,8 @@ use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\PromotionIdActionDto;
+
 
 
 class PromotionRepository implements PromotionRepositoryInterface
@@ -143,6 +145,21 @@ class PromotionRepository implements PromotionRepositoryInterface
     public function softDelete(DeletePromotionDto $dto): void
     {
         DB::select('CALL SP_SoftDeletePromotion(?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->promotionId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403
+                : (str_contains($result->message, 'introuvable') ? 404 : 422);
+            throw new BusinessValidationException($result->message, $status);
+        }
+    }
+    public function deactivate(PromotionIdActionDto $dto): void
+    {
+        DB::select('CALL SP_DeactivatePromotion(?, ?, @success, @message)', [
             $dto->userPublicId,
             $dto->promotionId,
         ]);
