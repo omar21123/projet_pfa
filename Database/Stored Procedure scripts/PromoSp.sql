@@ -1007,3 +1007,99 @@ BEGIN
 END$$
 
 DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetAllPromotions(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_StatusCode VARCHAR(30),
+    IN v_ScopeTypeCode VARCHAR(30),
+    IN v_IsActive TINYINT,
+    IN v_Page INT,
+    IN v_PageSize INT,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_AdminID INT;
+    DECLARE v_Offset INT;
+    DECLARE v_FetchSize INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetAllPromotions',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'StatusCode', v_StatusCode, 'ScopeTypeCode', v_ScopeTypeCode)
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des promotions.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF v_Page IS NULL OR v_Page < 1 THEN
+        SET v_Page = 1;
+    END IF;
+
+    IF v_PageSize IS NULL OR v_PageSize < 1 THEN
+        SET v_PageSize = 20;
+    ELSEIF v_PageSize > 100 THEN
+        SET v_PageSize = 100;
+    END IF;
+
+    SET v_Offset = (v_Page - 1) * v_PageSize;
+    SET v_FetchSize = v_PageSize + 1; -- +1 pour détecter s'il reste une page suivante
+
+    SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        SELECT AdminProfileID INTO v_AdminID FROM AdminProfiles WHERE UserID = v_UserID;
+
+        IF v_AdminID IS NULL THEN
+            SET v_Message = 'Accès refusé : seul un administrateur peut consulter toutes les promotions';
+        ELSE
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+
+            SELECT
+                p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                p.TargetProductID, prod.Name AS ProductName,
+                p.TargetCategoryID, cat.Name AS CategoryName,
+                p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                p.StartDate, p.EndDate,
+                ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                p.CreatedAt, p.UpdatedAt
+            FROM Promotions p
+            INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+            INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+            INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+            LEFT JOIN Products prod ON prod.ProductID = p.TargetProductID
+            LEFT JOIN Categories cat ON cat.CategoryID = p.TargetCategoryID
+            WHERE p.DeletedAt IS NULL
+              AND (v_StatusCode IS NULL OR ps.Code = v_StatusCode)
+              AND (v_ScopeTypeCode IS NULL OR st.Code = v_ScopeTypeCode)
+              AND (v_IsActive IS NULL OR p.IsActive = v_IsActive)
+            ORDER BY p.CreatedAt DESC
+            LIMIT v_FetchSize OFFSET v_Offset;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
