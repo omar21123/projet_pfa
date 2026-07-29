@@ -14,6 +14,8 @@ use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
+use App\DTOs\Promotion\CategoryAllPromotionDto;
+use App\DTOs\Promotion\GetPromotionsByCategoryDto;
 
 
 
@@ -215,5 +217,23 @@ class PromotionRepository implements PromotionRepositoryInterface
         }
 
         return array_map(fn($row) => PromotionDto::fromRow($row), $rows);
+    }
+
+    /** @return CategoryAllPromotionDto[] */
+    public function getByCategory(GetPromotionsByCategoryDto $dto): array
+    {
+        $rows = DB::select('CALL SP_GetPromotionsByCategory(?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->categoryId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return array_map(fn($row) => CategoryAllPromotionDto::fromRow($row), $rows);
     }
 }

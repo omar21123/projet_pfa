@@ -13,6 +13,7 @@ use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
+use App\DTOs\Promotion\GetPromotionsByCategoryDto;
 
 
 
@@ -64,5 +65,12 @@ class PromotionService implements PromotionServiceInterface
     public function getByProduct(GetPromotionsByProductDto $dto): array
     {
         return $this->promotionRepository->getByProduct($dto);
+    }
+    // PromotionServiceInterface
+
+    // PromotionService — implementation unchanged, just the return-type docblock
+    public function getByCategory(GetPromotionsByCategoryDto $dto): array
+    {
+        return $this->promotionRepository->getByCategory($dto);
     }
 }

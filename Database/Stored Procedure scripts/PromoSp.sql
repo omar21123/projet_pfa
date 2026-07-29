@@ -775,3 +775,235 @@ BEGIN
 END$$
 
 DELIMITER ;
+DELIMITER $$
+CREATE PROCEDURE SP_GetPromotionsByProduct(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_ProductID INT,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_AdminID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_OwnerVendorID INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs
+        (
+            ProcedureName,
+            ErrorSQLState,
+            ErrorNumber,
+            ErrorMessage,
+            ContextData
+        )
+        VALUES
+        (
+            'SP_GetPromotionsByProduct',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'UserPublicID', v_UserPublicID,
+                'ProductID', v_ProductID
+            )
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des promotions.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Get user
+    SELECT UserID
+    INTO v_UserID
+    FROM Users
+    WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Check if user is Admin
+        SELECT AdminProfileID INTO v_AdminID
+        FROM AdminProfiles
+        WHERE UserID = v_UserID;
+
+        -- Resolve product owner
+        SELECT VendorID INTO v_OwnerVendorID
+        FROM Products
+        WHERE ProductID = v_ProductID;
+
+        IF v_OwnerVendorID IS NULL THEN
+            SET v_Message = 'Produit introuvable';
+        ELSEIF v_AdminID IS NULL THEN
+            -- Non-admin : doit être le vendeur propriétaire du produit
+            SELECT VendorProfileID INTO v_VendorProfileID
+            FROM VendorProfiles WHERE UserID = v_UserID;
+
+            IF v_VendorProfileID IS NULL OR v_VendorProfileID <> v_OwnerVendorID THEN
+                SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de ce produit';
+            ELSE
+                SET v_Success = TRUE;
+                SET v_Message = 'OK';
+
+                SELECT
+                    p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                    dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                    p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                    st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                    p.TargetProductID, p.TargetCategoryID,
+                    p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                    p.StartDate, p.EndDate,
+                    ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                    CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                    p.CreatedAt, p.UpdatedAt
+                FROM Promotions p
+                INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+                INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+                INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+                WHERE p.TargetProductID = v_ProductID
+                  AND st.Code = 'PRODUCT'
+                  AND p.DeletedAt IS NULL
+                ORDER BY p.CreatedAt DESC;
+            END IF;
+        ELSE
+            -- Admin : accès autorisé sans vérification de propriété
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+
+            SELECT
+                p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                p.TargetProductID, p.TargetCategoryID,
+                p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                p.StartDate, p.EndDate,
+                ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                p.CreatedAt, p.UpdatedAt
+            FROM Promotions p
+            INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+            INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+            INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+            WHERE p.TargetProductID = v_ProductID
+              AND st.Code = 'PRODUCT'
+              AND p.DeletedAt IS NULL
+            ORDER BY p.CreatedAt DESC;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetPromotionsByCategory(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_CategoryID INT,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_AdminID INT;
+    DECLARE v_CategoryExists INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs
+        (
+            ProcedureName,
+            ErrorSQLState,
+            ErrorNumber,
+            ErrorMessage,
+            ContextData
+        )
+        VALUES
+        (
+            'SP_GetPromotionsByCategory',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'UserPublicID', v_UserPublicID,
+                'CategoryID', v_CategoryID
+            )
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des promotions.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Get user
+    SELECT UserID
+    INTO v_UserID
+    FROM Users
+    WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Check if user is Admin
+        SELECT AdminProfileID INTO v_AdminID
+        FROM AdminProfiles
+        WHERE UserID = v_UserID;
+
+        IF v_AdminID IS NULL THEN
+            SET v_Message = 'Accès refusé : seul un administrateur peut consulter les promotions de catégorie';
+        ELSE
+            -- Vérifie l'existence de la catégorie
+            SELECT COUNT(*) INTO v_CategoryExists
+            FROM Categories
+            WHERE CategoryID = v_CategoryID;
+
+            IF v_CategoryExists = 0 THEN
+                SET v_Message = 'Catégorie introuvable';
+            ELSE
+                SET v_Success = TRUE;
+                SET v_Message = 'OK';
+
+                SELECT
+                    p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                    dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                    p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                    st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                    p.TargetProductID, p.TargetCategoryID,
+                    p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                    p.StartDate, p.EndDate,
+                    ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                    CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                    p.CreatedAt, p.UpdatedAt ,
+                    c.Name as CategoryName
+                FROM Promotions p
+                INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+                INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+                INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+                INNER JOIN Categories c on p.TargetCategoryID = c.CategoryID
+                WHERE p.TargetCategoryID = v_CategoryID
+                  AND st.Code = 'CATEGORY'
+                  AND p.DeletedAt IS NULL
+                ORDER BY p.CreatedAt DESC;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

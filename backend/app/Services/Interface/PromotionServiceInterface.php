@@ -11,7 +11,9 @@ use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
-
+    // PromotionRepositoryInterface
+use App\DTOs\Promotion\CategoryAllPromotionDto;
+use App\DTOs\Promotion\GetPromotionsByCategoryDto;
 interface PromotionServiceInterface
 {
     /** @return LookupItemDto[] */
@@ -32,4 +34,8 @@ interface PromotionServiceInterface
     public function getById(PromotionIdActionDto $dto): PromotionDto;
     /** @return PromotionDto[] */
     public function getByProduct(GetPromotionsByProductDto $dto): array;
+
+
+/** @return CategoryAllPromotionDto[] */
+public function getByCategory(GetPromotionsByCategoryDto $dto): array;
 }

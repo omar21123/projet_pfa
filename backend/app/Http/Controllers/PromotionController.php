@@ -17,6 +17,7 @@ use App\DTOs\Promotion\DeletePromotionDto;
 use Illuminate\Http\Request;
 use App\DTOs\Promotion\PromotionIdActionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
+use App\DTOs\Promotion\GetPromotionsByCategoryDto;
 
 
 #[OA\Tag(name: "Promotions", description: "Gestion des promotions")]
@@ -698,6 +699,91 @@ class PromotionController extends Controller
 
         try {
             $result = $this->promotionService->getByProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_map(fn($p) => $p->toArray(), $result),
+        ], 200);
+    }
+
+    #[OA\Get(
+        path: "/api/promotions/category/{category}",
+        tags: ["Promotions"],
+        summary: "Lister les promotions d'une catégorie",
+        description: "Retourne toutes les promotions actives (non supprimées) ciblant une catégorie spécifique. Réservé aux administrateurs.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "category",
+        in: "path",
+        required: true,
+        description: "Identifiant de la catégorie.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 10
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Promotions récupérées avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(type: "object")
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "Accès réservé aux administrateurs",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : seul un administrateur peut consulter les promotions de catégorie"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur ou catégorie introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Catégorie introuvable"),
+            ]
+        )
+    )]
+    public function getByCategory(Request $request, int $category): JsonResponse
+    {
+        if ($category <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de catégorie invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+
+        $dto = GetPromotionsByCategoryDto::fromArray([
+            'UserPublicID' => $publicId,
+            'CategoryID'   => $category,
+        ]);
+
+        try {
+            $result = $this->promotionService->getByCategory($dto);
         } catch (\App\Exceptions\BusinessValidationException $e) {
             return response()->json([
                 'success' => false,
