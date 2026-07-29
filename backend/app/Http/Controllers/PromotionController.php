@@ -13,6 +13,8 @@ use App\DTOs\Promotion\UpdatePromotionDto;
 use App\Http\Requests\Promotion\CreatePromotionForCategoryRequest;
 use App\Http\Requests\Promotion\CreatePromotionForProductRequest;
 use App\Http\Requests\Promotion\UpdatePromotionRequest;
+use App\DTOs\Promotion\DeletePromotionDto;
+use Illuminate\Http\Request;
 
 #[OA\Tag(name: "Promotions", description: "Gestion des promotions")]
 class PromotionController extends Controller
@@ -314,6 +316,98 @@ class PromotionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Promotion mise à jour avec succès',
+        ], 200);
+    }
+
+
+    #[OA\Delete(
+        path: "/api/promotions/{promotion}",
+        tags: ["Promotions"],
+        summary: "Supprimer une promotion (soft delete)",
+        description: "Marque une promotion comme supprimée (DeletedAt renseigné) sans effacer la ligne en base. La promotion est également désactivée (IsActive = 0). Réservé au vendeur propriétaire.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "promotion",
+        in: "path",
+        required: true,
+        description: "Identifiant de la promotion à supprimer.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Promotion supprimée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Promotion supprimée avec succès"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "L'utilisateur n'est pas propriétaire de cette promotion",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de cette promotion"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil vendeur ou promotion introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Promotion introuvable"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "La promotion est déjà supprimée",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette promotion est déjà supprimée"),
+            ]
+        )
+    )]
+    public function destroy(Request $request, int $promotion): JsonResponse
+    {
+        if ($promotion <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de promotion invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+
+        $dto = DeletePromotionDto::fromArray([
+            'UserPublicID' => $publicId,
+            'PromotionID'  => $promotion,
+        ]);
+
+        try {
+            $this->promotionService->softDelete($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion supprimée avec succès',
         ], 200);
     }
 }

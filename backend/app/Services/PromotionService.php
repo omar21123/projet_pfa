@@ -10,6 +10,8 @@ use App\DTOs\Promotion\CreatePromotionForProductDto;
 use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
+use App\DTOs\Promotion\DeletePromotionDto;
+
 
 class PromotionService implements PromotionServiceInterface
 {
@@ -42,5 +44,10 @@ class PromotionService implements PromotionServiceInterface
     public function update(UpdatePromotionDto $dto): void
     {
         $this->promotionRepository->update($dto);
+    }
+
+    public function softDelete(DeletePromotionDto $dto): void
+    {
+        $this->promotionRepository->softDelete($dto);
     }
 }

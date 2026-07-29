@@ -11,6 +11,8 @@ use App\DTOs\Promotion\CreatePromotionForProductDto;
 use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
+use App\DTOs\Promotion\DeletePromotionDto;
+
 
 class PromotionRepository implements PromotionRepositoryInterface
 {
@@ -111,30 +113,46 @@ class PromotionRepository implements PromotionRepositoryInterface
         ]);
     }
     public function update(UpdatePromotionDto $dto): void
-{
-    DB::statement('CALL SP_UpdatePromotion(?,?,?,?,?,?,?,?,?,?,?,?,?,@Success,@Message)', [
-        $dto->userPublicId,
-        $dto->promotionId,
-        $dto->name,
-        $dto->description,
-        $dto->promoCode,
-        $dto->discountTypeCode,
-        $dto->discountValue,
-        $dto->maxDiscountAmount,
-        $dto->minOrderAmount,
-        $dto->usageLimitTotal,
-        $dto->usageLimitPerUser,
-        $dto->startDate,
-        $dto->endDate,
-    ]);
+    {
+        DB::statement('CALL SP_UpdatePromotion(?,?,?,?,?,?,?,?,?,?,?,?,?,@Success,@Message)', [
+            $dto->userPublicId,
+            $dto->promotionId,
+            $dto->name,
+            $dto->description,
+            $dto->promoCode,
+            $dto->discountTypeCode,
+            $dto->discountValue,
+            $dto->maxDiscountAmount,
+            $dto->minOrderAmount,
+            $dto->usageLimitTotal,
+            $dto->usageLimitPerUser,
+            $dto->startDate,
+            $dto->endDate,
+        ]);
 
-    $result = DB::selectOne('SELECT @Success AS Success, @Message AS Message');
+        $result = DB::selectOne('SELECT @Success AS Success, @Message AS Message');
 
-    if (!$result->Success) {
-        $status = str_contains($result->Message, 'introuvable') ? 404
+        if (!$result->Success) {
+            $status = str_contains($result->Message, 'introuvable') ? 404
                 : (str_contains($result->Message, 'Accès refusé') ? 403 : 422);
 
-        throw new \App\Exceptions\BusinessValidationException($result->Message, $status);
+            throw new \App\Exceptions\BusinessValidationException($result->Message, $status);
+        }
     }
-}
+
+    public function softDelete(DeletePromotionDto $dto): void
+    {
+        DB::select('CALL SP_SoftDeletePromotion(?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->promotionId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403
+                : (str_contains($result->message, 'introuvable') ? 404 : 422);
+            throw new BusinessValidationException($result->message, $status);
+        }
+    }
 }

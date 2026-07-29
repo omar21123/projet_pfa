@@ -99,7 +99,7 @@ Route::prefix('units')->group(function () {
     });
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -174,12 +174,12 @@ Route::prefix('promotions')->group(function () {
     });
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
         Route::post('/product', [PromotionController::class, 'createForProduct']);
+        Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
     });
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/category', [PromotionController::class, 'createForCategory']);
     });
     // Les routes suivantes seront ajoutées au fur et à mesure des parties suivantes :
-    // Route::put('/{promotion}', [PromotionController::class, 'update']);
     // Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
     // Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
     // Route::get('/{promotion}', [PromotionController::class, 'show']);
