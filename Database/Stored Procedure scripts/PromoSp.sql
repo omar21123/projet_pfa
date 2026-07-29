@@ -534,6 +534,8 @@ BEGIN
 END$$
 
 DELIMITER ;
+ALTER TABLE SPErrorLogs
+CHANGE COLUMN `SQLState` ErrorSQLState VARCHAR(10);
 DELIMITER $$
 CREATE PROCEDURE SP_DeactivatePromotion(
     IN v_UserPublicID VARCHAR(36),
@@ -640,4 +642,136 @@ BEGIN
         END IF;
     END IF;
 END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE PROCEDURE SP_GetPromotionByID(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_PromotionID INT UNSIGNED,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT;
+    DECLARE v_AdminID INT;
+    DECLARE v_VendorProfileID INT;
+    DECLARE v_OwnerVendorID INT;
+    DECLARE v_ScopeTypeCode VARCHAR(30);
+    DECLARE v_DeletedAt DATETIME;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs
+        (
+            ProcedureName,
+            ErrorSQLState,
+            ErrorNumber,
+            ErrorMessage,
+            ContextData
+        )
+        VALUES
+        (
+            'SP_GetPromotionByID',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'UserPublicID', v_UserPublicID,
+                'PromotionID', v_PromotionID
+            )
+        );
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération de la promotion.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- Get user
+    SELECT UserID
+    INTO v_UserID
+    FROM Users
+    WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        -- Check if user is Admin
+        SELECT AdminProfileID INTO v_AdminID
+        FROM AdminProfiles
+        WHERE UserID = v_UserID;
+
+        -- Resolve target promotion (vendor owner + scope), soft-deleted excluded
+        SELECT p.VendorID, st.Code, p.DeletedAt
+        INTO v_OwnerVendorID, v_ScopeTypeCode, v_DeletedAt
+        FROM Promotions p
+        INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+        WHERE p.PromotionID = v_PromotionID;
+
+        IF v_OwnerVendorID IS NULL THEN
+            SET v_Message = 'Promotion introuvable';
+        ELSEIF v_DeletedAt IS NOT NULL THEN
+            SET v_Message = 'Promotion introuvable';
+        ELSEIF v_ScopeTypeCode = 'CATEGORY' AND v_AdminID IS NULL THEN
+            -- Promotions de catégorie : consultables uniquement par l'admin
+            SET v_Message = 'Accès refusé : seul un administrateur peut consulter une promotion de catégorie';
+        ELSEIF v_ScopeTypeCode <> 'CATEGORY' AND v_AdminID IS NULL THEN
+            -- Promotions produit/catalogue : admin OU vendeur propriétaire
+            SELECT VendorProfileID INTO v_VendorProfileID
+            FROM VendorProfiles WHERE UserID = v_UserID;
+
+            IF v_VendorProfileID IS NULL OR v_VendorProfileID <> v_OwnerVendorID THEN
+                SET v_Message = 'Accès refusé : vous n''êtes pas propriétaire de cette promotion';
+            ELSE
+                SET v_Success = TRUE;
+                SET v_Message = 'OK';
+
+                SELECT
+                    p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                    dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                    p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                    st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                    p.TargetProductID, p.TargetCategoryID,
+                    p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                    p.StartDate, p.EndDate,
+                    ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                    CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                    p.CreatedAt, p.UpdatedAt
+                FROM Promotions p
+                INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+                INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+                INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+                WHERE p.PromotionID = v_PromotionID;
+            END IF;
+        ELSE
+            -- Admin : autorisé dans tous les cas
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+
+            SELECT
+                p.PromotionID, p.VendorID, p.Name, p.Description, p.PromoCode,
+                dt.Code AS DiscountTypeCode, dt.Label AS DiscountTypeLabel,
+                p.DiscountValue, p.MaxDiscountAmount, p.MinOrderAmount,
+                st.Code AS ScopeTypeCode, st.Label AS ScopeTypeLabel,
+                p.TargetProductID, p.TargetCategoryID,
+                p.UsageLimitTotal, p.UsageLimitPerUser, p.UsageCount,
+                p.StartDate, p.EndDate,
+                ps.Code AS StatusCode, ps.Label AS StatusLabel,
+                CAST(p.IsActive AS UNSIGNED) AS IsActive,
+                p.CreatedAt, p.UpdatedAt
+            FROM Promotions p
+            INNER JOIN PromotionDiscountTypes dt ON dt.DiscountTypeID = p.DiscountTypeID
+            INNER JOIN PromotionScopeTypes st ON st.ScopeTypeID = p.ScopeTypeID
+            INNER JOIN PromotionStatuses ps ON ps.StatusID = p.StatusID
+            WHERE p.PromotionID = v_PromotionID;
+        END IF;
+    END IF;
+END$$
+
 DELIMITER ;

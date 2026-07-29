@@ -11,6 +11,7 @@ use App\DTOs\Promotion\PromotionDto;
 use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\GetPromotionsByProductDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
 
 
@@ -59,5 +60,9 @@ class PromotionService implements PromotionServiceInterface
     public function getById(PromotionIdActionDto $dto): PromotionDto
     {
         return $this->promotionRepository->getById($dto);
+    }
+    public function getByProduct(GetPromotionsByProductDto $dto): array
+    {
+        return $this->promotionRepository->getByProduct($dto);
     }
 }

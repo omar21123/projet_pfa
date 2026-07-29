@@ -16,6 +16,7 @@ use App\Http\Requests\Promotion\UpdatePromotionRequest;
 use App\DTOs\Promotion\DeletePromotionDto;
 use Illuminate\Http\Request;
 use App\DTOs\Promotion\PromotionIdActionDto;
+use App\DTOs\Promotion\GetPromotionsByProductDto;
 
 
 #[OA\Tag(name: "Promotions", description: "Gestion des promotions")]
@@ -627,6 +628,91 @@ class PromotionController extends Controller
         return response()->json([
             'success' => true,
             'data' => $result->toArray(),
+        ], 200);
+    }
+
+    #[OA\Get(
+        path: "/api/promotions/product/{product}",
+        tags: ["Promotions"],
+        summary: "Lister les promotions d'un produit",
+        description: "Retourne toutes les promotions actives (non supprimées) ciblant un produit spécifique. Réservé à l'admin ou au vendeur propriétaire du produit.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 452
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Promotions récupérées avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(type: "object")
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 403,
+        description: "L'utilisateur n'est pas propriétaire de ce produit",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Accès refusé : vous n'êtes pas propriétaire de ce produit"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur ou produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable"),
+            ]
+        )
+    )]
+    public function getByProduct(Request $request, int $product): JsonResponse
+    {
+        if ($product <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de produit invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+
+        $dto = GetPromotionsByProductDto::fromArray([
+            'UserPublicID' => $publicId,
+            'ProductID'    => $product,
+        ]);
+
+        try {
+            $result = $this->promotionService->getByProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_map(fn($p) => $p->toArray(), $result),
         ], 200);
     }
 }

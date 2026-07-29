@@ -10,7 +10,7 @@ use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
-
+use App\DTOs\Promotion\GetPromotionsByProductDto;
 
 
 interface PromotionRepositoryInterface
@@ -31,4 +31,7 @@ interface PromotionRepositoryInterface
     public function deactivate(PromotionIdActionDto $dto): void;
     public function getById(PromotionIdActionDto $dto): PromotionDto;
 
+
+    /** @return PromotionDto[] */
+    public function getByProduct(GetPromotionsByProductDto $dto): array;
 }

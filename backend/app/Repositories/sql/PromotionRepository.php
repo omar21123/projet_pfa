@@ -13,6 +13,7 @@ use App\DTOs\Promotion\PromotionResultDto;
 use App\DTOs\Promotion\UpdatePromotionDto;
 use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
+use App\DTOs\Promotion\GetPromotionsByProductDto;
 
 
 
@@ -197,5 +198,22 @@ class PromotionRepository implements PromotionRepositoryInterface
         }
 
         return PromotionDto::fromRow($row);
+    }
+
+    public function getByProduct(GetPromotionsByProductDto $dto): array
+    {
+        $rows = DB::select('CALL SP_GetPromotionsByProduct(?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return array_map(fn($row) => PromotionDto::fromRow($row), $rows);
     }
 }
