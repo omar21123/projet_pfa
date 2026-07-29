@@ -14,6 +14,7 @@ use App\DTOs\Promotion\PromotionIdActionDto;
     // PromotionRepositoryInterface
 use App\DTOs\Promotion\CategoryAllPromotionDto;
 use App\DTOs\Promotion\GetPromotionsByCategoryDto;
+use App\DTOs\Promotion\GetAllPromotionsDto;
 interface PromotionServiceInterface
 {
     /** @return LookupItemDto[] */
@@ -38,4 +39,8 @@ interface PromotionServiceInterface
 
 /** @return CategoryAllPromotionDto[] */
 public function getByCategory(GetPromotionsByCategoryDto $dto): array;
+
+
+/** @return array{items: AllPromotionDto[], page: int, pageSize: int, hasMore: bool} */
+public function getAll(GetAllPromotionsDto $dto): array;
 }

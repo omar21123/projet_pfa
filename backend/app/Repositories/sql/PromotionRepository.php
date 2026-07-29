@@ -16,7 +16,9 @@ use App\DTOs\Promotion\PromotionIdActionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
 use App\DTOs\Promotion\CategoryAllPromotionDto;
 use App\DTOs\Promotion\GetPromotionsByCategoryDto;
-
+// PromotionRepository
+use App\DTOs\Promotion\GetAllPromotionsDto;
+use App\DTOs\Promotion\AllPromotionDto;
 
 
 class PromotionRepository implements PromotionRepositoryInterface
@@ -235,5 +237,34 @@ class PromotionRepository implements PromotionRepositoryInterface
         }
 
         return array_map(fn($row) => CategoryAllPromotionDto::fromRow($row), $rows);
+    }
+
+    public function getAll(GetAllPromotionsDto $dto): array
+    {
+        $rows = DB::select('CALL SP_GetAllPromotions(?, ?, ?, ?, ?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->statusCode,
+            $dto->scopeTypeCode,
+            $dto->isActive === null ? null : (int) $dto->isActive,
+            $dto->page,
+            $dto->pageSize,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        $hasMore = count($rows) > $dto->pageSize;
+        $pageRows = array_slice($rows, 0, $dto->pageSize);
+
+        return [
+            'items'    => array_map(fn($row) => AllPromotionDto::fromRow($row), $pageRows),
+            'page'     => $dto->page,
+            'pageSize' => $dto->pageSize,
+            'hasMore'  => $hasMore,
+        ];
     }
 }

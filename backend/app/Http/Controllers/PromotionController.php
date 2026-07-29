@@ -14,6 +14,7 @@ use App\Http\Requests\Promotion\CreatePromotionForCategoryRequest;
 use App\Http\Requests\Promotion\CreatePromotionForProductRequest;
 use App\Http\Requests\Promotion\UpdatePromotionRequest;
 use App\DTOs\Promotion\DeletePromotionDto;
+use App\DTOs\Promotion\GetAllPromotionsDto;
 use Illuminate\Http\Request;
 use App\DTOs\Promotion\PromotionIdActionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
@@ -799,6 +800,74 @@ class PromotionController extends Controller
         return response()->json([
             'success' => true,
             'data' => array_map(fn($p) => $p->toArray(), $result),
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/promotions",
+        tags: ["Promotions"],
+        summary: "Lister toutes les promotions (Admin)",
+        description: "Retourne toutes les promotions (produit et catégorie), avec filtres optionnels par statut, portée et état actif. Réservé aux administrateurs.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "status", in: "query", required: false, description: "Filtrer par code de statut (ex: PENDING, VALIDATED).", schema: new OA\Schema(type: "string"))]
+    #[OA\Parameter(name: "scope", in: "query", required: false, description: "Filtrer par portée (PRODUCT ou CATEGORY).", schema: new OA\Schema(type: "string"))]
+    #[OA\Parameter(name: "is_active", in: "query", required: false, description: "Filtrer par état actif (0 ou 1).", schema: new OA\Schema(type: "integer", enum: [0, 1]))]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "page_size", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Promotions récupérées avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "page", type: "integer", example: 1),
+                        new OA\Property(property: "page_size", type: "integer", example: 20),
+                        new OA\Property(property: "has_more", type: "boolean", example: true),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(response: 403, description: "Accès réservé aux administrateurs")]
+    #[OA\Response(response: 404, description: "Utilisateur introuvable")]
+    public function index(Request $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        if (!$publicId) {
+            return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+        }
+
+        $dto = GetAllPromotionsDto::fromArray([
+            'UserPublicID'  => $publicId,
+            'StatusCode'    => $request->query('status'),
+            'ScopeTypeCode' => $request->query('scope'),
+            'IsActive'      => $request->query('is_active'),
+            'Page'          => $request->query('page', 1),
+            'PageSize'      => $request->query('page_size', 20),
+        ]);
+
+        try {
+            $result = $this->promotionService->getAll($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_map(fn($p) => $p->toArray(), $result['items']),
+            'meta' => [
+                'page'      => $result['page'],
+                'page_size' => $result['pageSize'],
+                'has_more'  => $result['hasMore'],
+            ],
         ], 200);
     }
 }

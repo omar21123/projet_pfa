@@ -12,6 +12,8 @@ use App\DTOs\Promotion\DeletePromotionDto;
 use App\DTOs\Promotion\PromotionIdActionDto;
 use App\DTOs\Promotion\GetPromotionsByProductDto;
 use App\DTOs\Promotion\GetPromotionsByCategoryDto;
+// PromotionRepositoryInterface
+use App\DTOs\Promotion\GetAllPromotionsDto;
 
 
 interface PromotionRepositoryInterface
@@ -36,6 +38,8 @@ interface PromotionRepositoryInterface
     /** @return PromotionDto[] */
     public function getByProduct(GetPromotionsByProductDto $dto): array;
 
-/** @return CategoryAllPromotionDto[] */
-public function getByCategory(GetPromotionsByCategoryDto $dto): array;
+    /** @return CategoryAllPromotionDto[] */
+    public function getByCategory(GetPromotionsByCategoryDto $dto): array;
+/** @return array{items: AllPromotionDto[], page: int, pageSize: int, hasMore: bool} */
+public function getAll(GetAllPromotionsDto $dto): array;
 }

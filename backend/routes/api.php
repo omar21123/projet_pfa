@@ -158,7 +158,7 @@ Route::prefix('products')->group(function () {
         Route::get('/vendor/me', [ProductController::class, 'getVendorProducts']);
     });
 
-    Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [ProductController::class, 'index']);
         Route::get('/{product}', [ProductController::class, 'show']);
         Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);
@@ -169,6 +169,7 @@ Route::prefix('products')->group(function () {
 
 Route::prefix('promotions')->group(function () {
     Route::get('/lookups', [PromotionController::class, 'lookups']);
+   
     Route::middleware(['jwt.custom'])->group(function () {
         Route::put('/{promotion}', [PromotionController::class, 'update']);
     });
@@ -182,14 +183,11 @@ Route::prefix('promotions')->group(function () {
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/category', [PromotionController::class, 'createForCategory']);
         Route::get('/category/{category}', [PromotionController::class, 'getByCategory']);
-
+        Route::get('/', [PromotionController::class, 'index']);
     });
     Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
          Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
          Route::get('/{promotion}', [PromotionController::class, 'show']);
          Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
     });
-   
-    // Les routes suivantes seront ajoutées au fur et à mesure des parties suivantes :
-    // Route::get('/', [PromotionController::class, 'index']);
 });
