@@ -7,6 +7,8 @@ use App\DTOs\Search\SearchSuggestionDto;
 use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
+use App\DTOs\Search\GetSearchHistoryDto;
+use App\DTOs\Search\SearchHistoryItemDto;
 
 class SearchRepository implements SearchRepositoryInterface
 {
@@ -40,5 +42,38 @@ class SearchRepository implements SearchRepositoryInterface
         // ou Cache::store('redis')->put($cacheKey, $suggestions, now()->addMinutes(10))).
 
         return $suggestions;
+    }
+
+    public function getUserSearchHistory(GetSearchHistoryDto $dto, int $userId): array
+    {
+        // TODO(Redis): cache candidat surtout pour "famous" (peu de variation par IP
+        // sur une courte fenêtre). Clé: "search:famous:{$dto->ipAddress}:{$dto->famousLimit}",
+        // TTL court (5-10 min). Le "latest" personnel est moins pertinent à cacher
+        // puisqu'il doit refléter les recherches très récentes de l'utilisateur.
+
+        $latestRows = DB::select('CALL SP_GetUserLatestSearches(?, ?, @success1, @message1)', [
+            $userId,
+            $dto->latestLimit,
+        ]);
+        $latestResult = DB::selectOne('SELECT @success1 AS success, @message1 AS message');
+
+        if (!$latestResult->success) {
+            throw new BusinessValidationException($latestResult->message, 404);
+        }
+
+        $famousRows = DB::select('CALL SP_GetFamousSearchesByIP(?, ?, @success2, @message2)', [
+            $dto->ipAddress,
+            $dto->famousLimit,
+        ]);
+        $famousResult = DB::selectOne('SELECT @success2 AS success, @message2 AS message');
+
+        if (!$famousResult->success) {
+            throw new BusinessValidationException($famousResult->message, 422);
+        }
+
+        return [
+            'latest' => array_map(fn($row) => SearchHistoryItemDto::fromRow($row), $latestRows),
+            'famous' => array_map(fn($row) => SearchHistoryItemDto::fromRow($row), $famousRows),
+        ];
     }
 }

@@ -195,4 +195,7 @@ Route::prefix('promotions')->group(function () {
 
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
+    Route::middleware(['jwt.custom'])->group(function () {
+    Route::get('/history', [SearchController::class, 'history']);
+});
 });

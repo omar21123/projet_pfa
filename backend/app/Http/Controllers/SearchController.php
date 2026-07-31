@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DTOs\Search\SearchSuggestionsQueryDto;
 use App\Http\Requests\Search\SearchSuggestionsRequest;
 use App\Services\Interface\SearchServiceInterface;
+use App\Services\Interface\UserServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
@@ -13,6 +14,7 @@ class SearchController extends Controller
 {
     public function __construct(
         protected SearchServiceInterface $searchService,
+        private UserServiceInterface $userService,
     ) {}
 
     #[OA\Get(
@@ -56,6 +58,69 @@ class SearchController extends Controller
         return response()->json([
             'success' => true,
             'data' => array_map(fn($s) => $s->toArray(), $result),
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/search/history",
+        tags: ["Search"],
+        summary: "Historique de recherche de l'utilisateur",
+        description: "Retourne les recherches les plus récentes de l'utilisateur connecté, ainsi que les recherches les plus populaires émises depuis son adresse IP actuelle.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "latest_limit", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 10, maximum: 50))]
+    #[OA\Parameter(name: "famous_limit", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 10, maximum: 50))]
+    #[OA\Response(
+        response: 200,
+        description: "Historique récupéré avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(
+                    property: "data",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "latest", type: "array", items: new OA\Items(type: "object")),
+                        new OA\Property(property: "famous", type: "array", items: new OA\Items(type: "object")),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Utilisateur introuvable")]
+    public function history(Request $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.'
+            ], 404);
+        }
+
+        $dto = GetSearchHistoryDto::fromArray([
+            'UserPublicID' => $publicId,
+            'IPAddress'    => $request->ip(),
+            'LatestLimit'  => $request->query('latest_limit', 10),
+            'FamousLimit'  => $request->query('famous_limit', 10),
+        ]);
+
+        try {
+            $result = $this->searchService->getUserSearchHistory($dto, $userInfo->UserID);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'latest' => array_map(fn($s) => $s->toArray(), $result['latest']),
+                'famous' => array_map(fn($s) => $s->toArray(), $result['famous']),
+            ],
         ], 200);
     }
 }
