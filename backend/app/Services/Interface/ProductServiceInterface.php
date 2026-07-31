@@ -15,8 +15,9 @@ use App\DTOs\Product\ProductCombinationDetailDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
-
-
+use App\DTOs\Product\SearchProductsByTermDto;
+use App\DTOs\Product\PaginatedProductItemResponseDto;
+use App\DTOs\Product\ProductSearchResultDto;
 
 interface ProductServiceInterface
 {
@@ -32,8 +33,10 @@ interface ProductServiceInterface
      * @return ProductCombinationDto[]
      */
     public function getProductCombinationsForVendor(string $userPublicId, int $productId): array;
-
+    public function searchByTerm(SearchProductsByTermDto $dto): PaginatedProductItemResponseDto;
     public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto;
     public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto;
     public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto;
+    public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto;
+
 }

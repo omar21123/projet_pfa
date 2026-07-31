@@ -980,6 +980,34 @@ CREATE TABLE ProductOptionsCombiniasonDetails (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE SearchDictionary
     ADD INDEX IX_SearchDictionary_NormalizedText (NormalizedText);
+
+
+
+CREATE TABLE ProductLikes (
+    ProductLikeID   INT AUTO_INCREMENT PRIMARY KEY,
+    UserID          INT NOT NULL,
+    ProductID       INT NOT NULL,
+    LikedAt         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_ProductLikes_Users
+        FOREIGN KEY (UserID) REFERENCES Users(UserID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_ProductLikes_Products
+        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE CASCADE,
+
+    -- prevents a user from liking the same product twice
+    CONSTRAINT UQ_ProductLikes_User_Product UNIQUE (UserID, ProductID),
+
+    -- speeds up "get all products a user liked" and "count likes per product"
+    INDEX IDX_ProductLikes_UserID (UserID),
+    INDEX IDX_ProductLikes_ProductID (ProductID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE ProductSearchIndex
+ADD FULLTEXT INDEX FT_SearchText (SearchText);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================

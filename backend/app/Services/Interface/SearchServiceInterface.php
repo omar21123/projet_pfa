@@ -5,6 +5,8 @@ namespace App\Services\Interface;
 use App\DTOs\Search\SearchSuggestionsQueryDto;
 use App\DTOs\Search\SearchSuggestionDto;
 use App\DTOs\Search\GetSearchHistoryDto;
+use App\DTOs\Search\SearchHistoryItemDto;
+use App\Helpers\Search\TextCombo;
 
 interface SearchServiceInterface
 {
@@ -13,4 +15,9 @@ interface SearchServiceInterface
 
     /** @return array{latest: SearchHistoryItemDto[], famous: SearchHistoryItemDto[]} */
     public function getUserSearchHistory(GetSearchHistoryDto $dto, int $userId): array;
+
+    // app/Services/Interface/SearchServiceInterface.php
+
+    /** @return array{items: TextCombo[], page: int, pageSize: int, total: int, hasMore: bool} */
+    public function search(string $query, ?string $userPublicId, int $page, int $pageSize): array;
 }

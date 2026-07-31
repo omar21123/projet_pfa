@@ -4,6 +4,9 @@ namespace App\Repositories\sql;
 
 use App\DTOs\Search\SearchSuggestionsQueryDto;
 use App\DTOs\Search\SearchSuggestionDto;
+use App\DTOs\Search\UpsertSearchTermDto;
+use App\DTOs\Search\SearchTermUpsertResultDto;
+use App\DTOs\Search\InsertSearchTermProductStatsDto;
 use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
@@ -75,5 +78,50 @@ class SearchRepository implements SearchRepositoryInterface
             'latest' => array_map(fn($row) => SearchHistoryItemDto::fromRow($row), $latestRows),
             'famous' => array_map(fn($row) => SearchHistoryItemDto::fromRow($row), $famousRows),
         ];
+    }
+
+    /**
+     * Enregistre / met à jour une entrée du dictionnaire de recherche.
+     * À appeler au moment d'une recherche réelle (pas sur chaque keystroke
+     * d'autocomplete), pour que SearchHitCount / SearchHitCount7d reflètent
+     * un usage effectif plutôt que du bruit de frappe.
+     */
+    public function recordSearchTerm(UpsertSearchTermDto $dto): SearchTermUpsertResultDto
+    {
+        $rows = DB::select('CALL SP_UpsertSearchDictionary(?, ?, ?, ?)', [
+            $dto->displayText,
+            $dto->sourceType,
+            $dto->sourceId,
+            $dto->resultCount,
+        ]);
+
+        if (empty($rows)) {
+            throw new BusinessValidationException('Échec de l\'enregistrement du terme de recherche.', 422);
+        }
+
+        return SearchTermUpsertResultDto::fromRow($rows[0]);
+    }
+
+    /**
+     * Initialise une ligne de stats (SearchTermID, ProductID) à zéro, la première
+     * fois qu'un produit apparaît dans les résultats d'un terme de recherche.
+     * Retourne silencieusement null si la paire existe déjà (pas une erreur bloquante),
+     * les incréments (ImpressionCount/ClickCount/...) étant gérés par une autre SP.
+     */
+    public function recordSearchTermProductStats(InsertSearchTermProductStatsDto $dto): ?int
+    {
+        $rows = DB::select('CALL SP_InsertSearchTermProductStats(?, ?, @success, @message)', [
+            $dto->searchTermId,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            // Paire déjà existante -> pas une erreur métier, on ignore simplement.
+            return null;
+        }
+
+        return (int) $rows[0]->SearchTermProductID;
     }
 }

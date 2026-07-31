@@ -6945,6 +6945,107 @@
                 ]
             }
         },
+        "/api/search": {
+            "get": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Génère les combinaisons de termes de recherche (étape intermédiaire)",
+                "description": "Découpe la requête en mots et retourne toutes les combinaisons non vides possibles, chacune avec un score = nombre de termes qu'elle contient, paginées. Étape de construction avant le matching réel en base.",
+                "operationId": "2754ee3c6371023cefd5b35cf65e9e07",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Texte de recherche.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 150,
+                            "minLength": 2
+                        },
+                        "example": "écouteurs sans fil"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Combinaisons générées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string",
+                                                        "example": "écouteurs sans"
+                                                    },
+                                                    "score": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 511
+                                                },
+                                                "has_more": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Requête invalide (trop courte ou manquante)"
+                    }
+                }
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [

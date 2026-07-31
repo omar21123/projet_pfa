@@ -15,13 +15,18 @@ use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
 use App\DTOs\Product\ProductCombinationDto;
-    use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\ProductCombinationDetailDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\Exceptions\NotFoundException; // adapte si tu as une exception dédiée 404
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 use App\DTOs\Product\vendor\VendorProductItemDto;
 
+// ProductRepository — add this method alongside getProductsForVendor()
+use App\DTOs\Product\SearchProductsByTermDto;
+use App\DTOs\Product\PaginatedProductItemResponseDto;
+use App\DTOs\Product\ProductItemDto;
+use App\DTOs\Product\ProductSearchResultDto;
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -310,94 +315,153 @@ class ProductRepository implements ProductRepositoryInterface
     }
 
 
-public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto
-{
-    $pdo = DB::connection()->getPdo();
+    public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto
+    {
+        $pdo = DB::connection()->getPdo();
 
-    $stmt = $pdo->prepare('CALL SP_GetProductCombinationByID(?, ?, @success, @message)');
-    $stmt->bindValue(1, $userPublicId, \PDO::PARAM_STR);
-    $stmt->bindValue(2, $combinationId, \PDO::PARAM_INT);
-    $stmt->execute();
+        $stmt = $pdo->prepare('CALL SP_GetProductCombinationByID(?, ?, @success, @message)');
+        $stmt->bindValue(1, $userPublicId, \PDO::PARAM_STR);
+        $stmt->bindValue(2, $combinationId, \PDO::PARAM_INT);
+        $stmt->execute();
 
-    $combinationRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-    $combinationRow = $combinationRows[0] ?? null;
+        $combinationRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        $combinationRow = $combinationRows[0] ?? null;
 
-    $optionRows = [];
-    if ($combinationRow) {
-        $stmt->nextRowset();
-        $optionRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        $optionRows = [];
+        if ($combinationRow) {
+            $stmt->nextRowset();
+            $optionRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        }
+
+        while ($stmt->nextRowset()) {
+            // drain
+        }
+        $stmt->closeCursor();
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return ProductCombinationDetailDto::fromRow($combinationRow, $optionRows);
     }
 
-    while ($stmt->nextRowset()) {
-        // drain
-    }
-    $stmt->closeCursor();
-
-    $result = DB::selectOne('SELECT @success AS success, @message AS message');
-
-    if (!$result->success) {
-        $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
-        throw new BusinessValidationException($result->message, $status);
-    }
-
-    return ProductCombinationDetailDto::fromRow($combinationRow, $optionRows);
-}
-
-public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
-{
-    DB::select('CALL SP_UpdateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, ?, @success, @message)', [
-        $dto->userPublicId,
-        $dto->combinationId,
-        $dto->sku,
-        $dto->price,
-        $dto->compareAtPrice,
-        $dto->stock,
-        $dto->imagePath,
-        $dto->isDefault ? 1 : 0,
-        $dto->isActive ? 1 : 0,
-    ]);
-
-    $row = DB::selectOne('SELECT * FROM ProductOptionsCombiniason WHERE CombinationID = ?', [$dto->combinationId]);
-    $result = DB::selectOne('SELECT @success AS success, @message AS message');
-
-    if (!$result->success) {
-        $status = str_contains($result->message, 'Accès refusé') ? 403 : 422;
-        throw new BusinessValidationException($result->message, $status);
-    }
-
-    return ProductCombinationDetailDto::fromRow($row);
-}
-
-
-public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto
-{
-    $rows = DB::select(
-        'CALL SP_GetProductsForVendor(?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
-        [
+    public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
+    {
+        DB::select('CALL SP_UpdateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, ?, @success, @message)', [
             $dto->userPublicId,
-            $dto->status,
-            $dto->search,
-            $dto->isActive === null ? null : (int) $dto->isActive,
-            $dto->isBlocked === null ? null : (int) $dto->isBlocked,
-            $dto->pageNumber,
-            $dto->pageSize,
-        ]
-    );
+            $dto->combinationId,
+            $dto->sku,
+            $dto->price,
+            $dto->compareAtPrice,
+            $dto->stock,
+            $dto->imagePath,
+            $dto->isDefault ? 1 : 0,
+            $dto->isActive ? 1 : 0,
+        ]);
 
-    $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+        $row = DB::selectOne('SELECT * FROM ProductOptionsCombiniason WHERE CombinationID = ?', [$dto->combinationId]);
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
 
-    if (!$result->success) {
-        $status = str_contains($result->message, 'introuvable') ? 404 : 422;
-        throw new BusinessValidationException($result->message, $status);
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return ProductCombinationDetailDto::fromRow($row);
     }
 
-    $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
 
-    return new PaginatedVendorProductResponseDto(
-        items: $items,
-        total: (int) $result->totalCount,
-        page: $dto->pageNumber,
-        pageSize: $dto->pageSize,
-    );
-}
+    public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto
+    {
+        $rows = DB::select(
+            'CALL SP_GetProductsForVendor(?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
+            [
+                $dto->userPublicId,
+                $dto->status,
+                $dto->search,
+                $dto->isActive === null ? null : (int) $dto->isActive,
+                $dto->isBlocked === null ? null : (int) $dto->isBlocked,
+                $dto->pageNumber,
+                $dto->pageSize,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
+
+        return new PaginatedVendorProductResponseDto(
+            items: $items,
+            total: (int) $result->totalCount,
+            page: $dto->pageNumber,
+            pageSize: $dto->pageSize,
+        );
+    }
+
+
+
+    public function searchByTerm(SearchProductsByTermDto $dto): PaginatedProductItemResponseDto
+    {
+        $rows = DB::select(
+            'CALL SP_SearchProductsByTerm(?, ?, ?, ?, @totalCount, @success, @message)',
+            [
+                $dto->query,
+                $dto->userPublicId,
+                $dto->pageNumber,
+                $dto->pageSize,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        // Le resultset "vide" (terme introuvable) renvoie une ligne avec ProductID NULL — on la filtre.
+        $items = array_values(array_filter(
+            array_map(fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null, $rows)
+        ));
+
+        return new PaginatedProductItemResponseDto(
+            items: $items,
+            total: (int) $result->totalCount,
+            page: $dto->pageNumber,
+            pageSize: $dto->pageSize,
+        );
+    }
+
+    public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto
+    {
+        $rows = DB::select(
+            'CALL SP_SearchProductsFullText(?, ?, @totalCount, @success, @message)',
+            [
+                $query,
+                $userPublicId,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        $items = array_values(array_filter(
+            array_map(fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null, $rows)
+        ));
+
+        return new ProductSearchResultDto(
+            items: $items,
+            total: (int) $result->totalCount,
+        );
+    }
 }

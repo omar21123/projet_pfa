@@ -6,6 +6,7 @@ use App\DTOs\Product\BlockProductDto;
 use App\DTOs\Product\CreateProductDto;
 use App\DTOs\Product\GetAllProductsAdminDto;
 use App\DTOs\Product\PaginatedProductAdminResponseDto;
+use App\DTOs\Product\PaginatedProductItemResponseDto;
 use App\DTOs\Product\ProductCombinationDto;
 use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
@@ -14,6 +15,8 @@ use App\DTOs\Product\ValidateProductDto;
 use App\Services\Interface\ProductServiceInterface;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\ProductSearchResultDto;
+use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
@@ -77,4 +80,13 @@ class ProductService implements ProductServiceInterface
     {
         return $this->productRepository->getProductsForVendor($dto);
     }
+    public function searchByTerm(SearchProductsByTermDto $dto): PaginatedProductItemResponseDto
+    {
+        return $this->productRepository->searchByTerm($dto);
+    }
+    public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto
+    {
+        return $this->productRepository->searchProductsFullText($query , $userPublicId);
+    }
+
 }
