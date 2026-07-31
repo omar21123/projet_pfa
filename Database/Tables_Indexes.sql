@@ -978,7 +978,8 @@ CREATE TABLE ProductOptionsCombiniasonDetails (
 
     INDEX IX_POCD_Option (OptionID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+ALTER TABLE SearchDictionary
+    ADD INDEX IX_SearchDictionary_NormalizedText (NormalizedText);
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================

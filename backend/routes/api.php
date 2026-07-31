@@ -16,6 +16,7 @@ use App\Http\Controllers\ConfigAttributeOptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\SearchController;
 
 Route::prefix('auth')->group(function () {
 
@@ -190,4 +191,8 @@ Route::prefix('promotions')->group(function () {
          Route::get('/{promotion}', [PromotionController::class, 'show']);
          Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
     });
+});
+
+Route::prefix('search')->group(function () {
+    Route::get('/suggestions', [SearchController::class, 'suggestions']);
 });

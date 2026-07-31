@@ -85,6 +85,7 @@ use App\Repositories\Interface\PromotionRepositoryInterface;
 use App\Repositories\sql\PromotionRepository;
 use App\Services\Interface\PromotionServiceInterface;
 use App\Services\PromotionService;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -271,6 +272,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             UsergoogleRepositoryInterface::class,
             UsergoogleRepository::class
+        );
+
+        $this->app->bind(
+            \App\Repositories\Interface\SearchRepositoryInterface::class,
+            \App\Repositories\sql\SearchRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\SearchServiceInterface::class,
+            \App\Services\SearchService::class,
         );
     }
 

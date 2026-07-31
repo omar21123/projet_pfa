@@ -6802,6 +6802,74 @@
                 ]
             }
         },
+        "/api/search/suggestions": {
+            "get": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Suggestions de recherche (autocomplétion)",
+                "description": "Retourne les termes de recherche les plus pertinents commençant par la requête donnée, triés par popularité (7 derniers jours, puis historique global). Endpoint public, sans authentification.",
+                "operationId": "78e73938813fbe12e5b0a0eb0653a0c6",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Texte tapé par l'utilisateur (min. 2 caractères).",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 150,
+                            "minLength": 2
+                        },
+                        "example": "écout"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Nombre maximum de suggestions (défaut 10, max 20).",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Suggestions récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string",
+                                                        "example": "écouteurs sans fil"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Requête invalide (trop courte)"
+                    }
+                }
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -7477,6 +7545,10 @@
         {
             "name": "Promotions",
             "description": "Gestion des promotions"
+        },
+        {
+            "name": "Search",
+            "description": "Recherche et suggestions"
         },
         {
             "name": "Tags",
