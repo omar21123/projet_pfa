@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\WishlistsController;
 
 Route::prefix('auth')->group(function () {
 
@@ -198,5 +199,15 @@ Route::prefix('search')->group(function () {
     Route::get('/', [SearchController::class, 'search']);
     Route::middleware(['jwt.custom'])->group(function () {
     Route::get('/history', [SearchController::class, 'history']);
+});
+});
+
+Route::prefix('wishlists')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+    Route::get('/', [WishlistsController::class, 'index']);
+    Route::post('/', [WishlistsController::class, 'store']);
+    Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
+    Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
+    Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
 });
 });

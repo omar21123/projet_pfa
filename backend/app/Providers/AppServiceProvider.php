@@ -282,6 +282,15 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\SearchServiceInterface::class,
             \App\Services\SearchService::class,
         );
+
+          $this->app->bind(
+            \App\Repositories\Interface\WishlistRepositoryInterface::class,
+            \App\Repositories\sql\WishlistRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\WishlistServiceInterface::class,
+            \App\Services\WishlistService::class,
+        );
     }
 
     /**
