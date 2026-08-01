@@ -11,7 +11,9 @@ use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
 use App\DTOs\Search\GetSearchHistoryDto;
+use App\DTOs\Search\LogUserSearchDto;
 use App\DTOs\Search\SearchHistoryItemDto;
+use App\DTOs\Search\UpdateSearchTermResultCountDto;
 
 class SearchRepository implements SearchRepositoryInterface
 {
@@ -123,5 +125,38 @@ class SearchRepository implements SearchRepositoryInterface
         }
 
         return (int) $rows[0]->SearchTermProductID;
+    }
+    public function logUserSearch(LogUserSearchDto $dto): void
+    {
+        DB::select('CALL SP_LogUserSearch(?, ?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->searchTermId,
+            $dto->ipAddress,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
+    /**
+     * Corrige ResultCount après enrichissement full-text, SANS incrémenter
+     * SearchHitCount/SearchHitCount7d ni toucher LastSearchedAt.
+     * À appeler une fois le total réel (primaire + full-text) connu,
+     * en complément de recordSearchTerm() qui gère déjà le compteur de hits.
+     */
+    public function updateSearchTermResultCount(UpdateSearchTermResultCountDto $dto): void
+    {
+        DB::select('CALL SP_UpdateSearchDictionaryResultCount(?, ?, @success, @message)', [
+            $dto->searchTermId,
+            $dto->resultCount,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
     }
 }

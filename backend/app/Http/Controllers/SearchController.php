@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DTOs\Search\SearchSuggestionsQueryDto;
 use App\DTOs\Search\GetSearchHistoryDto;
+use App\Http\Requests\Search\GetSearchHistoryRequest;
 use App\Http\Requests\Search\SearchQueryRequest;
 use App\Http\Requests\Search\SearchSuggestionsRequest;
 use App\Services\Interface\SearchServiceInterface;
@@ -91,7 +92,7 @@ class SearchController extends Controller
         )
     )]
     #[OA\Response(response: 404, description: "Utilisateur introuvable")]
-    public function history(Request $request): JsonResponse
+    public function history(GetSearchHistoryRequest $request): JsonResponse
     {
         $publicId = $request->attributes->get('user_id');
 
@@ -104,15 +105,17 @@ class SearchController extends Controller
             ], 404);
         }
 
+        $validated = $request->validated();
+
         $dto = GetSearchHistoryDto::fromArray([
             'UserPublicID' => $publicId,
             'IPAddress'    => $request->ip(),
-            'LatestLimit'  => $request->query('latest_limit', 10),
-            'FamousLimit'  => $request->query('famous_limit', 10),
+            'LatestLimit'  => $validated['latest_limit'],
+            'FamousLimit'  => $validated['famous_limit'],
         ]);
 
         try {
-            $result = $this->searchService->getUserSearchHistory($dto, $userInfo->UserID);
+            $result = $this->searchService->getUserSearchHistory($dto, $userInfo->userId);
         } catch (\App\Exceptions\BusinessValidationException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 404);
         } catch (\Throwable $e) {
@@ -127,7 +130,6 @@ class SearchController extends Controller
             ],
         ], 200);
     }
-
     #[OA\Get(
         path: "/api/search",
         tags: ["Search"],
@@ -170,8 +172,9 @@ class SearchController extends Controller
         $pageSize = (int) ($request->validated('page_size') ?? 20);
 
         $publicId = $request->attributes->get('user_id');
+        $IpAddress = $request->ip();
 
-        $result = $this->searchService->search($q, $publicId, $page, $pageSize);
+        $result = $this->searchService->search($q, $publicId, $IpAddress, $page, $pageSize);
 
         return response()->json([
             'success' => true,

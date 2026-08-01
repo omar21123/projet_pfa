@@ -54,61 +54,7 @@ BEGIN
 END$$
 
 DELIMITER ;
-
-
-
 DELIMITER $$
-
-CREATE PROCEDURE SP_GetUserLatestSearches(
-    IN v_UserID INT,
-    IN v_Limit INT,
-    OUT v_Success BOOLEAN,
-    OUT v_Message VARCHAR(255)
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            @p_sqlstate = RETURNED_SQLSTATE,
-            @p_errno    = MYSQL_ERRNO,
-            @p_message  = MESSAGE_TEXT;
-
-        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
-        VALUES ('SP_GetUserLatestSearches', @p_sqlstate, @p_errno, @p_message,
-                JSON_OBJECT('UserID', v_UserID, 'Limit', v_Limit));
-
-        SET v_Success = FALSE;
-        SET v_Message = 'Une erreur est survenue lors de la récupération de l''historique.';
-    END;
-
-    SET v_Success = FALSE;
-    SET v_Message = '';
-
-    IF v_UserID IS NULL THEN
-        SET v_Message = 'Utilisateur introuvable';
-    ELSE
-        IF v_Limit IS NULL OR v_Limit < 1 THEN
-            SET v_Limit = 10;
-        ELSEIF v_Limit > 50 THEN
-            SET v_Limit = 50;
-        END IF;
-
-        SET v_Success = TRUE;
-        SET v_Message = 'OK';
-
-        -- Une occurrence par texte de recherche distinct, la plus récente en premier.
-        SELECT
-            us.SearchText,
-            MAX(us.SearchedAt)  AS LastSearchedAt,
-            COUNT(*)            AS SearchCount
-        FROM UserSearches us
-        WHERE us.UserID = v_UserID
-        GROUP BY us.NormalizedText, us.SearchText
-        ORDER BY LastSearchedAt DESC
-        LIMIT v_Limit;
-    END IF;
-END$$
-
 CREATE PROCEDURE SP_GetFamousSearchesByIP(
     IN v_IPAddress VARCHAR(45),
     IN v_Limit INT,
@@ -148,19 +94,73 @@ BEGIN
 
         -- Recherches les plus fréquentes émises depuis cette IP exacte,
         -- indépendamment de l'utilisateur (couvre aussi les invités).
-        SELECT
-            us.SearchText,
-            COUNT(*)           AS SearchCount,
-            MAX(us.SearchedAt) AS LastSearchedAt
-        FROM UserSearches us
+         SELECT
+            d.DisplayText SearchText,
+            MAX(us.SearchedAt)  AS LastSearchedAt,
+            COUNT(*)            AS SearchCount
+        FROM UserSearchHistory us
+        inner join SearchDictionary d on d.SearchTermID = us.SearchTermID
         WHERE us.IPAddress = v_IPAddress
-        GROUP BY us.NormalizedText, us.SearchText
-        ORDER BY SearchCount DESC, LastSearchedAt DESC
+       GROUP BY d.NormalizedText, d.DisplayText
+        ORDER BY LastSearchedAt DESC
+        LIMIT v_Limit;
+    END IF;
+END$$
+DELIMITER ;
+DELIMITER $$
+CREATE PROCEDURE SP_GetUserLatestSearches(
+    IN v_UserID INT,
+    IN v_Limit INT,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES ('SP_GetUserLatestSearches', @p_sqlstate, @p_errno, @p_message,
+                JSON_OBJECT('UserID', v_UserID, 'Limit', v_Limit));
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération de l''historique.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        IF v_Limit IS NULL OR v_Limit < 1 THEN
+            SET v_Limit = 10;
+        ELSEIF v_Limit > 50 THEN
+            SET v_Limit = 50;
+        END IF;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'OK';
+
+        -- Une occurrence par texte de recherche distinct, la plus récente en premier.
+        SELECT
+            d.DisplayText SearchText,
+            MAX(us.SearchedAt)  AS LastSearchedAt,
+            COUNT(*)            AS SearchCount
+        FROM UserSearchHistory us
+        inner join SearchDictionary d on d.SearchTermID = us.SearchTermID
+        WHERE us.UserID = v_UserID
+        GROUP BY d.NormalizedText, d.DisplayText
+        ORDER BY LastSearchedAt DESC
         LIMIT v_Limit;
     END IF;
 END$$
 
 DELIMITER ;
+
 
 
 DELIMITER $$
@@ -473,6 +473,55 @@ BEGIN
         SET v_Message = 'OK';
 
         SELECT LAST_INSERT_ID() AS SearchTermProductID;
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_UpdateSearchDictionaryResultCount (
+    IN p_SearchTermID INT,
+    IN p_ResultCount  INT,
+    OUT v_Success     BOOLEAN,
+    OUT v_Message     VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_UpdateSearchDictionaryResultCount',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('SearchTermID', p_SearchTermID, 'ResultCount', p_ResultCount)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la mise à jour du compteur de résultats.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF p_SearchTermID IS NULL THEN
+        SET v_Message = 'SearchTermID est requis.';
+    ELSE
+        UPDATE SearchDictionary
+        SET ResultCount = p_ResultCount
+        WHERE SearchTermID = p_SearchTermID;
+
+        IF ROW_COUNT() = 0 THEN
+            SET v_Message = 'Terme de recherche introuvable.';
+        ELSE
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+        END IF;
     END IF;
 END$$
 

@@ -602,24 +602,19 @@ CREATE TABLE IPGeoLocations (
 ) ENGINE=InnoDB;
 
 CREATE TABLE UserSearchHistory (
-    UserSearchID      INT AUTO_INCREMENT PRIMARY KEY,
-    UserID            INT,
-    SessionID         VARCHAR(100),
-    SearchText        VARCHAR(255) NOT NULL,
-    NormalizedText    VARCHAR(255) NOT NULL,
-    ResultCount       INT NOT NULL DEFAULT 0,
-    ClickedProductID  INT,
-    IPAddress         VARCHAR(45),
-    IPGeoLocationID   INT,
-    SearchedAt        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_UserSearchHistory_Users   FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT FK_UserSearchHistory_Product FOREIGN KEY (ClickedProductID) REFERENCES Products(ProductID) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT FK_UserSearchHistory_Geo     FOREIGN KEY (IPGeoLocationID) REFERENCES IPGeoLocations(IPGeoLocationID) ON DELETE SET NULL ON UPDATE CASCADE,
-    KEY IX_UserSearchHistory_UserID (UserID, SearchedAt),
-    KEY IX_UserSearchHistory_SessionID (SessionID),
-    KEY IX_UserSearchHistory_NormalizedText (NormalizedText, SearchedAt),
-    KEY IX_UserSearchHistory_ClickedProductID (ClickedProductID),
-    KEY IX_UserSearchHistory_IPGeoLocationID (IPGeoLocationID)
+    UserSearchID   INT PRIMARY KEY AUTO_INCREMENT,
+    UserID         INT NOT NULL,
+    SearchTermID   INT NOT NULL,
+    IPAddress      VARCHAR(45),
+    SearchedAt     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usersearchhistory_user
+        FOREIGN KEY (UserID) REFERENCES Users (UserID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT fk_usersearchhistory_searchterm
+        FOREIGN KEY (SearchTermID) REFERENCES SearchDictionary (SearchTermID)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE SearchSynonyms (
