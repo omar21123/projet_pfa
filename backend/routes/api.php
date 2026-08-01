@@ -13,6 +13,7 @@ use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PromotionController;
@@ -210,4 +211,11 @@ Route::prefix('wishlists')->group(function () {
     Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
     Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
 });
+});
+Route::prefix('favorites')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::get('/', [FavoritesController::class, 'index']);
+        Route::post('/', [FavoritesController::class, 'store']);
+        Route::delete('/{productId}', [FavoritesController::class, 'destroy']);
+    });
 });

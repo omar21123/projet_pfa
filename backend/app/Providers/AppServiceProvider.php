@@ -291,6 +291,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\WishlistServiceInterface::class,
             \App\Services\WishlistService::class,
         );
+                $this->app->bind(
+            \App\Repositories\Interface\ProductLikeRepositoryInterface::class,
+            \App\Repositories\sql\ProductLikeRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\ProductLikeServiceInterface::class,
+            \App\Services\ProductLikeService::class,
+        );
     }
 
     /**

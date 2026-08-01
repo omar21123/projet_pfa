@@ -2792,6 +2792,271 @@
                 }
             }
         },
+        "/api/favorites": {
+            "get": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Lister les produits favoris de l'utilisateur connecté",
+                "description": "Retourne tous les produits likés par l'utilisateur authentifié, triés du plus récent au plus ancien. UserPublicID est déduit du token JWT.",
+                "operationId": "d0d405a490978063e03bab284ca93c18",
+                "responses": {
+                    "200": {
+                        "description": "Liste des favoris récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "productLikeId": {
+                                                        "type": "integer",
+                                                        "example": 15
+                                                    },
+                                                    "productId": {
+                                                        "type": "integer",
+                                                        "example": 123
+                                                    },
+                                                    "productName": {
+                                                        "type": "string",
+                                                        "example": "Clavier Mécanique RGB"
+                                                    },
+                                                    "productImage": {
+                                                        "type": "string",
+                                                        "example": "/storage/products/123/main.jpg",
+                                                        "nullable": true
+                                                    },
+                                                    "basePrice": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 349.99
+                                                    },
+                                                    "brandName": {
+                                                        "type": "string",
+                                                        "example": "Logitech",
+                                                        "nullable": true
+                                                    },
+                                                    "likedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Ajouter un produit aux favoris",
+                "description": "Ajoute un produit aux favoris de l'utilisateur connecté. Le produit ne doit pas déjà être liké. UserPublicID est déduit du token JWT.",
+                "operationId": "38ecd9fddd24c32aa0704ad440f5cf9d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer",
+                                        "example": 123
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Produit ajouté aux favoris avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit ajouté aux favoris."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "productLikeId": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation ou produit déjà liké",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Vous aimez déjà ce produit."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/favorites/{productId}": {
+            "delete": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Retirer un produit des favoris",
+                "description": "Supprime définitivement un like (suppression réelle, pas de soft-delete). Le favori doit appartenir à l'utilisateur connecté.",
+                "operationId": "2c70b37d96d824ae50ddc50f5763c72f",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "description": "Identifiant du produit à retirer des favoris.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 123
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Favori supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit retiré des favoris."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable ou produit non liké",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce produit n'est pas dans vos favoris."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/auth/mobile/google": {
             "post": {
                 "tags": [
@@ -8281,6 +8546,10 @@
         {
             "name": "ConfigAttributeOptions",
             "description": "Gestion des options des attributs de configuration produit"
+        },
+        {
+            "name": "Favorites",
+            "description": "Gestion des produits favoris de l'utilisateur (ajout, suppression, liste)"
         },
         {
             "name": "Auth - Google",
