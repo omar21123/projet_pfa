@@ -5,6 +5,7 @@ namespace App\Services\Interface;
 use App\DTOs\Product\BlockProductDto;
 use App\DTOs\Product\CreateProductDto;
 use App\DTOs\Product\GetAllProductsAdminDto;
+use App\DTOs\Product\GetProductInfoDto;
 use App\DTOs\Product\PaginatedProductAdminResponseDto;
 use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
@@ -17,6 +18,7 @@ use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\PaginatedProductItemResponseDto;
+use App\DTOs\Product\ProductInfoResponseDto;
 use App\DTOs\Product\ProductSearchResultDto;
 
 interface ProductServiceInterface
@@ -38,5 +40,6 @@ interface ProductServiceInterface
     public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto;
     public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto;
     public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto;
+    public function getProductInfo(GetProductInfoDto $dto): ProductInfoResponseDto;
 
 }

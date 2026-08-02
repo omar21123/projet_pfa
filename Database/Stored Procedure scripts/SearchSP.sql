@@ -516,13 +516,9 @@ BEGIN
         SET ResultCount = p_ResultCount
         WHERE SearchTermID = p_SearchTermID;
 
-        IF ROW_COUNT() = 0 THEN
-            SET v_Message = 'Terme de recherche introuvable.';
-        ELSE
             SET v_Success = TRUE;
             SET v_Message = 'OK';
         END IF;
-    END IF;
 END$$
 
 DELIMITER ;

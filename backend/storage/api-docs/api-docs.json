@@ -5159,6 +5159,110 @@
                 ]
             }
         },
+        "/api/products/info": {
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Récupérer les informations complètes d'un produit",
+                "description": "Retourne les informations détaillées d'un produit (prix, stock, catégories, moyens de paiement, attributs, combinaisons, tags). Si FromSearch=true, associe cette consultation au terme de recherche fourni pour alimenter les statistiques de pertinence. UserPublicID est déduit du token JWT si présent (route accessible aux invités).",
+                "operationId": "423c7913777d1a7fdc76e3587a206c35",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ProductID"
+                                ],
+                                "properties": {
+                                    "ProductID": {
+                                        "type": "integer",
+                                        "example": 12345
+                                    },
+                                    "FromSearch": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    },
+                                    "SearchTerm": {
+                                        "type": "string",
+                                        "example": "wireless headphones",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Informations produit récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [
