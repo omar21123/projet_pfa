@@ -2002,6 +2002,88 @@
                 }
             }
         },
+        "/api/cart/items": {
+            "post": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Ajouter un produit au panier",
+                "operationId": "1013e22046b2b2c9c0fe91c46aa76499",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "productID",
+                                    "UnitPrice"
+                                ],
+                                "properties": {
+                                    "productID": {
+                                        "type": "integer",
+                                        "example": 12345
+                                    },
+                                    "FromSearch": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    },
+                                    "SearchTerm": {
+                                        "type": "string",
+                                        "example": "example search term",
+                                        "nullable": true
+                                    },
+                                    "CompositionID": {
+                                        "type": "integer",
+                                        "example": 10,
+                                        "nullable": true
+                                    },
+                                    "UnitPrice": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 19.99
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit ajouté au panier",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit ajouté au panier."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit ou combinaison introuvable"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/categories/create": {
             "post": {
                 "tags": [
@@ -8690,6 +8772,10 @@
         {
             "name": "Wishlists",
             "description": "Gestion des wishlists de l'utilisateur (création, ajout/suppression d'items, suppression)"
+        },
+        {
+            "name": "Cart",
+            "description": "Cart"
         },
         {
             "name": "Countries",

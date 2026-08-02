@@ -38,6 +38,7 @@ use App\Services\TagService;
 
 // 🏭 AJOUT DES IMPORTS POUR LES BRANDS (Repository + Service)
 use App\Repositories\Interface\BrandRepositoryInterface;
+use App\Repositories\Interface\CartRepositoryInterface;
 use App\Repositories\sql\BrandRepository;
 use App\Services\Interface\BrandServiceInterface;
 use App\Services\BrandService;
@@ -82,7 +83,10 @@ use App\Repositories\sql\UsergoogleRepository;
 // 🎟️ AJOUT : Liaisons pour la gestion des Promotions
 // ==========================================================
 use App\Repositories\Interface\PromotionRepositoryInterface;
+use App\Repositories\sql\CartRepository;
 use App\Repositories\sql\PromotionRepository;
+use App\Services\CartService;
+use App\Services\Interface\CartServiceInterface;
 use App\Services\Interface\PromotionServiceInterface;
 use App\Services\PromotionService;
 
@@ -283,7 +287,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\SearchService::class,
         );
 
-          $this->app->bind(
+        $this->app->bind(
             \App\Repositories\Interface\WishlistRepositoryInterface::class,
             \App\Repositories\sql\WishlistRepository::class,
         );
@@ -291,7 +295,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\WishlistServiceInterface::class,
             \App\Services\WishlistService::class,
         );
-                $this->app->bind(
+        $this->app->bind(
             \App\Repositories\Interface\ProductLikeRepositoryInterface::class,
             \App\Repositories\sql\ProductLikeRepository::class,
         );
@@ -299,6 +303,8 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\ProductLikeServiceInterface::class,
             \App\Services\ProductLikeService::class,
         );
+        $this->app->bind(CartRepositoryInterface::class, CartRepository::class);
+        $this->app->bind(CartServiceInterface::class, CartService::class);
     }
 
     /**

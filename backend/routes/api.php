@@ -9,6 +9,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\admin\AdminProfileController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
@@ -217,5 +218,11 @@ Route::prefix('favorites')->group(function () {
         Route::get('/', [FavoritesController::class, 'index']);
         Route::post('/', [FavoritesController::class, 'store']);
         Route::delete('/{productId}', [FavoritesController::class, 'destroy']);
+    });
+});
+
+Route::prefix('cart')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/items', [CartController::class, 'addItem']);
     });
 });
