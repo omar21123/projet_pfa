@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useCreateProductPromotion } from "@/hooks/usePromotions";
 import type { VendorProductItem, VendorCombination } from "@/types/prodcut";
-import type { CreateProductPromotionPayload } from "@/types/promotion";
+import type { CreateProductPromotionPayload, DiscountTypeCode } from "@/types/promotion";
 
 interface Props {
   product: VendorProductItem | VendorCombination | null;
@@ -18,7 +19,7 @@ export const VendorPromoModal: React.FC<Props> = ({
 }) => {
   // Champs obligatoires
   const [name, setName] = useState<string>("");
-  const [discountType, setDiscountType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
+  const [discountType, setDiscountType] = useState<DiscountTypeCode>("PERCENTAGE");
   const [discountValue, setDiscountValue] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -68,7 +69,7 @@ export const VendorPromoModal: React.FC<Props> = ({
     const formattedEndDate = endDate ? `${endDate} 23:59:59` : "";
 
     // Payload conforme à la documentation Swagger
-    const payload = {
+    const payload: CreateProductPromotionPayload = {
       ProductID: Number("product_id" in product ? product.product_id : product.id),
       Name: name,
       Description: description.trim() || undefined,
@@ -84,12 +85,15 @@ export const VendorPromoModal: React.FC<Props> = ({
     };
 
     try {
-      await createPromotionMutation.mutateAsync(payload as unknown as CreateProductPromotionPayload);
+      await createPromotionMutation.mutateAsync(payload);
       onSuccess();
       onClose();
-    } catch (error: any) {
-      if (error.response?.status === 422) {
-        const responseData = error.response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 422) {
+        const responseData = error.response.data as {
+          message?: string;
+          errors?: Record<string, string[]>;
+        };
         setApiError(responseData.message || "Données invalides.");
         if (responseData.errors) {
           setFieldErrors(responseData.errors);
@@ -160,11 +164,11 @@ export const VendorPromoModal: React.FC<Props> = ({
               </label>
               <select
                 value={discountType}
-                onChange={(e) => setDiscountType(e.target.value as "PERCENTAGE" | "FIXED")}
+                onChange={(e) => setDiscountType(e.target.value as DiscountTypeCode)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="PERCENTAGE">Pourcentage (%)</option>
-                <option value="FIXED">Montant Fixe (DH)</option>
+                <option value="FIXED_AMOUNT">Montant fixe (DH)</option>
               </select>
             </div>
 

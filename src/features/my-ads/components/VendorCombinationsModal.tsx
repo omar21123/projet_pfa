@@ -181,7 +181,7 @@ export const VendorCombinationsModal: React.FC<Props> = ({
                                 👁️ Voir
                               </button>
                               <button
-                                onClick={() => onOpenPromo(combo)}
+                                onClick={() => onOpenPromo({ ...combo, product_id: productId ?? undefined })}
                                 className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-semibold transition-colors"
                               >
                                 🏷️ Promo

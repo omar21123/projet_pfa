@@ -1,4 +1,9 @@
-import axiosInstance, { setAuthAccessToken } from "./axiosInstances";
+// src/api/auth.api.ts
+import axiosInstance, {
+  setAuthAccessToken,
+  getAuthAccessToken,
+} from "./axiosInstances";
+import type { AxiosRequestConfig } from "axios";
 import {
   LoginRequest,
   RegisterRequestClient,
@@ -8,13 +13,50 @@ import {
   CompleteGoogleProfilePayload,
 } from "../types/users.types";
 
-const AUTH_EMAIL_KEY = "authEmail"; // non sensible, uniquement pour l'affichage UX
+const AUTH_EMAIL_KEY = "authEmail";
+const GOOGLE_SESSION_TOKEN_KEY = "google_session_token";
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const extractAccessToken = (payload: unknown): string | null => {
+  if (!isRecord(payload)) return null;
+
+  const nested = isRecord(payload.data) ? payload.data : undefined;
+  const token =
+    payload.access_token ??
+    payload.accessToken ??
+    payload.session_token ??
+    payload.sessionToken ??
+    payload.token ??
+    nested?.access_token ??
+    nested?.accessToken ??
+    nested?.session_token ??
+    nested?.sessionToken ??
+    nested?.token;
+
+  return typeof token === "string" && token ? token : null;
+};
+
+const normalizeAuthResponse = (payload: unknown): LaravelAuthResponse => {
+  const root = isRecord(payload) ? payload : {};
+  const nested = isRecord(root.data) ? root.data : {};
+  const token = extractAccessToken(payload);
+
+  return {
+    ...nested,
+    ...root,
+    ...(token ? { access_token: token } : {}),
+  } as LaravelAuthResponse;
+};
 
 export type GoogleLoginPayload =
   | string
   | {
       id_token: string;
       role?: "CUSTOMER" | "VENDOR";
+      first_name?: string;
+      last_name?: string;
       store_name?: string;
       description?: string;
       phone_number?: string;
@@ -23,25 +65,20 @@ export type GoogleLoginPayload =
     };
 
 export const authApi = {
-  /**
-   * Connexion d'un utilisateur (Web)
-   */
   login: async (data: LoginRequest): Promise<LaravelAuthResponse> => {
     const response = await axiosInstance.post<LaravelAuthResponse>(
       "/api/auth/web/login",
       data
     );
-    const payload = response.data;
-
+    const payload = normalizeAuthResponse(response.data);
+    if (!payload.access_token) {
+      throw new Error("Réponse de connexion invalide : token manquant.");
+    }
     setAuthAccessToken(payload.access_token);
     localStorage.setItem(AUTH_EMAIL_KEY, data.email);
-
     return payload;
   },
 
-  /**
-   * Inscription d'un compte Client (Web)
-   */
   registerClient: async (data: RegisterRequestClient): Promise<ApiMessageResponse> => {
     const response = await axiosInstance.post<ApiMessageResponse>(
       "/api/auth/web/customer/register",
@@ -50,10 +87,6 @@ export const authApi = {
     return response.data;
   },
 
-  /**
-   * Inscription d'un compte Fournisseur / Partenaire (Web standard)
-   * Reçoit un FormData (obligatoire pour l'envoi de fichier multipart comme l'avatar)
-   */
   registerVendor: async (formData: FormData): Promise<ApiMessageResponse> => {
     const response = await axiosInstance.post<ApiMessageResponse>(
       "/api/auth/web/vendor/register",
@@ -67,55 +100,47 @@ export const authApi = {
     return response.data;
   },
 
-  /**
-   * Connexion via Google (Web) — envoie l'id_token GIS obtenu côté client.
-   * Le backend crée le compte s'il n'existe pas, ou le lie/connecte s'il existe déjà.
-   *
-   * 🟢 FIX : accepte désormais soit une simple chaîne (id_token seul, cas
-   * CUSTOMER standard), soit un objet complet incluant role/store_name/etc.
-   * Avant ce fix, la signature n'acceptait qu'une string : tout objet passé
-   * ici (ex: { id_token, role: "VENDOR", store_name, description }) était
-   * silencieusement ignoré, donc le rôle et le nom de boutique n'atteignaient
-   * jamais le backend lors de l'inscription vendeur via Google.
-   */
   loginWithGoogle: async (payload: GoogleLoginPayload): Promise<LaravelAuthResponse> => {
+    sessionStorage.removeItem(GOOGLE_SESSION_TOKEN_KEY);
     const body = typeof payload === "string" ? { id_token: payload } : payload;
-
     const response = await axiosInstance.post<LaravelAuthResponse>(
       "/api/auth/web/google",
       body
     );
-    const responseData = response.data;
-
-    setAuthAccessToken(responseData.access_token);
-
+    const responseData = normalizeAuthResponse(response.data);
+    if (responseData.access_token) {
+      setAuthAccessToken(responseData.access_token);
+      sessionStorage.setItem(GOOGLE_SESSION_TOKEN_KEY, responseData.access_token);
+    }
     return responseData;
   },
 
-  /**
-   * Finalisation du profil Google (Onboarding / Choix du rôle VENDEDOR)
-   * Envoie le rôle choisi (CUSTOMER/VENDOR) ainsi que les infos optionnelles de la boutique.
-   */
   completeGoogleProfile: async (
     data: CompleteGoogleProfilePayload
   ): Promise<LaravelAuthResponse> => {
-    const response = await axiosInstance.post<LaravelAuthResponse>(
-      "/api/auth/google/complete-profile",
-      data
-    );
-    const payload = response.data;
+    const sessionToken =
+      getAuthAccessToken() || sessionStorage.getItem(GOOGLE_SESSION_TOKEN_KEY);
 
-    // Met à jour l'Access Token débloqué avec le rôle VENDOR définitif
-    if (payload.access_token) {
-      setAuthAccessToken(payload.access_token);
+    if (!sessionToken) {
+      throw new Error("Jeton de session Google manquant ou expiré.");
     }
 
+    const config: AxiosRequestConfig = {};
+    config.headers = { Authorization: `Bearer ${sessionToken}` };
+
+    const response = await axiosInstance.post<LaravelAuthResponse>(
+      "/api/auth/google/complete-profile",
+      data,
+      config
+    );
+    const payload = normalizeAuthResponse(response.data);
+    if (payload.access_token) {
+      setAuthAccessToken(payload.access_token);
+      sessionStorage.removeItem(GOOGLE_SESSION_TOKEN_KEY);
+    }
     return payload;
   },
 
-  /**
-   * Déconnexion complète (Web) - Révoque la session et nettoie le cookie HttpOnly
-   */
   logout: async (): Promise<ApiMessageResponse> => {
     try {
       const response = await axiosInstance.post<ApiMessageResponse>("/api/auth/web/logout");
@@ -123,12 +148,10 @@ export const authApi = {
     } finally {
       setAuthAccessToken(null);
       localStorage.removeItem(AUTH_EMAIL_KEY);
+      sessionStorage.removeItem(GOOGLE_SESSION_TOKEN_KEY);
     }
   },
 
-  /**
-   * Récupération des détails de l'utilisateur connecté
-   */
   getCurrentUserProfile: async (): Promise<User> => {
     const response = await axiosInstance.get<User>("/api/auth/me");
     return response.data;

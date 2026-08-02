@@ -1,9 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { setAuthAccessToken } from "@/api/axiosInstance";
-
-const AUTH_TOKEN_KEY = "authToken";
-const ACCESS_TOKEN_KEY = "accessToken";
+import { useAuth } from "@/contexts";
 
 const isLikelyJwt = (token: string): boolean =>
   /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
@@ -33,6 +30,7 @@ const isTokenExpired = (token: string): boolean => {
 const AuthCallback = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { loginWithAccessToken } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -43,7 +41,7 @@ const AuthCallback = () => {
       return;
     }
 
-    const accessToken = params.get("token");
+    const accessToken = params.get("access_token") || params.get("token");
 
     if (!accessToken) {
       navigate("/login?error=google_failed", { replace: true });
@@ -60,13 +58,13 @@ const AuthCallback = () => {
       return;
     }
 
-    localStorage.setItem(AUTH_TOKEN_KEY, accessToken);
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    loginWithAccessToken(accessToken, params.get("role") ?? undefined);
 
-    setAuthAccessToken(accessToken);
-
-    navigate("/dashboard", { replace: true });
-  }, [location.search, navigate]);
+    const role = params.get("role");
+    navigate(role === "ADMIN" ? "/admin" : role === "VENDOR" ? "/vendor/dashboard" : "/", {
+      replace: true,
+    });
+  }, [location.search, loginWithAccessToken, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">

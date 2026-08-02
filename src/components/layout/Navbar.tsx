@@ -1,6 +1,5 @@
 // src/components/navigation/Navbar.tsx
 import {
-  Search,
   Plus,
   User,
   Heart,
@@ -26,9 +25,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useAuth } from "@/contexts";
 import { useCart } from "@/hooks/useCart";
 import { useLanguage } from "@/contexts/LanguageContext";
-import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Categories from "@/components/navigation/Categories";
+import SearchBar from "@/components/search/SearchBar";
 
 /* ──────────────────────────────────────────────
    SOUS-COMPOSANTS
@@ -67,8 +66,7 @@ const DarkModeToggle = () => {
   );
 };
 
-/** Lien icône avec tooltip réutilisable.
- *  accent détermine la couleur au survol (teal par défaut, promo pour les favoris) */
+/** Lien icône avec tooltip réutilisable */
 const NavIconLink = ({
   to,
   icon: Icon,
@@ -115,20 +113,10 @@ const CartBadge = ({ count }: { count: number }) => {
    ────────────────────────────────────────────── */
 
 const Navbar = () => {
-  // Récupération de isBootstrapping pour gérer l'état d'attente initial du token
   const { isAuthenticated, isBootstrapping, logout } = useAuth();
   const { totalItems } = useCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
-
-  const [searchType, setSearchType] = React.useState<"ads" | "members" | "all">("all");
-
-  const searchPlaceholder =
-    searchType === "members"
-      ? t("search_members_placeholder")
-      : searchType === "ads"
-        ? t("search_ads_placeholder")
-        : "Rechercher un produit...";
 
   /* ── Handlers ── */
   const handleLogout = () => logout();
@@ -148,69 +136,17 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <nav className="mx-auto max-w-7xl px-2 md:px-4 h-14 flex items-center justify-between gap-3">
-        {/* ═══════════════════════════════════════
-            LOGO
-            ═══════════════════════════════════════ */}
+        {/* LOGO */}
         <Link to="/" className="shrink-0">
           <span className="text-xl font-black tracking-tight text-teal font-heading">
             CONNECTIA
           </span>
         </Link>
 
-        {/* ═══════════════════════════════════════
-            BARRE DE RECHERCHE
-            ═══════════════════════════════════════ */}
-        <div className="hidden md:flex flex-1 min-w-[320px] max-w-2xl h-9 border border-border rounded-lg overflow-hidden bg-surface shadow-sm focus-within:ring-1 focus-within:ring-teal transition-all">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="px-3 bg-cream text-xs font-medium text-foreground border-r border-border/60 hover:bg-muted transition-colors flex items-center gap-1 shrink-0"
-              >
-                <span className="truncate max-w-[110px]">
-                  {searchType === "members"
-                    ? t("search_type_members")
-                    : searchType === "ads"
-                      ? t("search_type_ads")
-                      : "Toutes catégories"}
-                </span>
-                <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44">
-              <DropdownMenuItem onClick={() => setSearchType("all")}>
-                Toutes catégories
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchType("ads")}>
-                {t("search_type_ads")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchType("members")}>
-                {t("search_type_members")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="flex-1 bg-surface min-w-0">
-            <input
-              type="text"
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              className="w-full h-full px-3 text-xs bg-transparent outline-none text-foreground placeholder:text-muted-foreground/60 truncate"
-            />
-          </div>
-
-          <button
-            type="button"
-            className="bg-teal hover:bg-teal-dark text-cream px-4 text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0"
-          >
-            <Search className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden lg:inline">Rechercher</span>
-          </button>
-        </div>
+        <SearchBar />
 
         {/* ═══════════════════════════════════════
             ZONE ACTIONS (DROITE)
-            Ordre : Dark → Langue → Panier → Auth (Loading / Connecté / Non-connecté) → Publier
             ═══════════════════════════════════════ */}
         <TooltipProvider>
           <div className="flex items-center gap-2 md:gap-3 text-xs font-medium shrink-0">
@@ -222,7 +158,7 @@ const Navbar = () => {
               <LanguageSwitcher />
             </div>
 
-            {/* 3. Panier (toujours visible) */}
+            {/* 3. Panier */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
@@ -239,13 +175,11 @@ const Navbar = () => {
               </TooltipContent>
             </Tooltip>
 
-            {/* 4. Auth : Bootstrap vs Connecté vs Non-connecté */}
+            {/* 4. Auth */}
             {isBootstrapping ? (
-              /* Squelette de chargement élégant pendant la vérification du cookie HTTP-Only */
               <div className="h-8 w-24 bg-muted/60 animate-pulse rounded-lg shrink-0" />
             ) : isAuthenticated ? (
               <>
-                {/* Favoris */}
                 <NavIconLink
                   to="/favorites"
                   icon={Heart}
@@ -254,7 +188,6 @@ const Navbar = () => {
                   accent="promo"
                 />
 
-                {/* Messages */}
                 <NavIconLink
                   to="/messages"
                   icon={MessageCircle}
@@ -262,7 +195,6 @@ const Navbar = () => {
                   tooltip="Messagerie"
                 />
 
-                {/* Menu Compte */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-1.5 text-foreground/90 hover:text-teal transition-colors focus:outline-none shrink-0 font-semibold p-1.5 rounded-md hover:bg-teal/10 active:scale-95">
@@ -271,7 +203,7 @@ const Navbar = () => {
                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-48 z-50">
                     <DropdownMenuItem asChild>
                       <Link to="/dashboard" className="cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -304,7 +236,6 @@ const Navbar = () => {
                 </DropdownMenu>
               </>
             ) : (
-              /* Non connecté */
               <Link to="/login" className="shrink-0">
                 <button
                   type="button"
@@ -330,10 +261,8 @@ const Navbar = () => {
         </TooltipProvider>
       </nav>
 
-      {/* ═══════════════════════════════════════
-          CATÉGORIES (sous-navbar)
-          ═══════════════════════════════════════ */}
-      {/* <Categories onFilter={handleCategoryFilter} /> */}
+      {/* CATÉGORIES */}
+      <Categories onFilter={handleCategoryFilter} />
     </header>
   );
 };

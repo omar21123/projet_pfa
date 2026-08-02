@@ -39,7 +39,15 @@ export interface RegisterRequestVendor {
 export interface LaravelAuthResponse {
   message?: string;
   role?: "CUSTOMER" | "VENDOR" | "ADMIN" | string | string[] | null;
-  access_token: string;
+  access_token?: string;
+  accessToken?: string;
+  session_token?: string;
+  sessionToken?: string;
+  token?: string;
+  user?: {
+    role?: string | string[] | null;
+  };
+  roles?: string | string[];
   unreadNotifications?: number;
   displayName?: string;
   verify_email?: boolean;
@@ -52,6 +60,8 @@ export interface LaravelAuthResponse {
 
 export interface CompleteGoogleProfilePayload {
   role: "CUSTOMER" | "VENDOR";
+  id_token?: string;
+  google_token?: string;
   first_name?: string;
   last_name?: string;
   phone_number?: string;
@@ -62,7 +72,8 @@ export interface CompleteGoogleProfilePayload {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
+  access_token?: string;
   user?: User;
   message?: string;
 }

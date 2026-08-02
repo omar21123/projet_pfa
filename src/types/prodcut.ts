@@ -45,6 +45,7 @@ export interface VendorCombinationOption {
 }
 
 export interface VendorCombination {
+  product_id?: number;
   combination_id?: number;
   CombinationID?: number;
   id?: number;

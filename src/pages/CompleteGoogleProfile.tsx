@@ -1,9 +1,13 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/CompleteGoogleProfile.tsx
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { authApi } from "@/api/auth.api";
+import { useAuth } from "@/contexts";
+import { getAuthAccessToken, setAuthAccessToken } from "@/api/axiosInstances";
 import AuthLayout from "@/pages/Authlayout";
+import type { CompleteGoogleProfilePayload } from "@/types/users.types";
 import {
   ShoppingBag,
   Store,
@@ -11,28 +15,90 @@ import {
   ChevronLeft,
   Phone,
   Calendar,
+  Loader2,
 } from "lucide-react";
 
 type Role = "CUSTOMER" | "VENDOR";
 
 export const CompleteGoogleProfile: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { completeGoogleProfile } = useAuth();
+
+  const accessTokenFromUrl = new URLSearchParams(location.search).get("access_token");
+  const googleToken =
+    location.state?.googleToken || sessionStorage.getItem("google_token");
+  const sessionToken =
+    accessTokenFromUrl || getAuthAccessToken() || sessionStorage.getItem("google_session_token");
+
+  useEffect(() => {
+    if (accessTokenFromUrl) {
+      setAuthAccessToken(accessTokenFromUrl);
+      sessionStorage.setItem("google_session_token", accessTokenFromUrl);
+    }
+
+    if (!sessionToken && !googleToken) {
+      navigate("/login", { replace: true });
+    }
+  }, [accessTokenFromUrl, googleToken, navigate, sessionToken]);
+
   const [role, setRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Champs additionnels
   const [phoneNumber, setPhoneNumber] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<number | null>(null);
   const [storeName, setStoreName] = useState("");
   const [description, setDescription] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!role) return;
+  const handleSelectCustomerRole = async () => {
+    setIsLoading(true);
+    setError("");
 
-    if (role === "VENDOR" && !storeName.trim()) {
+    try {
+      const payload: CompleteGoogleProfilePayload = {
+        role: "CUSTOMER",
+        ...(googleToken && {
+          id_token: googleToken,
+          google_token: googleToken,
+        }),
+      } as CompleteGoogleProfilePayload;
+
+      const response = await completeGoogleProfile(payload);
+
+      if (!response.access_token) {
+        throw new Error("La finalisation Google n'a pas renvoyé de session.");
+      }
+
+      sessionStorage.removeItem("google_token");
+
+      const responseRole = response?.role || response?.user?.role || "CUSTOMER";
+      const finalRole = Array.isArray(responseRole) ? responseRole[0] : responseRole;
+
+      if (finalRole === "VENDOR") {
+        navigate("/vendor/dashboard");
+      } else if (finalRole === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
+    } catch (err: unknown) {
+      console.error("Erreur lors de la finalisation du profil CLIENT :", err);
+      setError(
+        (axios.isAxiosError(err) ? err.response?.data?.message : undefined) ||
+          (err instanceof Error ? err.message : undefined) ||
+          "Session non autorisée. Veuillez vous reconnecter avec Google."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVendorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!storeName.trim()) {
       setError("Le nom de la boutique est obligatoire pour les vendeurs.");
       return;
     }
@@ -41,29 +107,41 @@ export const CompleteGoogleProfile: React.FC = () => {
     setError("");
 
     try {
-      const response = await authApi.completeGoogleProfile({
-        role,
+      const payload: CompleteGoogleProfilePayload = {
+        role: "VENDOR",
+        store_name: storeName.trim(),
+        description: description.trim() || undefined,
         phone_number: phoneNumber || undefined,
         birth_date: birthDate || undefined,
         gender: gender || undefined,
-        store_name: role === "VENDOR" ? storeName : undefined,
-        description: role === "VENDOR" ? description : undefined,
-      });
+        ...(googleToken && {
+          id_token: googleToken,
+          google_token: googleToken,
+        }),
+      } as CompleteGoogleProfilePayload;
 
-      // 🟢 FIX : Sécurisation de la récupération du rôle pour la redirection
-      const finalRole = response.role || (response as any).user?.role || role;
+      const response = await completeGoogleProfile(payload);
 
-      // Redirection selon le rôle finalisé
+      if (!response.access_token) {
+        throw new Error("La finalisation Google n'a pas renvoyé de session.");
+      }
+
+      sessionStorage.removeItem("google_token");
+
+      const responseRole = response?.role || response?.user?.role || "VENDOR";
+      const finalRole = Array.isArray(responseRole) ? responseRole[0] : responseRole;
+
       if (finalRole === "VENDOR") {
         navigate("/vendor/dashboard");
       } else {
         navigate("/");
       }
-    } catch (err: any) {
-      console.error("Erreur completeGoogleProfile :", err);
+    } catch (err: unknown) {
+      console.error("Erreur lors de la finalisation du profil VENDEUR :", err);
       setError(
-        err.response?.data?.message ||
-          "Une erreur est survenue lors de la finalisation du profil."
+        (axios.isAxiosError(err) ? err.response?.data?.message : undefined) ||
+          (err instanceof Error ? err.message : undefined) ||
+          "Une erreur est survenue lors de la création de la boutique."
       );
     } finally {
       setIsLoading(false);
@@ -79,14 +157,27 @@ export const CompleteGoogleProfile: React.FC = () => {
           <span className="text-[#d09a3f]">inscription.</span>
         </>
       }
-      description="Choisissez comment vous souhaitez utiliser Marché pour continuer."
+      description="Choisissez comment vous souhaitez utiliser la plateforme pour continuer."
       stats={[
         { k: "100%", v: "Sécurisé" },
         { k: "Rapide", v: "< 1 minute" },
       ]}
     >
       <div>
-        {/* ÉTAPE 1 : Choix du rôle */}
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-3 font-medium flex items-center gap-2 border border-red-100"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {role === null && (
           <div>
             <div className="mb-8">
@@ -101,51 +192,72 @@ export const CompleteGoogleProfile: React.FC = () => {
             <div className="space-y-4">
               <button
                 type="button"
-                onClick={() => {
-                  setRole("CUSTOMER");
-                  setError("");
-                }}
-                className="w-full text-left p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-900 hover:shadow-md transition-all group flex items-center gap-4"
+                disabled={isLoading}
+                onClick={handleSelectCustomerRole}
+                className="w-full text-left p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-900 hover:shadow-md transition-all group flex items-center gap-4 disabled:opacity-50"
               >
                 <div className="size-12 rounded-xl bg-slate-100 group-hover:bg-[#2c3e50] flex items-center justify-center transition-colors shrink-0">
-                  <ShoppingBag className="text-slate-500 group-hover:text-white transition-colors" size={20} />
+                  {isLoading ? (
+                    <Loader2
+                      className="animate-spin text-slate-500 group-hover:text-white"
+                      size={20}
+                    />
+                  ) : (
+                    <ShoppingBag
+                      className="text-slate-500 group-hover:text-white transition-colors"
+                      size={20}
+                    />
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="font-bold text-slate-900">Je suis client</div>
-                  <div className="text-xs text-slate-500 mt-0.5">Je veux acheter des produits</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Je veux acheter des produits
+                  </div>
                 </div>
-                <ArrowRight className="text-slate-300 group-hover:text-slate-900 transition-all" size={18} />
+                <ArrowRight
+                  className="text-slate-300 group-hover:text-slate-900 transition-all"
+                  size={18}
+                />
               </button>
 
               <button
                 type="button"
+                disabled={isLoading}
                 onClick={() => {
                   setRole("VENDOR");
                   setError("");
                 }}
-                className="w-full text-left p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-900 hover:shadow-md transition-all group flex items-center gap-4"
+                className="w-full text-left p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-900 hover:shadow-md transition-all group flex items-center gap-4 disabled:opacity-50"
               >
                 <div className="size-12 rounded-xl bg-slate-100 group-hover:bg-[#2c3e50] flex items-center justify-center transition-colors shrink-0">
-                  <Store className="text-slate-500 group-hover:text-white transition-colors" size={20} />
+                  <Store
+                    className="text-slate-500 group-hover:text-white transition-colors"
+                    size={20}
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="font-bold text-slate-900">Je suis vendeur</div>
-                  <div className="text-xs text-slate-500 mt-0.5">Je veux ouvrir une boutique et vendre</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Je veux ouvrir une boutique et vendre
+                  </div>
                 </div>
-                <ArrowRight className="text-slate-300 group-hover:text-slate-900 transition-all" size={18} />
+                <ArrowRight
+                  className="text-slate-300 group-hover:text-slate-900 transition-all"
+                  size={18}
+                />
               </button>
             </div>
           </div>
         )}
 
-        {/* ÉTAPE 2 : Formulaire selon le rôle */}
-        {role !== null && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {role === "VENDOR" && (
+          <form onSubmit={handleVendorSubmit} className="space-y-4">
             <button
               type="button"
               onClick={() => {
                 setRole(null);
-                setError(""); // 🟢 FIX : Reinitialise les erreurs lors du retour
+                setError("");
               }}
               className="mb-6 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
             >
@@ -155,69 +267,55 @@ export const CompleteGoogleProfile: React.FC = () => {
 
             <div className="mb-6">
               <h2 className="text-2xl font-black tracking-tight text-slate-900">
-                {role === "VENDOR" ? "Informations Boutique" : "Informations Client"}
+                Informations Boutique
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Complétez votre profil pour finaliser l'accès.
+                Renseignez le nom de votre boutique pour commencer à vendre.
               </p>
             </div>
 
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-3 font-medium flex items-center gap-2 border border-red-100"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                  {error}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Nom de la boutique *
+              </label>
+              <div className="mt-1.5 relative">
+                <Store
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={15}
+                />
+                <input
+                  type="text"
+                  required
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="Ma Super Boutique"
+                  className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium transition"
+                />
+              </div>
+            </div>
 
-            {/* Champs Vendeur Spécifiques */}
-            {role === "VENDOR" && (
-              <>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Nom de la boutique *
-                  </label>
-                  <div className="mt-1.5 relative">
-                    <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                    <input
-                      type="text"
-                      required
-                      value={storeName}
-                      onChange={(e) => setStoreName(e.target.value)}
-                      placeholder="Ma Super Boutique"
-                      className="w-full h-12 pl-10 pr-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium transition"
-                    />
-                  </div>
-                </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Description <span className="normal-case text-slate-300">(optionnel)</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Décrivez brièvement votre boutique..."
+                rows={3}
+                className="mt-1.5 w-full p-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium transition resize-none"
+              />
+            </div>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Description <span className="normal-case text-slate-300">(optionnel)</span>
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Décrivez brièvement votre boutique..."
-                    rows={3}
-                    className="mt-1.5 w-full p-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium transition resize-none"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Champs Généraux Optionnels */}
             <div>
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Téléphone <span className="normal-case text-slate-300">(optionnel)</span>
               </label>
               <div className="mt-1.5 relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                <Phone
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={15}
+                />
                 <input
                   type="tel"
                   value={phoneNumber}
@@ -234,7 +332,10 @@ export const CompleteGoogleProfile: React.FC = () => {
                   Date de naissance <span className="normal-case text-slate-300">(opt.)</span>
                 </label>
                 <div className="mt-1.5 relative">
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <Calendar
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
                   <input
                     type="date"
                     value={birthDate}
@@ -263,13 +364,13 @@ export const CompleteGoogleProfile: React.FC = () => {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 mt-4 bg-gradient-to-r from-[#2c3e50] to-[#1d2a36] text-white font-bold rounded-xl transition-all shadow-md gap-2 flex items-center justify-center disabled:opacity-50"
+              className="w-full h-12 mt-4 bg-gradient-to-r from-[#2c3e50] to-[#1d2a36] hover:from-[#1d2a36] hover:to-[#111921] text-white font-bold rounded-xl transition-all shadow-md gap-2 flex items-center justify-center disabled:opacity-50"
             >
               {isLoading ? (
-                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <Loader2 className="animate-spin text-white" size={20} />
               ) : (
                 <>
-                  Finaliser mon inscription
+                  Finaliser mon inscription Vendeur
                   <ArrowRight className="size-4" />
                 </>
               )}

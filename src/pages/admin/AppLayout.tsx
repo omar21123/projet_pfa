@@ -14,7 +14,8 @@ import {
   Bell,
   ChevronDown,
   Layers,       // Nouvelle icône pour Tags & Unités
-  ShieldCheck   // Nouvelle icône pour Marques & Modèles
+  ShieldCheck,   // Nouvelle icône pour Marques & Modèles
+  Tag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -28,6 +29,7 @@ const menuItems = [
   { label: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Vendor Management", path: "/admin/vendors", icon: Store },
   { label: "Annonces", path: "/admin/listings", icon: ShoppingBag, badge: 6 },
+  { label: "Promotions", path: "/admin/promotions", icon: Tag },
   { label: "Catégories", path: "/admin/categories", icon: Tags },
   { label: "Tags & Unités", path: "/admin/tags-units", icon: Layers },       // <-- AJOUT PAGE 1
   { label: "Marques & Modèles", path: "/admin/brands-models", icon: ShieldCheck }, // <-- AJOUT PAGE 2

@@ -1,37 +1,62 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts"; // Ajustez le chemin selon votre projet
+import { useAuth } from "@/contexts";
 
 const GoogleCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { handleSocialLoginSuccess } = useAuth(); // Nous allons définir cette méthode à l'étape 2
+  const { loginWithGoogle, loginWithAccessToken } = useAuth();
 
   useEffect(() => {
-    // 1. Extraction des paramètres de l'URL renvoyés par Laravel
     const params = new URLSearchParams(location.search);
     const token = params.get("token");
+    const idToken = params.get("id_token") || params.get("credential");
     const role = params.get("role");
     const error = params.get("error");
 
-    // 2. Gestion des erreurs renvoyées par le backend
     if (error) {
-      navigate(`/login?error=${error}`);
+      navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
       return;
     }
 
-    // 3. Si tout est OK, on connecte l'utilisateur
-    if (token && role) {
-      // On enregistre le token en mémoire et met à jour le contexte
-      handleSocialLoginSuccess(token, role);
-      
-      // Redirection selon le rôle (identique à votre logique de Login.tsx)
-      navigate(role === "ADMIN" ? "/admin/vendors" : "/");
-    } else {
-      // Si aucun token n'est fourni et pas d'erreur explicite
-      navigate("/login?error=invalid_token");
-    }
-  }, [location, navigate, handleSocialLoginSuccess]);
+    const completeLogin = async () => {
+      try {
+        if (idToken) {
+          const response = await loginWithGoogle(idToken);
+          if (response.requires_onboarding) {
+            sessionStorage.setItem("google_token", idToken);
+            navigate("/complete-profile", {
+              replace: true,
+              state: { googleToken: idToken },
+            });
+            return;
+          }
+
+          const responseRole = Array.isArray(response.role)
+            ? response.role[0]
+            : response.role;
+          navigate(responseRole === "ADMIN" ? "/admin" : responseRole === "VENDOR" ? "/vendor/dashboard" : "/", {
+            replace: true,
+          });
+          return;
+        }
+
+        if (token) {
+          loginWithAccessToken(token, role ?? undefined);
+          navigate(role === "ADMIN" ? "/admin" : role === "VENDOR" ? "/vendor/dashboard" : "/", {
+            replace: true,
+          });
+          return;
+        }
+
+        navigate("/login?error=invalid_token", { replace: true });
+      } catch {
+        navigate("/login?error=google_failed", { replace: true });
+      }
+    };
+
+    void completeLogin();
+  }, [location.search, loginWithAccessToken, loginWithGoogle, navigate]);
 
   // Écran de chargement esthétique en attendant la redirection (style Marché)
   return (

@@ -18,7 +18,7 @@ import type {
   RegisterRequestClient,
   ApiMessageResponse,
   CompleteGoogleProfilePayload,
-} from "@/types/user.types";
+} from "@/types/users.types";
 import { useToast } from "@/hooks/use-toast";
 
 const AUTH_EMAIL_KEY = "authEmail";
@@ -56,6 +56,7 @@ interface AuthContextType {
   registerVendor: (formData: FormData) => Promise<void>;
   loginWithGoogle: (payload: GoogleLoginPayload) => Promise<LaravelAuthResponse>;
   completeGoogleProfile: (data: CompleteGoogleProfilePayload) => Promise<LaravelAuthResponse>;
+  loginWithAccessToken: (token: string, role?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,13 +95,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setRoles([]);
     setAuthAccessToken(null);
     localStorage.removeItem(AUTH_EMAIL_KEY);
+    sessionStorage.removeItem("google_session_token");
   }, []);
 
-  const resolveRoles = (responseRole: unknown, token: string): string[] => {
+  const resolveRoles = (responseRole: unknown, token?: string): string[] => {
     if (responseRole) {
       return Array.isArray(responseRole) ? (responseRole as string[]) : [responseRole as string];
     }
-    return extractRolesFromToken(token);
+    return token ? extractRolesFromToken(token) : [];
   };
 
   // Mutation Connexion Google
@@ -108,6 +110,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     mutationFn: authApi.loginWithGoogle,
     onSuccess: (response) => {
       const token = response.access_token;
+      if (!token) return;
       const resolvedRoles = resolveRoles(response.role, token);
 
       let userEmail = response.email ?? "";
@@ -115,7 +118,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
           const decoded = jwtDecode<AccessTokenPayload>(token);
           userEmail = decoded.email ?? "";
-        } catch {}
+        } catch {
+          // L'email peut être absente du token Google.
+        }
       }
 
       setAccessToken(token);
@@ -162,6 +167,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     mutationFn: authApi.completeGoogleProfile,
     onSuccess: (response) => {
       const token = response.access_token;
+      if (!token) return;
       const resolvedRoles = resolveRoles(response.role, token);
 
       let userEmail = response.email ?? email ?? "";
@@ -169,7 +175,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
           const decoded = jwtDecode<AccessTokenPayload>(token);
           userEmail = decoded.email ?? "";
-        } catch {}
+        } catch {
+          // L'email peut être absente du token de session.
+        }
       }
 
       setAccessToken(token);
@@ -207,11 +215,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [completeGoogleProfileMutation],
   );
 
+  const loginWithAccessToken = useCallback((token: string, responseRole?: string) => {
+    const resolvedRoles = resolveRoles(responseRole, token);
+    let userEmail = "";
+
+    try {
+      const decoded = jwtDecode<AccessTokenPayload>(token);
+      userEmail = decoded.email ?? "";
+    } catch {
+      // Le token sera vérifié par le backend lors de la prochaine requête.
+    }
+
+    setAccessToken(token);
+    setAuthAccessToken(token);
+    setRoles(resolvedRoles);
+    if (userEmail) {
+      setEmail(userEmail);
+      localStorage.setItem(AUTH_EMAIL_KEY, userEmail);
+    }
+  }, []);
+
   // Mutation Connexion Classique
   const loginMutation = useMutation<LaravelAuthResponse, Error, LoginRequest>({
     mutationFn: authApi.login,
     onSuccess: (response, variables) => {
       const token = response.access_token;
+      if (!token) return;
       const resolvedRoles = resolveRoles(response.role, token);
 
       setAccessToken(token);
@@ -386,6 +415,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       registerVendor,
       loginWithGoogle,
       completeGoogleProfile,
+      loginWithAccessToken,
     }),
     [
       accessToken,
@@ -399,6 +429,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       registerVendor,
       loginWithGoogle,
       completeGoogleProfile,
+      loginWithAccessToken,
     ],
   );
 

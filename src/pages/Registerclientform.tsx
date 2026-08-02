@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoogleLogin } from "@react-oauth/google";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, User, Mail, Phone, Lock, Calendar, ArrowRight } from "lucide-react";
 import { useAuthForm } from "@/features/auth/useAuthForm";
 import { useAuth } from "@/contexts/AuthContext";
-import type { RegisterRequestClient } from "@/types/user.types";
+import type { RegisterRequestClient } from "@/types/users.types";
 
 interface RegisterClientFormProps {
   onBack: () => void;
@@ -94,7 +95,7 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) {
       setFormError("Échec de l'authentification Google.");
       return;
@@ -107,18 +108,27 @@ const RegisterClientForm = ({ onBack }: RegisterClientFormProps) => {
       // 🟢 Inscription Google en 1 seul appel : rôle + infos envoyés directement,
       // plus besoin de completeGoogleProfile en 2e étape (le backend gère
       // l'attribution du rôle et la création du profil CUSTOMER en une requête).
-      await loginWithGoogle({
+      const response = await loginWithGoogle({
         id_token: credentialResponse.credential,
         role: "CUSTOMER",
+        first_name: data.first_name || undefined,
+        last_name: data.last_name || undefined,
         phone_number: data.phone_number || undefined,
         birth_date: data.birth_date || undefined,
         gender: data.gender ?? undefined,
       });
 
+      if (!response.access_token) {
+        throw new Error("Le serveur n'a pas renvoyé de session Google.");
+      }
+
+      sessionStorage.removeItem("google_session_token");
       navigate("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFormError(
-        err?.response?.data?.message || err?.message || "Erreur lors de l'inscription via Google."
+        (axios.isAxiosError(err) ? err.response?.data?.message : undefined) ||
+          (err instanceof Error ? err.message : undefined) ||
+          "Erreur lors de l'inscription via Google."
       );
     } finally {
       setGoogleLoading(false);

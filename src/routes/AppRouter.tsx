@@ -44,6 +44,7 @@ const UsersList = lazy(() => import("@/pages/admin/users"));
 const TagsUnitsPage = lazy(() => import("@/pages/admin/TagsUnits"));
 const BrandsModelsPage = lazy(() => import("@/pages/admin/BrandsModels"));
 const ProductDetailsPage = lazy(() => import("@/pages/admin/ProductDetailsPage"));
+const PromotionsPage = lazy(() => import("@/pages/admin/PromotionsPage"));
 
 export const AppRouter = () => {
   return (
@@ -67,6 +68,7 @@ export const AppRouter = () => {
             redirige quand requires_onboarding est vrai (flow de redirection navigateur classique,
             GET /auth/google). Sans cette route, l'utilisateur tombait sur la page 404. */}
         <Route path="/complete-profile" element={<CompleteGoogleProfile />} />
+        <Route path="/complete-google-profile" element={<CompleteGoogleProfile />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Routes Utilisateurs Sécurisées */}
@@ -179,6 +181,7 @@ export const AppRouter = () => {
           <Route path="tags-units" element={<TagsUnitsPage />} />
           <Route path="brands-models" element={<BrandsModelsPage />} />
           <Route path="/admin/products/:id" element={<ProductDetailsPage />} />
+          <Route path="/admin/promotions" element={<PromotionsPage />} />
         </Route>
         {/* Erreurs de routage */}
         <Route path="/unauthorized" element={<Unauthorized />} />

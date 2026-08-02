@@ -1,5 +1,5 @@
 import Navbar from "@/components/Navbar";
-import HeroSearch from "@/components/HeroSearch";
+import HomeHero from "@/components/HomeHero";
 import AdsGrid from "@/components/AdsGrid";
 import Footer from "@/components/Footer";
 import FeaturedAds from "@/components/FeaturedAds";
@@ -49,7 +49,7 @@ const Index = () => {
     >
       <Navbar />
       <main className="flex-1">
-        <HeroSearch />
+         <HomeHero />
         <FeaturedSellers />
 
         {/* Featured Ads Section */}

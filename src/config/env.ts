@@ -9,7 +9,7 @@ const resolveApiUrl = (): string =>
   import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost";
 
 const resolveGoogleClientId = (): string => {
-  const clientId = "693707442195-391gfv88br6amac82e0o428tik2egen7.apps.googleusercontent.com";
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   if (!clientId) {
     // Ne bloque pas le build, mais signale clairement le problème en dev

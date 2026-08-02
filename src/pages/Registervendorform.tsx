@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,7 +27,11 @@ const PHONE_REGEX = /^\+?[0-9]{8,15}$/;
 const MAX_AVATAR_SIZE_MB = 4;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export const RegisterVendorForm: React.FC = () => {
+interface RegisterVendorFormProps {
+  onBack?: () => void;
+}
+
+export const RegisterVendorForm: React.FC<RegisterVendorFormProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const { registerVendor, loginWithGoogle } = useAuth();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +62,7 @@ export const RegisterVendorForm: React.FC = () => {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // 1. Étape d'authentification Google (Bouton Google)
-  const handleGoogleSuccess = (credentialResponse: any) => {
+  const handleGoogleSuccess = (credentialResponse: { credential?: string }) => {
     const idToken = credentialResponse.credential;
     if (!idToken) {
       setErrorMessage("Échec du traitement du compte Google.");
@@ -204,9 +209,11 @@ export const RegisterVendorForm: React.FC = () => {
     try {
       if (googleIdToken) {
         // Inscription Google en 1 seul appel : rôle + infos boutique envoyés directement
-        await loginWithGoogle({
+        const response = await loginWithGoogle({
           id_token: googleIdToken,
           role: "VENDOR",
+          first_name: firstName.trim() || undefined,
+          last_name: lastName.trim() || undefined,
           store_name: storeName.trim(),
           description: description.trim() || undefined,
           phone_number: phoneNumber.trim() || undefined,
@@ -214,6 +221,11 @@ export const RegisterVendorForm: React.FC = () => {
           gender: gender ?? undefined,
         });
 
+        if (!response.access_token) {
+          throw new Error("Le serveur n'a pas renvoyé de session Google.");
+        }
+
+        sessionStorage.removeItem("google_session_token");
         navigate("/vendor/dashboard");
       } else {
         // Inscription classique par email / mot de passe — multipart/form-data
@@ -233,11 +245,11 @@ export const RegisterVendorForm: React.FC = () => {
         await registerVendor(formData);
         navigate("/login");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur d'inscription :", error);
 
       // Remonte les erreurs de validation renvoyées par le backend (422) sur les bons champs
-      const backendErrors = error?.response?.data?.errors;
+      const backendErrors = axios.isAxiosError(error) ? error.response?.data?.errors : undefined;
       if (backendErrors && typeof backendErrors === "object") {
         const mapped: Record<string, string> = {};
         Object.entries(backendErrors).forEach(([key, messages]) => {
@@ -248,8 +260,8 @@ export const RegisterVendorForm: React.FC = () => {
       }
 
       setErrorMessage(
-        error.response?.data?.message ||
-          error.message ||
+        (axios.isAxiosError(error) ? error.response?.data?.message : undefined) ||
+          (error instanceof Error ? error.message : undefined) ||
           "Une erreur est survenue lors de l'inscription.",
       );
     } finally {
@@ -268,6 +280,15 @@ export const RegisterVendorForm: React.FC = () => {
 
   return (
     <div className="w-full max-w-lg mx-auto p-8 bg-white rounded-3xl shadow-sm border border-gray-100">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-6 text-xs font-bold text-slate-500 hover:text-slate-900"
+        >
+          Changer de rôle
+        </button>
+      )}
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Créer un compte Vendeur</h2>
 
       {infoMessage && (

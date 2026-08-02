@@ -3,23 +3,19 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Login from "./Login";
-import { authApi } from "@/api/auth.api";
 
 const loginMock = vi.fn();
 const navigateMock = vi.fn();
 
-vi.mock("@/api/auth.api", () => ({
-  authApi: {
-    login: vi.fn(),
-    register: vi.fn(),
-    verifyEmail: vi.fn(),
-  },
+vi.mock("@/contexts", () => ({
+  useAuth: () => ({
+    login: loginMock,
+    loginWithGoogle: vi.fn(),
+  }),
 }));
 
-vi.mock("@/hooks/useUser", () => ({
-  useUser: () => ({
-    login: loginMock,
-  }),
+vi.mock("@react-oauth/google", () => ({
+  GoogleLogin: () => null,
 }));
 
 vi.mock("@/contexts/LanguageContext", () => ({
@@ -40,27 +36,18 @@ describe("Login page", () => {
   beforeEach(() => {
     loginMock.mockReset();
     navigateMock.mockReset();
-    vi.mocked(authApi.login).mockReset();
-    vi.mocked(authApi.login).mockResolvedValue({
-      token: "jwt-token",
-      user: {
-        id: "u-1",
-        email: "john@example.com",
-        name: "john",
-      },
-    });
+    loginMock.mockResolvedValue({ access_token: "jwt-token", role: "CUSTOMER" });
   });
 
-  it("shows validation error when login form is empty", () => {
+  it("does not submit an empty form", () => {
     render(
       <MemoryRouter>
         <Login />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "sign_in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("fill_all_fields");
     expect(loginMock).not.toHaveBeenCalled();
   });
 
@@ -71,29 +58,42 @@ describe("Login page", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("votre@email.com"), {
+    fireEvent.change(screen.getByPlaceholderText("exemple@domaine.com"), {
       target: { value: "john@example.com" },
     });
     fireEvent.change(screen.getByPlaceholderText("••••••••"), {
       target: { value: "secret123" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "sign_in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
 
     await waitFor(() => {
-      expect(authApi.login).toHaveBeenCalledWith({
-        email: "john@example.com",
-        password: "secret123",
-      });
-      expect(loginMock).toHaveBeenCalledWith({
-        token: "jwt-token",
-        user: {
-          id: "u-1",
-          email: "john@example.com",
-          name: "john",
-        },
-      });
-      expect(navigateMock).toHaveBeenCalledWith("/");
+      expect(loginMock).toHaveBeenCalledWith("john@example.com", "secret123");
+       expect(navigateMock).toHaveBeenCalledWith("/", { replace: true });
+     });
+   });
+
+  it.each([
+    ["ADMIN", "/admin"],
+    ["VENDOR", "/vendor/dashboard"],
+  ])("redirects a %s to its workspace", async (role, destination) => {
+    loginMock.mockResolvedValue({ access_token: "jwt-token", role });
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("exemple@domaine.com"), {
+      target: { value: "user@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+      target: { value: "secret123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith(destination, { replace: true });
     });
   });
 });
