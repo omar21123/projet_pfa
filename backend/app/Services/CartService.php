@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Cart\AddCartItemDto;
+use App\DTOs\Cart\RemoveCartItemDto;
 use App\DTOs\Search\RecordSearchClickDto;
 use App\Services\Interface\CartServiceInterface;
 use App\Repositories\Interface\CartRepositoryInterface;
@@ -29,5 +30,9 @@ class CartService implements CartServiceInterface
         }
 
         return $this->cartRepository->addItem($dto);
+    }
+    public function removeItem(RemoveCartItemDto $dto): string
+    {
+        return $this->cartRepository->removeItem($dto);
     }
 }

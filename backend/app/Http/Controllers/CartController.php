@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\Cart\AddCartItemDto;
+use App\DTOs\Cart\RemoveCartItemDto;
 use App\Exceptions\BusinessValidationException;
 use App\Http\Requests\Cart\AddCartItemRequest;
+use App\Http\Requests\Cart\RemoveCartItemRequest;
 use App\Services\Interface\CartServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
@@ -53,6 +55,56 @@ class CartController extends Controller
 
         try {
             $message = $this->cartService->addItem($dto);
+        } catch (BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+        ], 200);
+    }
+
+
+
+    
+    #[OA\Delete(
+        path: "/api/cart/items",
+        tags: ["Cart"],
+        summary: "Retirer un produit du panier",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["productID"],
+            properties: [
+                new OA\Property(property: "productID", type: "integer", example: 12345),
+                new OA\Property(property: "CompositionID", type: "integer", nullable: true, example: 10),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Article supprimé du panier",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Article supprimé du panier."),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Utilisateur, panier ou article introuvable")]
+    public function removeItem(RemoveCartItemRequest $request): JsonResponse
+    {
+        $userPublicId = $request->attributes->get('user_id');
+        $dto = RemoveCartItemDto::fromArray($request->validated(), $userPublicId);
+
+        try {
+            $message = $this->cartService->removeItem($dto);
         } catch (BusinessValidationException $e) {
             return response()->json([
                 'success' => false,
