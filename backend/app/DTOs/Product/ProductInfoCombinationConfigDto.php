@@ -1,5 +1,5 @@
 <?php
-// App\DTOs\Product\ProductInfoCombinationConfigDto
+
 namespace App\DTOs\Product;
 
 class ProductInfoCombinationConfigDto
@@ -8,6 +8,14 @@ class ProductInfoCombinationConfigDto
         public readonly int $configId,
         public readonly int $optionId,
     ) {}
+
+    public static function fromRow(object $row): self
+    {
+        return new self(
+            configId: (int) $row->ProductsConfigAttributeID,
+            optionId: (int) $row->OptionID,
+        );
+    }
 
     public function toArray(): array
     {

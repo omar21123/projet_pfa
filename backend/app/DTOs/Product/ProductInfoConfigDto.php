@@ -1,5 +1,5 @@
 <?php
-// App\DTOs\Product\ProductInfoConfigDto
+
 namespace App\DTOs\Product;
 
 class ProductInfoConfigDto
@@ -10,6 +10,15 @@ class ProductInfoConfigDto
         public readonly string $configName,
         public readonly array $options,
     ) {}
+
+    public static function fromRow(object $row): self
+    {
+        return new self(
+            configId: (int) $row->ProductsConfigAttributeID,
+            configName: $row->Name,
+            options: [], // TODO: options non chargées ici, à faire dans un second temps
+        );
+    }
 
     public function toArray(): array
     {

@@ -14,6 +14,7 @@ use App\DTOs\Search\GetSearchHistoryDto;
 use App\DTOs\Search\LogUserSearchDto;
 use App\DTOs\Search\SearchHistoryItemDto;
 use App\DTOs\Search\UpdateSearchTermResultCountDto;
+use App\DTOs\Search\RecordSearchClickDto;
 
 class SearchRepository implements SearchRepositoryInterface
 {
@@ -157,6 +158,28 @@ class SearchRepository implements SearchRepositoryInterface
 
         if (!$result->success) {
             throw new BusinessValidationException($result->message, 404);
+        }
+    }
+
+
+    /**
+     * Enregistre un clic sur un produit depuis les résultats de recherche.
+     * Résout TermText -> SearchTermID côté SP (SearchDictionary.NormalizedText),
+     * puis incrémente ClickCount et recalcule ClickThroughRate / ConversionRate
+     * sur SearchTermProductStats. Upsert : crée la ligne de stats si elle
+     * n'existe pas encore (clic sans impression préalable enregistrée).
+     */
+    public function recordSearchClick(RecordSearchClickDto $dto): void
+    {
+        DB::select('CALL SP_RecordSearchTermClick(?, ?, @success, @message)', [
+            $dto->termText,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
         }
     }
 }

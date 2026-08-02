@@ -12,10 +12,12 @@ class ProductInfoResponseDto
      * @param ProductInfoTagDto[] $productTags
      */
     public function __construct(
+        public readonly string $productID,
         public readonly string $productName,
         public readonly ?string $productDescription,
         public readonly float $basePrice,
         public readonly ?string $brandName,
+        public readonly ?string $brandID,
         public readonly ?string $modelName,
         public readonly int $stock,
         public readonly int $totalSales,
@@ -24,18 +26,22 @@ class ProductInfoResponseDto
         public readonly array $productCategories,
         public readonly array $productAllowedPayments,
         public readonly array $productDetails,
-        public readonly ?string $defaultProductImage,
+        public readonly ?array $defaultProductImage,
         public readonly array $productOptionsCombinaison,
         public readonly array $productTags,
+        public readonly bool $HasPromotion,
+        public readonly ?ProductInfoPromotionDto $productPromotion = null,
     ) {}
 
     public function toArray(): array
     {
         return [
+            'ProductID'                  => $this->productID,
             'ProductName'                => $this->productName,
             'ProductDescription'         => $this->productDescription,
             'BasePrice'                  => $this->basePrice,
             'BrandName'                  => $this->brandName,
+            'BrandID'                    => $this->brandID,
             'ModelName'                  => $this->modelName,
             'Stock'                      => $this->stock,
             'TotalSales'                 => $this->totalSales,
@@ -47,6 +53,8 @@ class ProductInfoResponseDto
             'DefaultProductImage'        => $this->defaultProductImage,
             'ProductOptionsCombiniason'  => array_map(fn($c) => $c->toArray(), $this->productOptionsCombinaison),
             'ProductTags'                => array_map(fn($t) => $t->toArray(), $this->productTags),
+            'ProductPromotion'           => $this->productPromotion ? $this->productPromotion->toArray() : null,
+            'HasPromotion'               => $this->HasPromotion,
         ];
     }
 }

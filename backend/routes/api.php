@@ -149,7 +149,7 @@ Route::prefix('config-attribute-options')->group(function () {
     });
 });
 Route::prefix('products')->group(function () {
-
+    Route::post('/info', [ProductController::class, 'getProductInfo']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);

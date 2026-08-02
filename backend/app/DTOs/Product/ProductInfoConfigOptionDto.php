@@ -1,5 +1,5 @@
 <?php
-// App\DTOs\Product\ProductInfoConfigOptionDto
+
 namespace App\DTOs\Product;
 
 class ProductInfoConfigOptionDto
@@ -10,6 +10,16 @@ class ProductInfoConfigOptionDto
         public readonly string $optionValue,
         public readonly bool $isDefault,
     ) {}
+
+    public static function fromRow(object $row): self
+    {
+        return new self(
+            optionId: (int) $row->OptionID,
+            optionLabel: $row->OptionLabel,
+            optionValue: $row->OptionValue,
+            isDefault: (bool) $row->IsDefault,
+        );
+    }
 
     public function toArray(): array
     {

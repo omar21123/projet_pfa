@@ -603,3 +603,235 @@ BEGIN
 END $$
 
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetPublicProductInfo;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetPublicProductInfo(
+    IN  p_ProductID INT,
+    OUT p_success   TINYINT,
+    OUT p_message   VARCHAR(255)
+)
+BEGIN
+    DECLARE v_Exists INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Erreur lors de la récupération des informations du produit.';
+    END;
+
+    -- Existence + visibilité (produit actif, non bloqué)
+    SELECT COUNT(*) INTO v_Exists
+    FROM Products
+    WHERE ProductID = p_ProductID
+      AND IsActive = 1
+      AND IsBlocked = 0;
+
+    IF v_Exists = 0 THEN
+        SET p_success = 0;
+        SET p_message = 'Produit introuvable ou non disponible.';
+    ELSE
+        SELECT
+            p.ProductID,
+            p.Name AS ProductName,
+            p.Description AS ProductDesc,
+            p.BasePrice,
+            IFNULL(b.Name, 'No Band') AS BrandName,
+            IFNULL(b.BrandID, 0) AS BrandID,
+            IFNULL(m.Name, 'No Model') AS ModelName,
+            p.Stock,
+            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) AS TotalOrders,
+            (SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID) AS TotalWishlists,
+            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) AS TotalLikes
+        FROM Products p
+        LEFT JOIN Brands b ON b.BrandID = p.BrandID
+        LEFT JOIN Models m ON m.ModelID = p.ModelID
+        WHERE p.ProductID = p_ProductID;
+
+        SET p_success = 1;
+        SET p_message = 'OK';
+    END IF;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductCategories(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT c.Name, pc.IsPrimary
+    FROM ProductCategories pc
+    JOIN Categories c ON pc.CategoryID = c.CategoryID
+    WHERE pc.ProductID = p_ProductID;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetProductConfigs;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductConfigs(
+    IN p_ProductID INT
+)
+BEGIN
+    -- DISTINCT car ProductDetails a une ligne par option, donc un même
+    -- ProductsConfigAttributeID peut apparaître plusieurs fois (ex: Couleur
+    -- avec 3 options = 3 lignes). On ne veut ici que la liste des attributs
+    -- (configId/configName), pas encore leurs options.
+    SELECT DISTINCT pd.ProductsConfigAttributeID, pc.Name
+    FROM ProductDetails pd
+    JOIN ProductsConfigAttribute pc ON pc.AttributeID = pd.ProductsConfigAttributeID
+    WHERE pd.ProductID = p_ProductID;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetProductConfigOptions;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductConfigOptions(
+    IN p_ProductID INT,
+    IN p_ConfigID  INT
+)
+BEGIN
+    SELECT o.OptionID, o.OptionLabel, o.OptionValue, o.IsDefaultForAttribute as IsDefault
+    FROM ProductDetails d
+    JOIN ConfigAttributeOptions o ON o.OptionID = d.OptionID
+    WHERE d.ProductID = p_ProductID
+      AND d.ProductsConfigAttributeID = p_ConfigID;
+END$$
+
+DELIMITER ;
+
+
+
+DROP PROCEDURE IF EXISTS SP_GetProductImages;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductImages(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT ResourcesPath
+    FROM ProductResources
+    WHERE ProductID = p_ProductID
+      AND ResourceRoleID = 2
+      AND ResourcesTypeID IN (3, 5);
+END$$
+
+DELIMITER ;
+
+
+
+DROP PROCEDURE IF EXISTS SP_GetProductCombinations;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductCombinations(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT c.CombinationID, c.SKU, c.Price, c.CompareAtPrice, c.Stock, c.ImagePath, c.IsDefault
+    FROM ProductOptionsCombiniason c
+    WHERE c.IsActive = 1
+      AND c.ProductID = p_ProductID;
+END$$
+
+DELIMITER ;
+
+
+DROP PROCEDURE IF EXISTS SP_GetCombinationConfigs;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetCombinationConfigs(
+    IN p_CombinationID INT
+)
+BEGIN
+    SELECT d.ProductsConfigAttributeID, d.OptionID
+    FROM ProductOptionsCombiniasonDetails d
+    WHERE d.CombinationID = p_CombinationID;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetProductTags;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductTags(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT p.TagID, t.Name, t.Color
+    FROM ProductTags p
+    JOIN Tags t ON p.TagID = t.TagID
+    WHERE t.IsActive = 1
+      AND p.ProductID = p_ProductID;
+END$$
+
+DELIMITER ;
+
+
+DROP PROCEDURE IF EXISTS SP_GetProductPromotion;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetProductPromotion(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT
+        p.PromotionID,
+        p.Name,
+        p.Description,
+        ty.Code AS DiscountCode,
+        ty.Label AS DiscountLabel,
+        p.DiscountValue,
+        p.MaxDiscountAmount,
+        p.MinOrderAmount,
+        p.UsageLimitTotal,
+        p.UsageCount,
+        p.UsageLimitPerUser,
+        p.StartDate,
+        p.EndDate
+    FROM Promotions p
+    JOIN PromotionDiscountTypes ty ON ty.DiscountTypeID = p.DiscountTypeID
+    WHERE p.ScopeTypeID = 1
+      AND p.StatusID = 2
+      AND p.IsActive = 1
+      AND p.TargetProductID = p_ProductID;
+END$$
+
+DELIMITER ;
+
+
+
+DROP PROCEDURE IF EXISTS SP_HasActivePromotion;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_HasActivePromotion(
+    IN  p_ProductID INT,
+    OUT p_Found     TINYINT
+)
+BEGIN
+    SELECT COUNT(*) > 0 INTO p_Found
+    FROM Promotions p
+    JOIN PromotionDiscountTypes ty ON ty.DiscountTypeID = p.DiscountTypeID
+    WHERE p.ScopeTypeID = 1
+      AND p.StatusID = 2
+      AND p.IsActive = 1
+      AND NOW() BETWEEN p.StartDate AND p.EndDate
+      AND p.TargetProductID = p_ProductID;
+END$$
+
+DELIMITER ;

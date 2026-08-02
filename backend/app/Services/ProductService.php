@@ -16,17 +16,22 @@ use App\DTOs\Product\ValidateProductDto;
 use App\Services\Interface\ProductServiceInterface;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\ProductInfoConfigDto;
+use App\DTOs\Product\ProductInfoCombinationConfigDto;
 use App\DTOs\Product\ProductInfoResponseDto;
 use App\DTOs\Product\ProductSearchResultDto;
 use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
+use App\Repositories\Interface\SearchRepositoryInterface;
+use App\DTOs\Search\RecordSearchClickDto;
 
 class ProductService implements ProductServiceInterface
 {
     public function __construct(
-        protected ProductRepositoryInterface $productRepository
+        protected ProductRepositoryInterface $productRepository,
+        protected SearchRepositoryInterface $searchRepository
     ) {}
 
     public function createProduct(CreateProductDto $dto): object
@@ -89,47 +94,71 @@ class ProductService implements ProductServiceInterface
     {
         return $this->productRepository->searchProductsFullText($query, $userPublicId);
     }
+
     public function getProductInfo(GetProductInfoDto $dto): ProductInfoResponseDto
     {
-        // TODO: Si $dto->fromSearch est vrai, résoudre le SearchTermID à partir de
-        // $dto->searchTerm (lookup simple dans SearchDictionary — pas d'upsert ici,
-        // le terme a déjà dû être upserté au moment de la recherche elle-même).
+        if ($dto->fromSearch && $dto->searchTerm) {
+            try {
+                $this->searchRepository->recordSearchClick(
+                    new RecordSearchClickDto($dto->searchTerm, $dto->productId)
+                );
+            } catch (\App\Exceptions\BusinessValidationException $e) {
+                // Terme introuvable dans le dictionnaire (ex: SearchTerm invalide/périmé) ->
+                // non bloquant pour l'affichage du produit, on ignore simplement.
+            }
+        }
 
-        // TODO: Si un SearchTermID a été résolu ci-dessus, mettre à jour
-        // SearchTermProductStats pour la paire (SearchTermID, ProductID) —
-        // incrémenter ImpressionCount ou ClickCount selon la sémantique voulue.
-        // Nécessite une nouvelle SP dédiée (ex: SP_IncrementSearchTermProductImpression),
-        // à ne pas confondre avec SP_InsertSearchTermProductStats (qui ne fait
-        // qu'initialiser une ligne à zéro).
-
-        // TODO: Charger les infos de base du produit (nom, description, prix,
-        // marque, modèle, stock, image par défaut) — nouvelle SP (ex: SP_GetProductInfo).
-        // Doit aussi vérifier que le produit existe et est visible (actif, non bloqué).
-
-        // TODO: Charger les totaux d'engagement (TotalSales, TotalLiked,
-        // TotalWishlists) — soit dans la même SP que ci-dessus, soit via des
-        // sous-requêtes séparées (cf. patterns déjà utilisés dans SP_SearchProductsByTerm).
-
-        // TODO: Charger les catégories du produit (ProductCategories), avec IsPrimary.
-
-        // TODO: Charger les moyens de paiement autorisés (ProductAllowedPayements),
-        // avec code, IconURL, WithdrawTax, IsOnline.
-
-        // TODO: Charger les attributs de configuration + leurs options
-        // (ProductDetails) — regrouper par ConfigID/ConfigName.
-
-        // TODO: Charger les combinaisons/variantes (ProductOptionsCombiniason)
-        // avec leur config associée. Attention : le schéma de réponse actuel a
-        // "Configs" au singulier (un seul objet ConfigID/OptionID par combinaison) —
-        // à valider si une combinaison ne porte réellement qu'un seul attribut,
-        // ou si la réponse doit plutôt être un tableau de configs par combinaison
-        // pour supporter les produits multi-attributs (ex: Couleur + Taille).
-
-        // TODO: Charger les tags du produit (ProductTags).
-
-        // TODO: Assembler tous les éléments ci-dessus dans un ProductInfoResponseDto
-        // et le retourner.
-
-        throw new \RuntimeException('getProductInfo() n\'est pas encore implémenté.');
+        $productbasicInfos = $this->productRepository->getPublicProductInfo($dto->productId);
+        if(!$productbasicInfos) {
+            throw new \App\Exceptions\BusinessValidationException(
+                'Product not found or not visible to the public.',
+                404
+            );
+        }
+        $categories = $this->productRepository->getProductCategories($dto->productId);
+        $allowedPayments = $this->productRepository->getProductAllowedPayments($dto->productId);
+        $productDetails = [];
+        foreach ($this->productRepository->getProductConfigs($dto->productId) as $detail) {
+            $options = $this->productRepository->getProductConfigOptions($dto->productId, $detail->configId);
+            $productDetails[] = new ProductInfoConfigDto(
+                configId: $detail->configId,
+                configName: $detail->configName,
+                options: $options,
+            );
+        }
+        $images = $this->productRepository->getProductImages($dto->productId);
+        $productOptionsCombinaison = $this->productRepository->getProductCombinations($dto->productId);
+        foreach ($productOptionsCombinaison as $combination) {
+             $combinationConfig= $this->productRepository->getCombinationConfigs($combination->combinationId);
+            $combination->configs = $combinationConfig;
+        }
+        $productTags = $this->productRepository->getProductTags($dto->productId);
+         $hasPromotion = $this->productRepository->hasActivePromotion($dto->productId);
+         if ($hasPromotion) {
+             $productPromotion = $this->productRepository->getProductPromotion($dto->productId);
+         } else {
+             $productPromotion = null;
+         }
+        return new ProductInfoResponseDto(
+            productName: $productbasicInfos->productName,
+            productDescription: $productbasicInfos->productDesc,
+            productID : $productbasicInfos->productId,
+            basePrice: $productbasicInfos->basePrice,
+            brandID : $productbasicInfos->brandId,
+            brandName: $productbasicInfos->brandName,
+            modelName: $productbasicInfos->modelName,
+            stock: $productbasicInfos->stock,
+            totalSales: $productbasicInfos->totalOrders,
+            totalLiked: $productbasicInfos->totalLikes,
+            totalWishlists: $productbasicInfos->totalWishlists,
+            productCategories: $categories,
+            productAllowedPayments: $allowedPayments,
+            productDetails: $productDetails,
+            defaultProductImage: $images ? array_slice($images, 0, 1) : null,
+            productOptionsCombinaison: $productOptionsCombinaison,
+            productTags: $productTags,
+            HasPromotion: $hasPromotion,
+            productPromotion: $productPromotion,
+        );
     }
 }

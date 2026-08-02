@@ -271,7 +271,7 @@ BEGIN
         LEFT JOIN ProductResources pr ON pr.ProductID = p.ProductID AND (pr.ResourceRoleID = 2)
         LEFT JOIN Brands b ON b.BrandID = p.BrandID
         LEFT JOIN Models m ON m.ModelID = p.ModelID
-        WHERE stps.SearchTermID = v_SearchTermID
+        WHERE stps.SearchTermID = v_SearchTermID and p.IsActive = 1 and p.Status = 2
         ORDER BY stps.PurchaseCount DESC, stps.ClickCount DESC
         LIMIT v_PageSize OFFSET v_Offset;
     END IF;
@@ -365,7 +365,7 @@ BEGIN
         LEFT JOIN ProductResources pr ON pr.ProductID = p.ProductID AND (pr.ResourceRoleID = 2)
         LEFT JOIN Brands b ON b.BrandID = p.BrandID
         LEFT JOIN Models m ON m.ModelID = p.ModelID
-        WHERE ind.SearchText LIKE CONCAT('%', v_SearchText, '%')
+        WHERE ind.SearchText LIKE CONCAT('%', v_SearchText, '%') and p.IsActive = 1 and p.Status = 2
         ORDER BY Relevance DESC;
     END IF;
 END$$
@@ -519,6 +519,80 @@ BEGIN
             SET v_Success = TRUE;
             SET v_Message = 'OK';
         END IF;
+END$$
+
+DELIMITER ;
+
+
+DROP PROCEDURE IF EXISTS SP_RecordSearchTermClick;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_RecordSearchTermClick(
+    IN  p_TermText   VARCHAR(255),
+    IN  p_ProductID  INT,
+    OUT p_success    TINYINT,
+    OUT p_message    VARCHAR(255)
+)
+BEGIN
+    DECLARE v_SearchTermID   INT DEFAULT NULL;
+    DECLARE v_ImpressionCount INT DEFAULT 0;
+    DECLARE v_ClickCount      INT DEFAULT 0;
+    DECLARE v_PurchaseCount   INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Erreur lors de l''enregistrement du clic.';
+    END;
+
+    START TRANSACTION;
+
+    -- Résolution TermText -> SearchTermID
+    SELECT SearchTermID INTO v_SearchTermID
+    FROM SearchDictionary
+    WHERE NormalizedText = LOWER(TRIM(p_TermText))
+    LIMIT 1;
+
+    IF v_SearchTermID IS NULL THEN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Terme de recherche introuvable.';
+    ELSE
+        -- Upsert : incrémente ClickCount si la ligne existe déjà,
+        -- sinon la crée avec ClickCount = 1 (clic sans impression connue).
+        -- Suppose un index unique sur (SearchTermID, ProductID).
+        INSERT INTO SearchTermProductStats (
+            SearchTermID, ProductID, ImpressionCount, ClickCount,
+            PurchaseCount, ClickThroughRate, ConversionRate, LastInteractionAt
+        ) VALUES (
+            v_SearchTermID, p_ProductID, 0, 1, 0, 0.00000, 0.00000, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            ClickCount        = ClickCount + 1,
+            LastInteractionAt = NOW();
+
+        -- Relecture des compteurs à jour pour recalculer les taux
+        SELECT ImpressionCount, ClickCount, PurchaseCount
+        INTO v_ImpressionCount, v_ClickCount, v_PurchaseCount
+        FROM SearchTermProductStats
+        WHERE SearchTermID = v_SearchTermID AND ProductID = p_ProductID;
+
+        UPDATE SearchTermProductStats
+        SET
+            ClickThroughRate = CASE WHEN v_ImpressionCount > 0
+                THEN LEAST(v_ClickCount / v_ImpressionCount, 999.99999)
+                ELSE 0.00000 END,
+            ConversionRate = CASE WHEN v_ClickCount > 0
+                THEN LEAST(v_PurchaseCount / v_ClickCount, 999.99999)
+                ELSE 0.00000 END
+        WHERE SearchTermID = v_SearchTermID AND ProductID = p_ProductID;
+
+        COMMIT;
+        SET p_success = 1;
+        SET p_message = 'OK';
+    END IF;
 END$$
 
 DELIMITER ;
