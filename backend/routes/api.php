@@ -225,5 +225,6 @@ Route::prefix('cart')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
         Route::post('/items', [CartController::class, 'addItem']);
         Route::delete('/items', [CartController::class, 'removeItem']);
+        Route::get('/', [CartController::class, 'getCart']);
     });
 });

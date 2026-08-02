@@ -9,6 +9,8 @@ use App\Http\Requests\Cart\AddCartItemRequest;
 use App\Http\Requests\Cart\RemoveCartItemRequest;
 use App\Services\Interface\CartServiceInterface;
 use Illuminate\Http\JsonResponse;
+use App\DTOs\Cart\GetCartDto;
+
 use OpenApi\Attributes as OA;
 
 class CartController extends Controller
@@ -117,4 +119,34 @@ class CartController extends Controller
             'message' => $message,
         ], 200);
     }
+
+
+#[OA\Get(
+    path: "/api/cart",
+    tags: ["Cart"],
+    summary: "Récupérer le contenu du panier de l'utilisateur",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Response(
+    response: 200,
+    description: "Contenu du panier",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
+        ]
+    )
+)]
+public function getCart(Request $request): JsonResponse
+{
+    $userPublicId = $request->attributes->get('user_id');
+    $dto = new GetCartDto($userPublicId);
+
+    $items = $this->cartService->getCart($dto);
+
+    return response()->json([
+        'success' => true,
+        'data'    => array_map(fn($item) => $item->toArray(), $items),
+    ], 200);
+}
 }
