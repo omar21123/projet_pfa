@@ -10,6 +10,7 @@ use App\Http\Requests\Cart\RemoveCartItemRequest;
 use App\Services\Interface\CartServiceInterface;
 use Illuminate\Http\JsonResponse;
 use App\DTOs\Cart\GetCartDto;
+use App\Http\Requests\Cart\GetCartRequest;
 
 use OpenApi\Attributes as OA;
 
@@ -137,16 +138,17 @@ class CartController extends Controller
         ]
     )
 )]
-public function getCart(Request $request): JsonResponse
+
+public function getCart(GetCartRequest $request): JsonResponse
 {
     $userPublicId = $request->attributes->get('user_id');
     $dto = new GetCartDto($userPublicId);
 
-    $items = $this->cartService->getCart($dto);
+    $response = $this->cartService->getCart($dto);
 
     return response()->json([
         'success' => true,
-        'data'    => array_map(fn($item) => $item->toArray(), $items),
+        'data'    => $response,
     ], 200);
 }
 }

@@ -8,6 +8,10 @@ use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
 use App\DTOs\Cart\RemoveCartItemDto;
 
+use App\DTOs\Cart\CartItemInfoDto;
+use App\DTOs\Cart\CartItemResponseDto;
+use App\DTOs\Cart\CartPromotionInfoDto;
+use App\DTOs\Cart\CombinationDetailInfoDto;
 
 class CartRepository implements CartRepositoryInterface
 {
@@ -46,5 +50,37 @@ class CartRepository implements CartRepositoryInterface
         }
 
         return $result->message;
+    }
+
+
+    public function getCartItemsInfo(string $userPublicId): array
+    {
+        $rows = DB::select('CALL SP_GetCartInformations(?, @success, @message)', [$userPublicId]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        return array_map(fn($row) => CartItemResponseDto::fromInfoDto(CartItemInfoDto::fromRow($row)), $rows);
+    }
+
+    public function getCartItemPromotion(int $productId): ?CartPromotionInfoDto
+    {
+        $rows = DB::select('CALL SP_GetCartItemPromotion(?)', [$productId]);
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        return CartPromotionInfoDto::fromRow($rows[0]);
+    }
+
+    public function getCombinationDetails(int $combinationId): array
+    {
+        $rows = DB::select('CALL SP_GetCombinationDetails(?)', [$combinationId]);
+
+        return array_map(fn($row) => CombinationDetailInfoDto::fromRow($row), $rows);
     }
 }
