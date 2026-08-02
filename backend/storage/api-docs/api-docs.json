@@ -2145,6 +2145,44 @@
                 ]
             }
         },
+        "/api/cart": {
+            "get": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Récupérer le contenu du panier de l'utilisateur",
+                "operationId": "399a5f817b36b0db308a434d07715bad",
+                "responses": {
+                    "200": {
+                        "description": "Contenu du panier",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/categories/create": {
             "post": {
                 "tags": [

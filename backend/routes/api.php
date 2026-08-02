@@ -199,10 +199,13 @@ Route::prefix('promotions')->group(function () {
 
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
-    Route::get('/', [SearchController::class, 'search']);
+    
     Route::middleware(['jwt.custom'])->group(function () {
         Route::get('/history', [SearchController::class, 'history']);
+           
+
     });
+     Route::get('/', [SearchController::class, 'search']);
 });
 
 Route::prefix('wishlists')->group(function () {
