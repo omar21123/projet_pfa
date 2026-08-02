@@ -10,12 +10,15 @@ use App\Services\Interface\CartServiceInterface;
 use App\Repositories\Interface\CartRepositoryInterface;
 use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
+use App\Repositories\Interface\ProductRepositoryInterface;
+use App\Services\Interface\ProductServiceInterface;
 
 class CartService implements CartServiceInterface
 {
     public function __construct(
         protected CartRepositoryInterface $cartRepository,
         protected SearchRepositoryInterface $searchRepository,
+        protected ProductRepositoryInterface $productService
     ) {}
 
     public function addItem(AddCartItemDto $dto): string
@@ -37,27 +40,18 @@ class CartService implements CartServiceInterface
         return $this->cartRepository->removeItem($dto);
     }
     public function getCart(GetCartDto $dto): array
-{
-    // TODO: Charger les lignes du panier de l'utilisateur (CartItems via Carts.UserID)
-    // — nouvelle SP/méthode repo (ex: CartRepository::getCartItems()).
-
-    // TODO: Pour chaque ligne, charger les infos produit de base (nom, description,
-    // marque, modèle, stock, image par défaut) — probablement réutilisable via
-    // ProductRepository::getPublicProductInfo() ou une variante allégée dédiée au panier.
-
-    // TODO: Pour chaque ligne, charger la/les combinaison(s) associées
-    // (ProductOptionsCombinations) avec leur config/option — attention, le JSON
-    // exemple a une seule paire ConfigurationName/ConfingOptionName par combinaison,
-    // même ambiguïté singulier/tableau que pour getProductInfo() à trancher.
-
-    // TODO: Pour chaque produit, vérifier s'il a une promotion active
-    // (réutiliser ProductRepository::hasActivePromotion() / getProductPromotion()),
-    // et mapper vers CartItemPromotionDto (attention: DiscountPercentage n'existe
-    // pas tel quel dans Promotions — à dériver de DiscountValue/DiscountTypeID,
-    // ou clarifier si seul le type "pourcentage" doit être supporté ici).
-
-    // TODO: Assembler chaque ligne en CartItemResponseDto et retourner le tableau.
-
-    return [];
-}
+    {
+        $productRows = $this->cartRepository->getCartItemsInfo($dto->userPublicId);
+        foreach ($productRows as $index => $productRow) {
+            $productRows[$index]->defaultImages = $this->productService->getProductImages($productRow->productId);
+            $productRows[$index]->combinationDetails = $this->cartRepository->getCombinationDetails($productRow->combinationId);
+            $productRows[$index]->hasPromotion = $this->productService->hasActivePromotion($productRow->productId);
+            if ($productRows[$index]->hasPromotion) {
+                $productRows[$index]->promotion = $this->cartRepository->getCartItemPromotion($productRow->productId);
+            } else {
+                $productRows[$index]->promotion = null;
+            }
+        }
+        return $productRows;
+    }
 }
