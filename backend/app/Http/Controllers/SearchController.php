@@ -112,7 +112,7 @@ class SearchController extends Controller
         ]);
 
         try {
-            $result = $this->searchService->getUserSearchHistory($dto, $userInfo->UserID);
+            $result = $this->searchService->getUserSearchHistory($dto, $userInfo->userId);
         } catch (\App\Exceptions\BusinessValidationException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 404);
         } catch (\Throwable $e) {
