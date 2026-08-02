@@ -19,5 +19,5 @@ interface SearchServiceInterface
     // app/Services/Interface/SearchServiceInterface.php
 
     /** @return array{items: TextCombo[], page: int, pageSize: int, total: int, hasMore: bool} */
-    public function search(string $query, ?string $userPublicId, int $page, int $pageSize): array;
+    public function search(string $query, ?string $userPublicId,?string $IpAddress, int $page, int $pageSize): array;
 }

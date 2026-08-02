@@ -602,24 +602,19 @@ CREATE TABLE IPGeoLocations (
 ) ENGINE=InnoDB;
 
 CREATE TABLE UserSearchHistory (
-    UserSearchID      INT AUTO_INCREMENT PRIMARY KEY,
-    UserID            INT,
-    SessionID         VARCHAR(100),
-    SearchText        VARCHAR(255) NOT NULL,
-    NormalizedText    VARCHAR(255) NOT NULL,
-    ResultCount       INT NOT NULL DEFAULT 0,
-    ClickedProductID  INT,
-    IPAddress         VARCHAR(45),
-    IPGeoLocationID   INT,
-    SearchedAt        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_UserSearchHistory_Users   FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT FK_UserSearchHistory_Product FOREIGN KEY (ClickedProductID) REFERENCES Products(ProductID) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT FK_UserSearchHistory_Geo     FOREIGN KEY (IPGeoLocationID) REFERENCES IPGeoLocations(IPGeoLocationID) ON DELETE SET NULL ON UPDATE CASCADE,
-    KEY IX_UserSearchHistory_UserID (UserID, SearchedAt),
-    KEY IX_UserSearchHistory_SessionID (SessionID),
-    KEY IX_UserSearchHistory_NormalizedText (NormalizedText, SearchedAt),
-    KEY IX_UserSearchHistory_ClickedProductID (ClickedProductID),
-    KEY IX_UserSearchHistory_IPGeoLocationID (IPGeoLocationID)
+    UserSearchID   INT PRIMARY KEY AUTO_INCREMENT,
+    UserID         INT NOT NULL,
+    SearchTermID   INT NOT NULL,
+    IPAddress      VARCHAR(45),
+    SearchedAt     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usersearchhistory_user
+        FOREIGN KEY (UserID) REFERENCES Users (UserID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT fk_usersearchhistory_searchterm
+        FOREIGN KEY (SearchTermID) REFERENCES SearchDictionary (SearchTermID)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE SearchSynonyms (
@@ -700,20 +695,33 @@ CREATE TABLE Carts (
     UNIQUE KEY UX_Carts_UserID (UserID)
 ) ENGINE=InnoDB;
 
-CREATE TABLE CartItems (
-    CartItemID       INT AUTO_INCREMENT PRIMARY KEY,
-    CartID           INT NOT NULL,
-    ProductID        INT NOT NULL,
-    ProductVariantID INT,
-    Quantity         DECIMAL(10,2) NOT NULL DEFAULT 1,
-    UnitPrice        DECIMAL(12,2) NOT NULL,
-    CreatedAt        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_CartItems_Cart    FOREIGN KEY (CartID) REFERENCES Carts(CartID) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT FK_CartItems_Product FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE KEY UX_CartItems_Cart_Product_Variant (CartID, ProductID, ProductVariantID),
-    KEY IX_CartItems_ProductID (ProductID),
-    KEY IX_CartItems_ProductVariantID (ProductVariantID)
-) ENGINE=InnoDB;
+ 
+    
+    CREATE TABLE CartItems (
+    CartItemID      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    CartID          INT NOT NULL,
+    ProductID       INT NOT NULL,
+    ProductVariantID INT NULL,
+    CombinaisonID   INT NULL,
+    Quantity        DECIMAL(10,2) NOT NULL DEFAULT 1,
+    UnitPrice       DECIMAL(12,2) NOT NULL,
+    CreatedAt       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_CartItems_Cart
+        FOREIGN KEY (CartID) REFERENCES Carts(CartID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT FK_CartItems_Product
+        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT FK_CartItems_ProductOptionsCombiniason
+        FOREIGN KEY (CombinaisonID) REFERENCES ProductOptionsCombiniason(CombinationID)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE WishLists (
     WishListID INT AUTO_INCREMENT PRIMARY KEY,

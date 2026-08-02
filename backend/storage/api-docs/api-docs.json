@@ -2002,6 +2002,149 @@
                 }
             }
         },
+        "/api/cart/items": {
+            "post": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Ajouter un produit au panier",
+                "operationId": "1013e22046b2b2c9c0fe91c46aa76499",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "productID",
+                                    "UnitPrice"
+                                ],
+                                "properties": {
+                                    "productID": {
+                                        "type": "integer",
+                                        "example": 12345
+                                    },
+                                    "FromSearch": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    },
+                                    "SearchTerm": {
+                                        "type": "string",
+                                        "example": "example search term",
+                                        "nullable": true
+                                    },
+                                    "CompositionID": {
+                                        "type": "integer",
+                                        "example": 10,
+                                        "nullable": true
+                                    },
+                                    "UnitPrice": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 19.99
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit ajouté au panier",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit ajouté au panier."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit ou combinaison introuvable"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Retirer un produit du panier",
+                "operationId": "ee82be0443a10c2efaf1c7023fd4a4c2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "productID"
+                                ],
+                                "properties": {
+                                    "productID": {
+                                        "type": "integer",
+                                        "example": 12345
+                                    },
+                                    "CompositionID": {
+                                        "type": "integer",
+                                        "example": 10,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Article supprimé du panier",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Article supprimé du panier."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, panier ou article introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/categories/create": {
             "post": {
                 "tags": [
@@ -2790,6 +2933,271 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/favorites": {
+            "get": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Lister les produits favoris de l'utilisateur connecté",
+                "description": "Retourne tous les produits likés par l'utilisateur authentifié, triés du plus récent au plus ancien. UserPublicID est déduit du token JWT.",
+                "operationId": "d0d405a490978063e03bab284ca93c18",
+                "responses": {
+                    "200": {
+                        "description": "Liste des favoris récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "productLikeId": {
+                                                        "type": "integer",
+                                                        "example": 15
+                                                    },
+                                                    "productId": {
+                                                        "type": "integer",
+                                                        "example": 123
+                                                    },
+                                                    "productName": {
+                                                        "type": "string",
+                                                        "example": "Clavier Mécanique RGB"
+                                                    },
+                                                    "productImage": {
+                                                        "type": "string",
+                                                        "example": "/storage/products/123/main.jpg",
+                                                        "nullable": true
+                                                    },
+                                                    "basePrice": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 349.99
+                                                    },
+                                                    "brandName": {
+                                                        "type": "string",
+                                                        "example": "Logitech",
+                                                        "nullable": true
+                                                    },
+                                                    "likedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Ajouter un produit aux favoris",
+                "description": "Ajoute un produit aux favoris de l'utilisateur connecté. Le produit ne doit pas déjà être liké. UserPublicID est déduit du token JWT.",
+                "operationId": "38ecd9fddd24c32aa0704ad440f5cf9d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer",
+                                        "example": 123
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Produit ajouté aux favoris avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit ajouté aux favoris."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "productLikeId": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation ou produit déjà liké",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Vous aimez déjà ce produit."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/favorites/{productId}": {
+            "delete": {
+                "tags": [
+                    "Favorites"
+                ],
+                "summary": "Retirer un produit des favoris",
+                "description": "Supprime définitivement un like (suppression réelle, pas de soft-delete). Le favori doit appartenir à l'utilisateur connecté.",
+                "operationId": "2c70b37d96d824ae50ddc50f5763c72f",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "description": "Identifiant du produit à retirer des favoris.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 123
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Favori supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit retiré des favoris."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable ou produit non liké",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce produit n'est pas dans vos favoris."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/auth/mobile/google": {
@@ -4885,6 +5293,110 @@
                     },
                     "404": {
                         "description": "Profil vendeur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/products/info": {
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Récupérer les informations complètes d'un produit",
+                "description": "Retourne les informations détaillées d'un produit (prix, stock, catégories, moyens de paiement, attributs, combinaisons, tags). Si FromSearch=true, associe cette consultation au terme de recherche fourni pour alimenter les statistiques de pertinence. UserPublicID est déduit du token JWT si présent (route accessible aux invités).",
+                "operationId": "423c7913777d1a7fdc76e3587a206c35",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ProductID"
+                                ],
+                                "properties": {
+                                    "ProductID": {
+                                        "type": "integer",
+                                        "example": 12345
+                                    },
+                                    "FromSearch": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    },
+                                    "SearchTerm": {
+                                        "type": "string",
+                                        "example": "wireless headphones",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Informations produit récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -7641,6 +8153,586 @@
                 }
             }
         },
+        "/api/wishlists": {
+            "get": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Lister les wishlists de l'utilisateur connecté",
+                "description": "Retourne toutes les wishlists de l'utilisateur authentifié, chacune avec ses items rattachés et un compteur d'items. UserPublicID est déduit du token JWT.",
+                "operationId": "1d623099c4b2d425433f04bf2298dbea",
+                "responses": {
+                    "200": {
+                        "description": "Liste des wishlists récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "wishListId": {
+                                                        "type": "integer",
+                                                        "example": 7
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "My Wishlist"
+                                                    },
+                                                    "isDefault": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "itemCount": {
+                                                        "type": "integer",
+                                                        "example": 3
+                                                    },
+                                                    "items": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "wishListItemId": {
+                                                                    "type": "integer",
+                                                                    "example": 42
+                                                                },
+                                                                "wishListId": {
+                                                                    "type": "integer",
+                                                                    "example": 7
+                                                                },
+                                                                "productId": {
+                                                                    "type": "integer",
+                                                                    "example": 123
+                                                                },
+                                                                "productName": {
+                                                                    "type": "string",
+                                                                    "example": "Clavier Mécanique RGB"
+                                                                },
+                                                                "productImage": {
+                                                                    "type": "string",
+                                                                    "example": "/storage/products/123/main.jpg",
+                                                                    "nullable": true
+                                                                },
+                                                                "basePrice": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 349.99
+                                                                },
+                                                                "brandName": {
+                                                                    "type": "string",
+                                                                    "example": "Logitech",
+                                                                    "nullable": true
+                                                                },
+                                                                "createdAt": {
+                                                                    "type": "string",
+                                                                    "format": "date-time"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Créer une nouvelle wishlist",
+                "description": "Crée une wishlist pour l'utilisateur connecté. Si 'name' est omis, 'My Wishlist' est utilisé. La toute première wishlist d'un utilisateur devient automatiquement sa wishlist par défaut (isDefault = true). UserPublicID est déduit du token JWT.",
+                "operationId": "4e692c63ac984e44ffa026fdf442b80f",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "description": "Nom de la wishlist. Défaut : 'My Wishlist'.",
+                                        "type": "string",
+                                        "example": "Cadeaux de Noël",
+                                        "nullable": true,
+                                        "maxLength": 150
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Wishlist créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Wishlist créée avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "wishListId": {
+                                                    "type": "integer",
+                                                    "example": 7
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Cadeaux de Noël"
+                                                },
+                                                "isDefault": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "itemCount": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/wishlists/{wishListId}/items": {
+            "post": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Ajouter un produit à une wishlist",
+                "description": "Ajoute un produit à la wishlist spécifiée. La wishlist doit appartenir à l'utilisateur connecté (vérifié via le token JWT), et le produit ne doit pas déjà y figurer.",
+                "operationId": "67d776d6c903a6446558d6fda3fb373a",
+                "parameters": [
+                    {
+                        "name": "wishListId",
+                        "in": "path",
+                        "description": "Identifiant de la wishlist cible.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 7
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer",
+                                        "example": 123
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Produit ajouté à la wishlist avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit ajouté à la wishlist."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "wishListItemId": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès refusé : cette wishlist ne vous appartient pas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : cette wishlist ne vous appartient pas."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, wishlist ou produit introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Wishlist introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation ou produit déjà présent dans la wishlist",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce produit est déjà dans cette wishlist."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/wishlists/items/{wishListItemId}": {
+            "delete": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Retirer un produit d'une wishlist",
+                "description": "Supprime définitivement un item de wishlist (suppression réelle, pas de soft-delete). L'item doit appartenir à une wishlist de l'utilisateur connecté.",
+                "operationId": "76644ae27faef894e68eefe74456b694",
+                "parameters": [
+                    {
+                        "name": "wishListItemId",
+                        "in": "path",
+                        "description": "Identifiant de l'item de wishlist à supprimer.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 42
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Produit retiré de la wishlist."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès refusé : cet élément ne vous appartient pas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : cet élément ne vous appartient pas."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou élément introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Élément introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/wishlists/{wishListId}": {
+            "delete": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Supprimer une wishlist entière",
+                "description": "Supprime définitivement la wishlist et tous ses items (suppression réelle en cascade, pas de soft-delete). La wishlist doit appartenir à l'utilisateur connecté.",
+                "operationId": "2e87c8551bc95e554a90106fa998f002",
+                "parameters": [
+                    {
+                        "name": "wishListId",
+                        "in": "path",
+                        "description": "Identifiant de la wishlist à supprimer.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 7
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wishlist et ses items supprimés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Wishlist supprimée avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès refusé : cette wishlist ne vous appartient pas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Accès refusé : cette wishlist ne vous appartient pas."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur ou wishlist introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Wishlist introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/admin/profile": {
             "get": {
                 "tags": [
@@ -7703,6 +8795,10 @@
             "description": "Gestion des options des attributs de configuration produit"
         },
         {
+            "name": "Favorites",
+            "description": "Gestion des produits favoris de l'utilisateur (ajout, suppression, liste)"
+        },
+        {
             "name": "Auth - Google",
             "description": "Authentification via Google OAuth (web + mobile) et gestion de l'onboarding"
         },
@@ -7733,6 +8829,14 @@
         {
             "name": "Units",
             "description": "Gestion des unités de mesure"
+        },
+        {
+            "name": "Wishlists",
+            "description": "Gestion des wishlists de l'utilisateur (création, ajout/suppression d'items, suppression)"
+        },
+        {
+            "name": "Cart",
+            "description": "Cart"
         },
         {
             "name": "Countries",

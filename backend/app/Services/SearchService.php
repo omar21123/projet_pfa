@@ -7,6 +7,8 @@ use App\DTOs\Search\GetSearchHistoryDto;
 use App\DTOs\Search\SearchSuggestionsQueryDto;
 use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Search\InsertSearchTermProductStatsDto;
+use App\DTOs\Search\LogUserSearchDto;
+use App\DTOs\Search\UpdateSearchTermResultCountDto;
 use App\DTOs\Search\UpsertSearchTermDto;
 use App\Helpers\Search\TextComboGenerator;
 use App\Services\Interface\SearchServiceInterface;
@@ -31,7 +33,7 @@ class SearchService implements SearchServiceInterface
     {
         return $this->searchRepository->getUserSearchHistory($dto, $userId);
     }
-    public function search(string $query, ?string $userPublicId, int $page, int $pageSize): array
+    public function search(string $query, ?string $userPublicId, ?string $IpAddress, int $page, int $pageSize): array
     {
         $globalOffset = ($page - 1) * $pageSize;
 
@@ -50,6 +52,26 @@ class SearchService implements SearchServiceInterface
         $firstCount = count($firstItems);
         $needed     = $pageSize - $firstCount;
 
+        // Upsert + log une seule fois par requête, quel que soit le chemin emprunté ensuite.
+        $upsetResult = $this->searchRepository->recordSearchTerm(
+            UpsertSearchTermDto::fromArray([
+                'displayText' => $query,
+                'sourceType'  => 1,
+                'sourceId'    => null,
+                'resultCount' => $firstTotal, // nombre réel de résultats, pas la taille de page
+            ])
+        );
+        $termID = $upsetResult->searchTermId;
+
+        // Log dans tous les cas — connecté ou invité (dédup par IP côté SP pour les invités).
+        $this->searchRepository->logUserSearch(
+            LogUserSearchDto::fromArray([
+                'userPublicId' => $userPublicId,
+                'searchTermId' => $termID,
+                'ipAddress'    => $IpAddress,
+            ])
+        );
+
         // Cas 1 : la page demandée est entièrement couverte par la source primaire.
         if ($needed <= 0) {
             return [
@@ -57,19 +79,17 @@ class SearchService implements SearchServiceInterface
                 'items'    => $firstItems,
                 'page'     => $page,
                 'pageSize' => $pageSize,
-                'total'    => $firstTotal, // à concaténer avec le total secondaire si nécessaire (voir note)
+                'total'    => $firstTotal,
                 'hasMore'  => ($globalOffset + $firstCount) < $firstTotal,
             ];
         }
 
         // Cas 2 (mixte) ou Cas 3 (tout secondaire) : il manque $needed lignes.
-        // Offset dans la source secondaire = nb de lignes globales déjà "consommées" par la source primaire.
         $secondOffset = max(0, $globalOffset - $firstTotal);
 
         $combos = TextComboGenerator::getAllCombinations($query);
 
         $newResultSearch = [];
-
         foreach ($combos as $combo) {
             $items = $this->productRepository->searchProductsFullText($combo->text, $userPublicId)->items;
             array_push($newResultSearch, new ProductSearchITemScrorredDto(
@@ -83,30 +103,23 @@ class SearchService implements SearchServiceInterface
             ->values()
             ->all();
 
-        // On aplatit tous les items de tous les combos (triés par score) en une seule liste.
         $totalFoundItems = [];
         foreach ($newResultSearch as $result) {
             array_push($totalFoundItems, ...$result->items);
         }
 
         $secondTotal = count($totalFoundItems);
-
-        // Pagination en mémoire sur la liste aplatie, en utilisant le même offset/needed
-        // que pour une source distante.
         $secondItems = array_slice($totalFoundItems, $secondOffset, $needed);
 
         $items = array_merge($firstItems, $secondItems);
-        $total = $firstTotal + $secondTotal; // toujours concaténé
-        $upsetResult =  $this->searchRepository->recordSearchTerm(
-            UpsertSearchTermDto::fromArray([
-                'displayText' => $query,
-                'sourceType'  => 1, // 1 = recherche manuelle utilisateur — à aligner avec vos autres valeurs SourceType (ex: 2 = suggestion cliquée, 3 = import catalogue, etc.)
-                'sourceId'    => null,
-                'resultCount' => $total,
+        $total = $firstTotal + $secondTotal;
+
+        $this->searchRepository->updateSearchTermResultCount(
+            UpdateSearchTermResultCountDto::fromArray([
+                'searchTermId' => $termID,
+                'resultCount'  => $total,
             ])
         );
-        $termID = $upsetResult->searchTermId;
-
         foreach ($totalFoundItems as $item) {
             $this->searchRepository->recordSearchTermProductStats(
                 InsertSearchTermProductStatsDto::fromArray([
@@ -115,6 +128,7 @@ class SearchService implements SearchServiceInterface
                 ])
             );
         }
+
         return [
             'items'    => $items,
             'page'     => $page,

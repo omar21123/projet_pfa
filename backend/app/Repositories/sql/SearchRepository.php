@@ -11,7 +11,12 @@ use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
 use App\DTOs\Search\GetSearchHistoryDto;
+use App\DTOs\Search\LogUserSearchDto;
 use App\DTOs\Search\SearchHistoryItemDto;
+use App\DTOs\Search\UpdateSearchTermResultCountDto;
+use App\DTOs\Search\RecordSearchClickDto;
+use App\DTOs\Search\RecordSearchPurchaseDto;
+
 
 class SearchRepository implements SearchRepositoryInterface
 {
@@ -123,5 +128,79 @@ class SearchRepository implements SearchRepositoryInterface
         }
 
         return (int) $rows[0]->SearchTermProductID;
+    }
+    public function logUserSearch(LogUserSearchDto $dto): void
+    {
+        DB::select('CALL SP_LogUserSearch(?, ?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->searchTermId,
+            $dto->ipAddress,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
+    /**
+     * Corrige ResultCount après enrichissement full-text, SANS incrémenter
+     * SearchHitCount/SearchHitCount7d ni toucher LastSearchedAt.
+     * À appeler une fois le total réel (primaire + full-text) connu,
+     * en complément de recordSearchTerm() qui gère déjà le compteur de hits.
+     */
+    public function updateSearchTermResultCount(UpdateSearchTermResultCountDto $dto): void
+    {
+        DB::select('CALL SP_UpdateSearchDictionaryResultCount(?, ?, @success, @message)', [
+            $dto->searchTermId,
+            $dto->resultCount,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+    }
+
+
+    /**
+     * Enregistre un clic sur un produit depuis les résultats de recherche.
+     * Résout TermText -> SearchTermID côté SP (SearchDictionary.NormalizedText),
+     * puis incrémente ClickCount et recalcule ClickThroughRate / ConversionRate
+     * sur SearchTermProductStats. Upsert : crée la ligne de stats si elle
+     * n'existe pas encore (clic sans impression préalable enregistrée).
+     */
+    public function recordSearchClick(RecordSearchClickDto $dto): void
+    {
+        DB::select('CALL SP_RecordSearchTermClick(?, ?, @success, @message)', [
+            $dto->termText,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
+    /**
+     * Enregistre un achat pour la paire (TermText, ProductID). Résout
+     * TermText -> SearchTermID côté SP, incrémente PurchaseCount et
+     * recalcule ConversionRate. Upsert : crée la ligne de stats si elle
+     * n'existe pas encore (achat sans clic préalable enregistré).
+     */
+    public function recordSearchPurchase(RecordSearchPurchaseDto $dto): void
+    {
+        DB::select('CALL SP_RecordSearchTermPurchase(?, ?, @success, @message)', [
+            $dto->termText,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
     }
 }

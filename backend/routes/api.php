@@ -9,14 +9,17 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\admin\AdminProfileController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\WishlistsController;
 
 Route::prefix('auth')->group(function () {
 
@@ -148,7 +151,7 @@ Route::prefix('config-attribute-options')->group(function () {
     });
 });
 Route::prefix('products')->group(function () {
-
+    Route::post('/info', [ProductController::class, 'getProductInfo']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
@@ -199,5 +202,30 @@ Route::prefix('search')->group(function () {
     Route::get('/', [SearchController::class, 'search']);
     Route::middleware(['jwt.custom'])->group(function () {
         Route::get('/history', [SearchController::class, 'history']);
+    });
+});
+
+Route::prefix('wishlists')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+    Route::get('/', [WishlistsController::class, 'index']);
+    Route::post('/', [WishlistsController::class, 'store']);
+    Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
+    Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
+    Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
+});
+});
+Route::prefix('favorites')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::get('/', [FavoritesController::class, 'index']);
+        Route::post('/', [FavoritesController::class, 'store']);
+        Route::delete('/{productId}', [FavoritesController::class, 'destroy']);
+    });
+});
+
+Route::prefix('cart')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/items', [CartController::class, 'addItem']);
+        Route::delete('/items', [CartController::class, 'removeItem']);
+        Route::get('/', [CartController::class, 'getCart']);
     });
 });

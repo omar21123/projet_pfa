@@ -25,8 +25,17 @@ use App\DTOs\Product\vendor\VendorProductItemDto;
 // ProductRepository — add this method alongside getProductsForVendor()
 use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\PaginatedProductItemResponseDto;
+use App\DTOs\Product\ProductInfoAllowedPaymentDto;
+use App\DTOs\Product\ProductInfoCategoryDto;
+use App\DTOs\Product\ProductInfoCombinationConfigDto;
+use App\DTOs\Product\ProductInfoCombinationDto;
+use App\DTOs\Product\ProductInfoConfigDto;
+use App\DTOs\Product\ProductInfoConfigOptionDto;
+use App\DTOs\Product\ProductInfoPromotionDto;
+use App\DTOs\Product\ProductInfoTagDto;
 use App\DTOs\Product\ProductItemDto;
 use App\DTOs\Product\ProductSearchResultDto;
+use App\DTOs\Product\PublicProductInfoDto;
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -463,5 +472,116 @@ class ProductRepository implements ProductRepositoryInterface
             items: $items,
             total: (int) $result->totalCount,
         );
+    }
+    public function getPublicProductInfo(int $productId): PublicProductInfoDto
+    {
+        $rows = DB::select('CALL SP_GetPublicProductInfo(?, @success, @message)', [
+            $productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        return PublicProductInfoDto::fromRow($rows[0]);
+    }
+    /**
+     * @return ProductInfoCategoryDto[]
+     */
+    public function getProductCategories(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCategories(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoCategoryDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoAllowedPaymentDto[]
+     */
+    public function getProductAllowedPayments(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductAllowedPayments(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoAllowedPaymentDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoConfigDto[]
+     */
+    public function getProductConfigs(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductConfigs(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoConfigDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoConfigOptionDto[]
+     */
+    public function getProductConfigOptions(int $productId, int $configId): array
+    {
+        $rows = DB::select('CALL SP_GetProductConfigOptions(?, ?)', [
+            $productId,
+            $configId,
+        ]);
+
+        return array_map(fn($row) => ProductInfoConfigOptionDto::fromRow($row), $rows);
+    }
+    /**
+     * @return string[]
+     */
+    public function getProductImages(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductImages(?)', [$productId]);
+
+        return array_map(fn($row) => $row->ResourcesPath, $rows);
+    }
+    /**
+     * @return ProductInfoCombinationDto[]
+     */
+    public function getProductCombinations(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCombinations(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoCombinationDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoCombinationConfigDto|null
+     */
+    public function getCombinationConfigs(int $combinationId): ?ProductInfoCombinationConfigDto
+    {
+        $rows = DB::select('CALL SP_GetCombinationConfigs(?)', [$combinationId]);
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        return ProductInfoCombinationConfigDto::fromRow($rows[0]);
+    }
+    /**
+     * @return ProductInfoTagDto[]
+     */
+    public function getProductTags(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductTags(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoTagDto::fromRow($row), $rows);
+    }
+    public function getProductPromotion(int $productId): ?ProductInfoPromotionDto
+    {
+        $rows = DB::select('CALL SP_GetProductPromotion(?)', [$productId]);
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        return ProductInfoPromotionDto::fromRow($rows[0]);
+    }
+    public function hasActivePromotion(int $productId): bool
+    {
+        DB::select('CALL SP_HasActivePromotion(?, @found)', [$productId]);
+
+        $result = DB::selectOne('SELECT @found AS found');
+
+        return (bool) $result->found;
     }
 }
