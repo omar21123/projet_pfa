@@ -695,20 +695,33 @@ CREATE TABLE Carts (
     UNIQUE KEY UX_Carts_UserID (UserID)
 ) ENGINE=InnoDB;
 
-CREATE TABLE CartItems (
-    CartItemID       INT AUTO_INCREMENT PRIMARY KEY,
-    CartID           INT NOT NULL,
-    ProductID        INT NOT NULL,
-    ProductVariantID INT,
-    Quantity         DECIMAL(10,2) NOT NULL DEFAULT 1,
-    UnitPrice        DECIMAL(12,2) NOT NULL,
-    CreatedAt        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_CartItems_Cart    FOREIGN KEY (CartID) REFERENCES Carts(CartID) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT FK_CartItems_Product FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE KEY UX_CartItems_Cart_Product_Variant (CartID, ProductID, ProductVariantID),
-    KEY IX_CartItems_ProductID (ProductID),
-    KEY IX_CartItems_ProductVariantID (ProductVariantID)
-) ENGINE=InnoDB;
+ 
+    
+    CREATE TABLE CartItems (
+    CartItemID      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    CartID          INT NOT NULL,
+    ProductID       INT NOT NULL,
+    ProductVariantID INT NULL,
+    CombinaisonID   INT NULL,
+    Quantity        DECIMAL(10,2) NOT NULL DEFAULT 1,
+    UnitPrice       DECIMAL(12,2) NOT NULL,
+    CreatedAt       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_CartItems_Cart
+        FOREIGN KEY (CartID) REFERENCES Carts(CartID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT FK_CartItems_Product
+        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT FK_CartItems_ProductOptionsCombiniason
+        FOREIGN KEY (CombinaisonID) REFERENCES ProductOptionsCombiniason(CombinationID)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE WishLists (
     WishListID INT AUTO_INCREMENT PRIMARY KEY,
