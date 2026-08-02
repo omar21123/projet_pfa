@@ -596,3 +596,75 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_RecordSearchTermPurchase;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_RecordSearchTermPurchase(
+    IN  p_TermText   VARCHAR(255),
+    IN  p_ProductID  INT,
+    OUT p_success    TINYINT,
+    OUT p_message    VARCHAR(255)
+)
+BEGIN
+    DECLARE v_SearchTermID    INT DEFAULT NULL;
+    DECLARE v_ImpressionCount INT DEFAULT 0;
+    DECLARE v_ClickCount      INT DEFAULT 0;
+    DECLARE v_PurchaseCount   INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Erreur lors de l''enregistrement de l''achat.';
+    END;
+
+    START TRANSACTION;
+
+    -- Résolution TermText -> SearchTermID
+    SELECT SearchTermID INTO v_SearchTermID
+    FROM SearchDictionary
+    WHERE NormalizedText = LOWER(TRIM(p_TermText))
+    LIMIT 1;
+
+    IF v_SearchTermID IS NULL THEN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Terme de recherche introuvable.';
+    ELSE
+        -- Upsert : incrémente PurchaseCount si la ligne existe déjà,
+        -- sinon la crée avec PurchaseCount = 1 (achat sans clic connu).
+        -- Suppose un index unique sur (SearchTermID, ProductID).
+        INSERT INTO SearchTermProductStats (
+            SearchTermID, ProductID, ImpressionCount, ClickCount,
+            PurchaseCount, ClickThroughRate, ConversionRate, LastInteractionAt
+        ) VALUES (
+            v_SearchTermID, p_ProductID, 0, 0, 1, 0.00000, 0.00000, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            PurchaseCount     = PurchaseCount + 1,
+            LastInteractionAt = NOW();
+
+        -- Relecture des compteurs à jour pour recalculer les taux
+        SELECT ImpressionCount, ClickCount, PurchaseCount
+        INTO v_ImpressionCount, v_ClickCount, v_PurchaseCount
+        FROM SearchTermProductStats
+        WHERE SearchTermID = v_SearchTermID AND ProductID = p_ProductID;
+
+        -- Seul ConversionRate dépend de PurchaseCount (PurchaseCount / ClickCount).
+        -- ClickThroughRate est inchangé ici (ne dépend pas des achats).
+        UPDATE SearchTermProductStats
+        SET
+            ConversionRate = CASE WHEN v_ClickCount > 0
+                THEN LEAST(v_PurchaseCount / v_ClickCount, 999.99999)
+                ELSE 0.00000 END
+        WHERE SearchTermID = v_SearchTermID AND ProductID = p_ProductID;
+
+        COMMIT;
+        SET p_success = 1;
+        SET p_message = 'OK';
+    END IF;
+END$$
+
+DELIMITER ;

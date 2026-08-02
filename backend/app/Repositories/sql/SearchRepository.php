@@ -15,6 +15,8 @@ use App\DTOs\Search\LogUserSearchDto;
 use App\DTOs\Search\SearchHistoryItemDto;
 use App\DTOs\Search\UpdateSearchTermResultCountDto;
 use App\DTOs\Search\RecordSearchClickDto;
+use App\DTOs\Search\RecordSearchPurchaseDto;
+
 
 class SearchRepository implements SearchRepositoryInterface
 {
@@ -172,6 +174,25 @@ class SearchRepository implements SearchRepositoryInterface
     public function recordSearchClick(RecordSearchClickDto $dto): void
     {
         DB::select('CALL SP_RecordSearchTermClick(?, ?, @success, @message)', [
+            $dto->termText,
+            $dto->productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
+    /**
+     * Enregistre un achat pour la paire (TermText, ProductID). Résout
+     * TermText -> SearchTermID côté SP, incrémente PurchaseCount et
+     * recalcule ConversionRate. Upsert : crée la ligne de stats si elle
+     * n'existe pas encore (achat sans clic préalable enregistré).
+     */
+    public function recordSearchPurchase(RecordSearchPurchaseDto $dto): void
+    {
+        DB::select('CALL SP_RecordSearchTermPurchase(?, ?, @success, @message)', [
             $dto->termText,
             $dto->productId,
         ]);

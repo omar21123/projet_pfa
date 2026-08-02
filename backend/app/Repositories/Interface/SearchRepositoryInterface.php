@@ -8,6 +8,7 @@ use App\DTOs\Search\GetSearchHistoryDto;
 use App\DTOs\Search\InsertSearchTermProductStatsDto;
 use App\DTOs\Search\LogUserSearchDto;
 use App\DTOs\Search\RecordSearchClickDto;
+use App\DTOs\Search\RecordSearchPurchaseDto;
 use App\DTOs\Search\SearchHistoryItemDto;
 use App\DTOs\Search\SearchTermUpsertResultDto;
 use App\DTOs\Search\UpdateSearchTermResultCountDto;
@@ -25,4 +26,5 @@ interface SearchRepositoryInterface
     // SearchRepositoryInterface — ajouter :
     public function updateSearchTermResultCount(UpdateSearchTermResultCountDto $dto): void;
     public function recordSearchClick(RecordSearchClickDto $dto): void;
+    public function recordSearchPurchase(RecordSearchPurchaseDto $dto): void;
 }
