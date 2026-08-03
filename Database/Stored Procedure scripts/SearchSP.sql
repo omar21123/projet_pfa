@@ -164,8 +164,7 @@ DELIMITER ;
 
 
 DELIMITER $$
-
-CREATE PROCEDURE SP_SearchProductsByTerm(
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_SearchProductsByTerm`(
     IN v_Query VARCHAR(255),
     IN v_UserPublicID VARCHAR(36),
     IN v_PageNumber INT,
@@ -263,7 +262,8 @@ BEGIN
             CASE
                 WHEN v_UserID IS NOT NULL AND EXISTS (
                     SELECT 1 FROM WishListItems w2
-                    WHERE w2.ProductID = p.ProductID AND w2.UserID = v_UserID
+                    inner join WishLists wq on wq.WishListID = w2.WishListID
+                    WHERE w2.ProductID = p.ProductID AND wq.UserID = v_UserID
                 ) THEN 1 ELSE 0
             END AS IsWishedList
         FROM SearchTermProductStats stps
@@ -271,12 +271,11 @@ BEGIN
         LEFT JOIN ProductResources pr ON pr.ProductID = p.ProductID AND (pr.ResourceRoleID = 2)
         LEFT JOIN Brands b ON b.BrandID = p.BrandID
         LEFT JOIN Models m ON m.ModelID = p.ModelID
-        WHERE stps.SearchTermID = v_SearchTermID and p.IsActive = 1 and p.Status = 2
+        WHERE stps.SearchTermID = v_SearchTermID
         ORDER BY stps.PurchaseCount DESC, stps.ClickCount DESC
         LIMIT v_PageSize OFFSET v_Offset;
     END IF;
-END$$
-
+END
 DELIMITER ;
 
 DELIMITER $$
@@ -666,5 +665,78 @@ BEGIN
         SET p_message = 'OK';
     END IF;
 END$$
+
+DELIMITER ;
+
+DELIMITER $$ 
+
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_LogUserSearch`(
+    IN v_UserPublicID VARCHAR(36),
+    IN v_SearchTermID INT,
+    IN v_IPAddress    VARCHAR(45),
+    OUT v_Success     BOOLEAN,
+    OUT v_Message     VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID INT DEFAULT NULL;
+    DECLARE v_AlreadyExists INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_LogUserSearch',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'SearchTermID', v_SearchTermID, 'IPAddress', v_IPAddress)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de l''enregistrement de la recherche.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- UserID facultatif : couvre aussi les recherches invitées (non connectées).
+    IF v_UserPublicID IS NOT NULL THEN
+        SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+    END IF;
+
+    IF v_SearchTermID IS NULL THEN
+        SET v_Message = 'SearchTermID est requis.';
+    ELSE
+        -- Déduplication : par UserID pour un utilisateur connecté,
+        -- par IPAddress pour un invité (UserID NULL).
+        IF v_UserID IS NOT NULL THEN
+            SELECT COUNT(*) INTO v_AlreadyExists
+            FROM UserSearchHistory
+            WHERE UserID = v_UserID
+              AND SearchTermID = v_SearchTermID;
+        ELSE
+            SELECT COUNT(*) INTO v_AlreadyExists
+            FROM UserSearchHistory
+            WHERE UserID IS NULL
+              AND IPAddress = v_IPAddress
+              AND SearchTermID = v_SearchTermID;
+        END IF;
+
+        IF v_AlreadyExists > 0 THEN
+            -- Déjà enregistré pour cet utilisateur/IP -> on ne fait rien.
+            SET v_Success = TRUE;
+            SET v_Message = 'Recherche déjà enregistrée pour cet utilisateur.';
+        ELSE
+            INSERT INTO UserSearchHistory (UserID, SearchTermID, IPAddress, SearchedAt)
+            VALUES (v_UserID, v_SearchTermID, v_IPAddress, NOW());
+
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+        END IF;
+    END IF;
+END
 
 DELIMITER ;
