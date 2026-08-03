@@ -36,14 +36,27 @@ use App\DTOs\Product\ProductInfoTagDto;
 use App\DTOs\Product\ProductItemDto;
 use App\DTOs\Product\ProductSearchResultDto;
 use App\DTOs\Product\PublicProductInfoDto;
+use Illuminate\Support\Facades\Log;
 
 class ProductRepository implements ProductRepositoryInterface
 {
+
+
     public function create(CreateProductDto $dto): ?object
     {
         return DB::transaction(function () use ($dto) {
 
+            Log::info("========== CREATE PRODUCT START ==========");
+
             // 1) Product
+            Log::info("STEP 1 - Create Product", [
+                'vendorID' => $dto->vendorID,
+                'brandID' => $dto->brandID,
+                'modelID' => $dto->modelID,
+                'name' => $dto->name,
+                'barcode' => $dto->barcode,
+            ]);
+
             DB::select('CALL SP_CreateProduct(?, ?, ?, ?, ?, ?, ?, ?, @productId, @success, @message)', [
                 $dto->vendorID,
                 $dto->brandID,
@@ -54,83 +67,139 @@ class ProductRepository implements ProductRepositoryInterface
                 $dto->basePrice,
                 $dto->stock,
             ]);
+
             $result = DB::selectOne('SELECT @productId AS productId, @success AS success, @message AS message');
+
+            Log::info("STEP 1 RESULT", (array) $result);
+
             if (!$result->success) {
                 throw new BusinessValidationException($result->message, 422);
             }
+
             $productId = (int) $result->productId;
 
             // 2) Resources
+            Log::info("STEP 2 - Resources");
+
             foreach ($dto->resources as $resource) {
+
+                Log::info("Resource", (array) $resource);
+
                 DB::select('CALL SP_CreateProductResource(?, ?, ?, ?, @resourceId, @success, @message)', [
                     $productId,
                     $resource->type,
                     $resource->role,
                     $resource->path,
                 ]);
+
                 $result = DB::selectOne('SELECT @resourceId AS resourceId, @success AS success, @message AS message');
+
+                Log::info("Resource Result", (array) $result);
+
                 if (!$result->success) {
                     throw new BusinessValidationException($result->message, 422);
                 }
             }
 
             // 3) Categories
+            Log::info("STEP 3 - Categories");
+
             foreach ($dto->categories as $categoryId) {
-                DB::select('CALL SP_CreateProductCategory(?, ?, @success, @message)', [$productId, $categoryId]);
+
+                Log::info("Category", ['id' => $categoryId]);
+
+                DB::select('CALL SP_CreateProductCategory(?, ?, @success, @message)', [
+                    $productId,
+                    $categoryId
+                ]);
+
                 $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+                Log::info("Category Result", (array) $result);
+
                 if (!$result->success) {
                     throw new BusinessValidationException($result->message, 422);
                 }
             }
 
-            // 4) Attributes + ConfigOptions — build a lookup map for step 5
-            $optionMap = []; // [ConfigName][OptionName] = ['attributeId' => int, 'optionId' => int]
+            // 4) Attributes
+            Log::info("STEP 4 - Attributes");
+
+            $optionMap = [];
 
             foreach ($dto->attributes as $attribute) {
+
+                Log::info("Attribute", (array) $attribute);
+
                 $result = DB::select('CALL SP_GetOrCreateProductsConfigAttributeByName(?, @attributeId, @success, @message)', [
                     $attribute->configName,
                 ]);
+
                 $result = $result[0] ?? null;
 
+                Log::info("Attribute Result", (array) $result);
+
                 if (!$result || !$result->Success) {
-                    throw new BusinessValidationException($result->Message ?? 'Erreur lors de la récupération de l\'attribut.', 422);
+                    throw new BusinessValidationException(
+                        $result->Message ?? 'Erreur attribut',
+                        422
+                    );
                 }
 
                 $attributeId = (int) $result->AttributeID;
-                $optionMap[$attribute->configName] ??= [];
+
+                $optionMap[$attribute->configName] = [];
 
                 foreach ($attribute->configOptions as $option) {
+
+                    Log::info("Option", (array) $option);
+
                     DB::select('CALL SP_CreateProductDetailByOptionName(?, ?, ?, ?, @detailId, @optionId, @success, @message)', [
                         $productId,
                         $attributeId,
                         $option->name,
                         $option->isDefault ? 1 : 0,
                     ]);
-                    $result = DB::selectOne('SELECT @detailId AS detailId, @optionId AS optionId, @success AS success, @message AS message');
-                    if (!$result->success) {
-                        throw new BusinessValidationException($result->message, 422);
+
+                    $res = DB::selectOne('SELECT @detailId AS detailId,@optionId AS optionId,@success AS success,@message AS message');
+
+                    Log::info("Option Result", (array) $res);
+
+                    if (!$res->success) {
+                        throw new BusinessValidationException($res->message, 422);
                     }
 
                     $optionMap[$attribute->configName][$option->name] = [
                         'attributeId' => $attributeId,
-                        'optionId'    => (int) $result->optionId,
+                        'optionId' => (int) $res->optionId
                     ];
                 }
             }
 
-            // 5) Combinations — resolve names against the map built above
+            // 5) Combinations
+            Log::info("STEP 5 - Combinations");
+
             foreach ($dto->combinations as $combination) {
+
+                Log::info("Combination", (array) $combination);
+
                 $optionsPairs = [];
 
                 foreach ($combination->options as $opt) {
+
+                    Log::info("Combination Option", (array) $opt);
+
                     if (!isset($optionMap[$opt->configName][$opt->optionName])) {
                         throw new BusinessValidationException(
-                            "Combinaison invalide : l'option '{$opt->optionName}' de l'attribut '{$opt->configName}' n'a pas été définie dans Attribute.",
+                            "Option introuvable : {$opt->configName} -> {$opt->optionName}",
                             422
                         );
                     }
+
                     $optionsPairs[] = $optionMap[$opt->configName][$opt->optionName];
                 }
+
+                Log::info("Options JSON", $optionsPairs);
 
                 DB::select('CALL SP_CreateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, @combinationId, @success, @message)', [
                     $productId,
@@ -143,30 +212,21 @@ class ProductRepository implements ProductRepositoryInterface
                     json_encode($optionsPairs),
                 ]);
 
-                $result = DB::selectOne('SELECT @combinationId AS combinationId, @success AS success, @message AS message');
-                if (!$result->success) {
-                    throw new BusinessValidationException($result->message, 422);
+                $res = DB::selectOne('SELECT @combinationId AS combinationId,@success AS success,@message AS message');
+
+                Log::info("Combination Result", (array) $res);
+
+                if (!$res->success) {
+                    throw new BusinessValidationException($res->message, 422);
                 }
             }
 
-            // 6) Tags
-            foreach ($dto->tags as $tagName) {
-                DB::select('CALL SP_AddProductTagByName(?, ?, @tagId, @success, @message)', [$productId, $tagName]);
-                $result = DB::selectOne('SELECT @tagId AS tagId, @success AS success, @message AS message');
-                if (!$result->success) {
-                    throw new BusinessValidationException($result->message, 422);
-                }
-            }
+            Log::info("========== CREATE PRODUCT SUCCESS ==========");
 
-            // 7) Allowed Payments
-            foreach ($dto->allowedPayment as $paymentMethodId) {
-                DB::insert('INSERT INTO ProductAllowedPayements (ProductID, PayementMethodID) VALUES (?, ?)', [
-                    $productId,
-                    $paymentMethodId,
-                ]);
-            }
-
-            return DB::selectOne('SELECT * FROM Products WHERE ProductID = ?', [$productId]);
+            return DB::selectOne(
+                'SELECT * FROM Products WHERE ProductID=?',
+                [$productId]
+            );
         });
     }
     public function getAllProductsAdmin(GetAllProductsAdminDto $dto): PaginatedProductAdminResponseDto
