@@ -36,8 +36,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
     Route::post('/mobile/google', [GoogleAuthController::class, 'mobileGoogleLogin']);
     Route::post('/web/google', [GoogleAuthController::class, 'webGoogleLogin']);
-    Route::post('/google/complete-profile', [GoogleAuthController::class, 'completeProfile']);
-    // });
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/google/complete-profile', [GoogleAuthController::class, 'completeProfile']);
+    });    // });
 
     // TODO — pas encore implémentés
     // Route::post('/set-password', [AuthController::class, 'setPassword']);
@@ -103,7 +104,7 @@ Route::prefix('units')->group(function () {
     });
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -173,7 +174,7 @@ Route::prefix('products')->group(function () {
 
 Route::prefix('promotions')->group(function () {
     Route::get('/lookups', [PromotionController::class, 'lookups']);
-   
+
     Route::middleware(['jwt.custom'])->group(function () {
         Route::put('/{promotion}', [PromotionController::class, 'update']);
     });
@@ -181,7 +182,7 @@ Route::prefix('promotions')->group(function () {
         Route::post('/product', [PromotionController::class, 'createForProduct']);
         Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
         Route::get('/{promotion}', [PromotionController::class, 'show']);
-       
+
 
     });
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -190,18 +191,21 @@ Route::prefix('promotions')->group(function () {
         Route::get('/', [PromotionController::class, 'index']);
     });
     Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
-         Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
-         Route::get('/{promotion}', [PromotionController::class, 'show']);
-         Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
+        Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
+        Route::get('/{promotion}', [PromotionController::class, 'show']);
+        Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
     });
 });
 
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
-    Route::get('/', [SearchController::class, 'search']);
+    
     Route::middleware(['jwt.custom'])->group(function () {
-    Route::get('/history', [SearchController::class, 'history']);
-});
+        Route::get('/history', [SearchController::class, 'history']);
+           
+
+    });
+     Route::get('/', [SearchController::class, 'search']);
 });
 
 Route::prefix('wishlists')->group(function () {

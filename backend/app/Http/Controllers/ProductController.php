@@ -397,8 +397,7 @@ class ProductController extends Controller
                 'message' => 'Votre profil vendeur n\'est pas vérifié.'
             ], 403);
         }
-        $validated['VendorID'] = $vendorProfile->vendorProfileId;
-
+$validated['VendorID'] = $userInfo->userId;
         if (!empty($validated['BrandID'])) {
             if (!$this->brandService->existsById($validated['BrandID'])) {
                 return response()->json([

@@ -19,7 +19,9 @@ use OpenApi\Attributes as OA;
 )]
 class GoogleAuthController extends Controller
 {
-    public function __construct(private AuthServiceInterface $googleAuthService) {}
+    public function __construct(private AuthServiceInterface $googleAuthService)
+    {
+    }
 
     /* =======================================================================
      * FLOW WEB — REDIRECTION NAVIGATEUR (routes/web.php)
@@ -176,65 +178,65 @@ class GoogleAuthController extends Controller
     #[OA\Response(response: 401, description: "ID token Google invalide")]
     // app/Http/Controllers/GoogleAuthController.php
 
-public function webGoogleLogin(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'id_token'     => ['required', 'string'],
-        'role'         => ['nullable', 'string', 'in:CUSTOMER,VENDOR,customer,vendor'],
-        'store_name'   => ['required_if:role,VENDOR,vendor', 'nullable', 'string', 'max:100'],
-        'phone_number' => ['nullable', 'string', 'max:20'],
-        'birth_date'   => ['nullable', 'date'],
-        'gender'       => ['nullable', 'integer', 'in:1,2'],
-        'description'  => ['nullable', 'string', 'max:1000'],
-    ]);
+    public function webGoogleLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_token' => ['required', 'string'],
+            'role' => ['nullable', 'string', 'in:CUSTOMER,VENDOR,customer,vendor'],
+            'store_name' => ['required_if:role,VENDOR,vendor', 'nullable', 'string', 'max:100'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
+            'birth_date' => ['nullable', 'date'],
+            'gender' => ['nullable', 'integer', 'in:1,2'],
+            'description' => ['nullable', 'string', 'max:1000'],
+        ]);
 
-    if ($validator->fails()) {
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Les données fournies sont invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $dto = $this->verifyGoogleIdToken($request->input('id_token'));
+
+        if (!$dto) {
+            return response()->json(['message' => 'ID token Google invalide.'], 401);
+        }
+
+        $ttlSeconds = (int) env('JWT_REFRESH_TTL', 2592000);
+
+        // On passe l'ensemble des champs validés à AuthService
+        $loginResult = $this->googleAuthService->loginOrRegister(
+            $dto,
+            $request->ip(),
+            $ttlSeconds,
+            $validator->validated() // 👈 Transférer les données du formulaire (role, store_name, etc.)
+        );
+
+        $refreshCookie = cookie(
+            'refresh_token',
+            $loginResult['refresh_token'],
+            (int) ($ttlSeconds / 60),
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Strict'
+        );
+
         return response()->json([
-            'message' => 'Les données fournies sont invalides.',
-            'errors'  => $validator->errors(),
-        ], 422);
+            'message' => 'Connexion réussie.',
+            'access_token' => $loginResult['access_token'],
+            'unreadNotifications' => 0,
+            'displayName' => trim($dto->firstName . ' ' . $dto->lastName),
+            'email' => $dto->email,
+            'public_id' => $loginResult['user']->publicId,
+            'role' => $loginResult['role'],
+            'is_new_user' => $loginResult['is_new_user'],
+            'requires_onboarding' => $loginResult['requires_onboarding'],
+        ], 201)->withCookie($refreshCookie);
     }
-
-    $dto = $this->verifyGoogleIdToken($request->input('id_token'));
-
-    if (!$dto) {
-        return response()->json(['message' => 'ID token Google invalide.'], 401);
-    }
-
-    $ttlSeconds = (int) env('JWT_REFRESH_TTL', 2592000);
-
-    // On passe l'ensemble des champs validés à AuthService
-    $loginResult = $this->googleAuthService->loginOrRegister(
-        $dto,
-        $request->ip(),
-        $ttlSeconds,
-        $validator->validated() // 👈 Transférer les données du formulaire (role, store_name, etc.)
-    );
-
-    $refreshCookie = cookie(
-        'refresh_token',
-        $loginResult['refresh_token'],
-        (int) ($ttlSeconds / 60),
-        '/',
-        null,
-        true,
-        true,
-        false,
-        'Strict'
-    );
-
-    return response()->json([
-        'message'              => 'Connexion réussie.',
-        'access_token'         => $loginResult['access_token'],
-        'unreadNotifications'  => 0,
-        'displayName'          => trim($dto->firstName . ' ' . $dto->lastName),
-        'email'                => $dto->email,
-        'public_id'            => $loginResult['user']->publicId,
-        'role'                 => $loginResult['role'],
-        'is_new_user'          => $loginResult['is_new_user'],
-        'requires_onboarding'  => $loginResult['requires_onboarding'],
-    ], 201)->withCookie($refreshCookie);
-}
 
     /* =======================================================================
      * FINALISATION DU PROFIL (ONBOARDING : CHOIX DU RÔLE ET INFOS)
@@ -277,13 +279,21 @@ public function webGoogleLogin(Request $request)
     #[OA\Response(response: 422, description: "Données invalides ou nom de boutique manquant")]
     public function completeProfile(Request $request)
     {
+        // 1. Normaliser le rôle en majuscules dès le début
+        if ($request->has('role')) {
+            $request->merge(['role' => strtoupper($request->role)]);
+        }
+
+        // 2. Validation
         $validator = Validator::make($request->all(), [
-            'role' => ['required', 'string', 'in:CUSTOMER,VENDOR,customer,vendor'],
+            'role' => ['required', 'string', 'in:CUSTOMER,VENDOR'],
             'phone_number' => ['nullable', 'string', 'max:20'],
             'birth_date' => ['nullable', 'date'],
             'gender' => ['nullable', 'integer', 'in:1,2'],
-            'store_name' => ['required_if:role,VENDOR,vendor', 'nullable', 'string', 'max:100'],
+            'store_name' => ['required_if:role,VENDOR', 'nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'google_token' => ['nullable', 'string'],
+            'id_token' => ['nullable', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -293,30 +303,52 @@ public function webGoogleLogin(Request $request)
             ], 422);
         }
 
-        // Récupère l'ID utilisateur injecté par le Middleware JWT Auth
-       $userId = $request->attributes->get('auth_user_id') ?? $request->user()?->UserID ?? auth()->id();
+        // 3. Récupération robuste de l'utilisateur
+        $userId = $request->attributes->get('user_id')
+            ?? $request->user()?->UserID
+            ?? auth()->id();
+
+        // Secours : Si non authentifié via Header Bearer, vérifier via le token Google envoyé dans le body
+        if (!$userId && ($request->filled('google_token') || $request->filled('id_token'))) {
+            $token = $request->input('google_token') ?? $request->input('id_token');
+            // Optionnel : résoudre l'utilisateur via votre service Google si nécessaire
+            // $user = $this->googleAuthService->findUserByGoogleToken($token);
+            // $userId = $user?->UserID;
+        }
 
         if (!$userId) {
-            return response()->json(['message' => 'Non autorisé.'], 401);
+            return response()->json([
+                'message' => 'Non autorisé. Jeton de session manquant ou expiré.'
+            ], 401);
         }
 
         $dto = CompleteGoogleProfileDto::fromArray($validator->validated());
 
         try {
             $result = $this->googleAuthService->completeGoogleProfile($userId, $dto);
-
             return response()->json([
                 'message' => 'Profil finalisé avec succès.',
-                'access_token' => $result['access_token'],
-                'role' => $result['role'],
-                'public_id' => $result['user']->publicId,
+                'access_token' => $result['access_token'] ?? null,
+                'role' => $result['role'] ?? $request->role,
+                'public_id' => $result['user']->publicId ?? $result['user']->public_id ?? null,
                 'requires_onboarding' => false,
             ], 200);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'message' => 'Erreur lors de la mise à jour du profil.',
                 'errors' => $e->errors(),
             ], 422);
+        } catch (\Throwable $e) {
+            // Capturer toutes les autres exceptions système
+            \Log::error('Erreur completeProfile: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Une erreur interne est survenue lors de la finalisation du profil.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Erreur serveur'
+            ], 500);
         }
     }
 

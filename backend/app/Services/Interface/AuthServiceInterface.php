@@ -39,6 +39,6 @@ interface AuthServiceInterface
      * }
      */
     public function loginOrRegister(GoogleUserDto $dto, ?string $ipAddress, int $refreshTtlSeconds): array;
-    public function completeGoogleProfile(int $userId, CompleteGoogleProfileDto $dto): array;
+    public function completeGoogleProfile(string $publicId, CompleteGoogleProfileDto $dto): array;
 
 }

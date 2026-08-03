@@ -192,49 +192,55 @@ class AuthService implements AuthServiceInterface
     /**
      * Finalise l'inscription Google en assignant le rôle et les infos complémentaires.
      */
-    public function completeGoogleProfile(int $userId, CompleteGoogleProfileDto $dto): array
-    {
-        // 1. Mise à jour des champs optionnels (téléphone, date de naissance, genre)
-        $this->userRepository->updateGoogleUserProfile(
-            $userId,
-            $dto->phoneNumber ?? null,
-            $dto->birthDate ?? null,
-            $dto->gender ?? null
-        );
+    public function completeGoogleProfile(string $publicId, CompleteGoogleProfileDto $dto): array
+{
+    $userInfo = $this->userRepository->getUserStandardInformationByPublicID($publicId);
 
-        // 2. Attribution du rôle
-        $roleCode = strtoupper($dto->role);
-        $roleId = $this->userRepository->getRoleIdByCode($roleCode);
+    if (!$userInfo) {
+        throw ValidationException::withMessages([
+            'user' => ["Utilisateur introuvable."],
+        ]);
+    }
 
-        if (!$roleId) {
+    $userId = $userInfo->userId;
+
+    $this->userRepository->updateGoogleUserProfile(
+        $userId,
+        $dto->phoneNumber ?? null,
+        $dto->birthDate ?? null,
+        $dto->gender ?? null
+    );
+
+    $roleCode = strtoupper($dto->role);
+    $roleId = $this->userRepository->getRoleIdByCode($roleCode);
+
+    if (!$roleId) {
+        throw ValidationException::withMessages([
+            'role' => ["Le rôle '{$roleCode}' n'existe pas ou n'a pas été trouvé."],
+        ]);
+    }
+
+    $this->userRepository->assignRole($userId, $roleId);
+
+    if ($roleCode === 'VENDOR') {
+        if (empty($dto->storeName)) {
             throw ValidationException::withMessages([
-                'role' => ["Le rôle '{$roleCode}' n'existe pas ou n'a pas été trouvé."],
+                'store_name' => ['Le nom de la boutique est requis pour un vendeur.'],
             ]);
         }
-
-        $this->userRepository->assignRole($userId, $roleId);
-
-        // 3. Création du profil selon le rôle sélectionné
-        if ($roleCode === 'VENDOR') {
-            if (empty($dto->storeName)) {
-                throw ValidationException::withMessages([
-                    'store_name' => ['Le nom de la boutique est requis pour un vendeur.'],
-                ]);
-            }
-            $this->userRepository->createVendorProfile($userId, $dto->storeName, $dto->description ?? null);
-        } else {
-            $this->userRepository->createCustomerProfile($userId);
-        }
-
-        $user = $this->userRepository->findById($userId);
-
-        // 4. Génération du nouvel Access Token avec le rôle débloqué
-        $newAccessToken = $this->accessTokenService->generate($user->publicId, $roleCode);
-
-        return [
-            'user'         => $user,
-            'role'         => $roleCode,
-            'access_token' => $newAccessToken,
-        ];
+        $this->userRepository->createVendorProfile($userId, $dto->storeName, $dto->description ?? null);
+    } else {
+        $this->userRepository->createCustomerProfile($userId);
     }
+
+    $user = $this->userRepository->findById($userId);
+
+    $newAccessToken = $this->accessTokenService->generate($user->publicId, $roleCode);
+
+    return [
+        'user'         => $user,
+        'role'         => $roleCode,
+        'access_token' => $newAccessToken,
+    ];
+}
 }
