@@ -1,5 +1,4 @@
 DELIMITER $$
-
 CREATE PROCEDURE SP_GetAllProductsAdmin(
     IN p_Status      INT,
     IN p_VendorID    INT,
@@ -70,8 +69,8 @@ BEGIN
         p.BlockedDate,
         p.BlockedNotes
     FROM Products p
-    INNER JOIN VendorProfiles vp ON vp.VendorProfileID = p.VendorID
-    INNER JOIN Users u  ON u.UserID = vp.UserID
+    INNER JOIN Users u  ON u.UserID = p.VendorID 
+    INNER JOIN VendorProfiles vp ON vp.UserID = u.UserID
     LEFT JOIN Users Rf  ON Rf.UserID = p.RefusedBy
     LEFT JOIN Users va  ON va.UserID = p.ValidatorID
     LEFT JOIN Users bl  ON bl.UserID = p.BlokedBy

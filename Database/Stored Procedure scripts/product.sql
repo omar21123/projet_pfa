@@ -1098,3 +1098,128 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+CREATE PROCEDURE SP_GetProductsForVendor (
+    IN v_UserPublicID VARCHAR(36),
+    IN v_Status       INT,
+    IN v_Search       VARCHAR(255),
+    IN v_IsActive     TINYINT,
+    IN v_IsBlocked    TINYINT,
+    IN v_PageNumber   INT,
+    IN v_PageSize     INT,
+    OUT v_TotalCount  INT,
+    OUT v_Success     BOOLEAN,
+    OUT v_Message     VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID   INT DEFAULT NULL;
+    DECLARE v_VendorID INT DEFAULT NULL;
+    DECLARE v_Offset   INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetProductsForVendor',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('UserPublicID', v_UserPublicID, 'Status', v_Status, 'Search', v_Search)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des produits.';
+        SET v_TotalCount = 0;
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+    SET v_TotalCount = 0;
+
+    IF v_PageNumber IS NULL OR v_PageNumber < 1 THEN
+        SET v_PageNumber = 1;
+    END IF;
+
+    IF v_PageSize IS NULL OR v_PageSize < 1 THEN
+        SET v_PageSize = 20;
+    ELSEIF v_PageSize > 100 THEN
+        SET v_PageSize = 100;
+    END IF;
+
+    SET v_Offset = (v_PageNumber - 1) * v_PageSize;
+
+    -- Résolution PublicID -> UserID -> VendorProfileID.
+    SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable';
+    ELSE
+        SELECT VendorProfileID INTO v_VendorID FROM VendorProfiles WHERE UserID = v_UserID;
+
+        IF v_VendorID IS NULL THEN
+            SET v_Message = 'Profil vendeur introuvable pour cet utilisateur';
+        ELSE
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+
+            SELECT COUNT(*) INTO v_TotalCount
+            FROM Products p
+            WHERE p.VendorID = v_VendorID
+              AND (v_Status IS NULL OR p.Status = v_Status)
+              AND (v_IsActive IS NULL OR p.IsActive = v_IsActive)
+              AND (v_IsBlocked IS NULL OR p.IsBlocked = v_IsBlocked)
+              AND (
+                    v_Search IS NULL OR v_Search = ''
+                    OR p.Name LIKE CONCAT('%', v_Search, '%')
+                    OR p.Barcode LIKE CONCAT('%', v_Search, '%')
+                  );
+
+            SELECT
+                p.ProductID,
+                p.Name,
+                p.Barcode,
+                p.BasePrice,
+                p.Stock,
+                ps.Id AS status,
+                ps.Libelle AS statusLabel,
+                p.IsActive,
+                p.IsBlocked,
+                b.BrandID,
+                b.Name AS BrandName,
+                m.ModelID,
+                m.Name AS ModelName,
+                (
+                    SELECT pr.ResourcesPath
+                    FROM ProductResources pr
+                    WHERE pr.ProductID = p.ProductID
+                      AND pr.ResourceRoleID = 2
+                      AND pr.ResourcesTypeID IN (3, 5)
+                    LIMIT 1
+                ) AS MainImage,
+                p.CreatedAt,
+                p.UpdatedAt
+            FROM Products p
+            INNER JOIN ProductStatus ps ON ps.Id = p.Status
+            LEFT JOIN Brands b ON b.BrandID = p.BrandID
+            LEFT JOIN Models m ON m.ModelID = p.ModelID
+            WHERE p.VendorID = v_UserID
+              AND (v_Status IS NULL OR p.Status = v_Status)
+              AND (v_IsActive IS NULL OR p.IsActive = v_IsActive)
+              AND (v_IsBlocked IS NULL OR p.IsBlocked = v_IsBlocked)
+              AND (
+                    v_Search IS NULL OR v_Search = ''
+                    OR p.Name LIKE CONCAT('%', v_Search, '%')
+                    OR p.Barcode LIKE CONCAT('%', v_Search, '%')
+                  )
+            ORDER BY p.CreatedAt DESC
+            LIMIT v_PageSize OFFSET v_Offset;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

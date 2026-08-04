@@ -466,7 +466,7 @@ class ProductRepository implements ProductRepositoryInterface
         }
 
         $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
-
+        
         return new PaginatedVendorProductResponseDto(
             items: $items,
             total: (int) $result->totalCount,
