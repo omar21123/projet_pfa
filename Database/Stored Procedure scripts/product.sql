@@ -835,3 +835,266 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+
+DELIMITER $$
+CREATE PROCEDURE SP_GetSimilarProductsByName (
+    IN v_ProductID INT,
+    IN v_Limit      INT,
+    OUT v_Success   BOOLEAN,
+    OUT v_Message   VARCHAR(255)
+)
+BEGIN
+    DECLARE v_Name       VARCHAR(255);
+    DECLARE v_FirstWord   VARCHAR(255);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetSimilarProductsByName',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('ProductID', v_ProductID, 'Limit', v_Limit)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des produits similaires.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF v_Limit IS NULL OR v_Limit < 1 THEN
+        SET v_Limit = 10;
+    ELSEIF v_Limit > 50 THEN
+        SET v_Limit = 50;
+    END IF;
+
+    -- Récupère le nom du produit de référence.
+    SELECT Name INTO v_Name
+    FROM Products
+    WHERE ProductID = v_ProductID;
+
+    IF v_Name IS NULL THEN
+        SET v_Message = 'Produit introuvable.';
+    ELSE
+        -- Premier mot significatif du nom (ex: "Clavier Samsung" -> "Clavier").
+        -- Sert de signal de similarité simple : type de produit avant la marque/modèle.
+        SET v_FirstWord = TRIM(SUBSTRING_INDEX(v_Name, ' ', 1));
+
+        SET v_Success = TRUE;
+        SET v_Message = 'OK';
+
+        SELECT
+            p.ProductID,
+            p.Name AS ProductName,
+            p.Description AS ProductDesc,
+            p.BasePrice,
+            IFNULL(b.Name, 'No Brand') AS BrandName,
+            IFNULL(b.BrandID, 0) AS BrandID,
+            IFNULL(m.Name, 'No Model') AS ModelName,
+            p.Stock,
+            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) AS TotalOrders,
+            (SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID) AS TotalWishlists,
+            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) AS TotalLikes
+        FROM Products p
+        LEFT JOIN Brands b ON b.BrandID = p.BrandID
+        LEFT JOIN Models m ON m.ModelID = p.ModelID
+        WHERE p.Name LIKE CONCAT(v_FirstWord, '%')
+          AND p.ProductID != v_ProductID
+        ORDER BY
+            -- Les produits les plus vendus/populaires remontent en premier parmi les similaires.
+            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) DESC,
+            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) DESC
+        LIMIT v_Limit;
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetSimilarProductsByBrandOrModel (
+    IN v_ProductID INT,
+    IN v_Limit      INT,
+    OUT v_Success   BOOLEAN,
+    OUT v_Message   VARCHAR(255)
+)
+BEGIN
+    DECLARE v_BrandID INT;
+    DECLARE v_ModelID INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetSimilarProductsByBrandOrModel',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('ProductID', v_ProductID, 'Limit', v_Limit)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des produits similaires.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF v_Limit IS NULL OR v_Limit < 1 THEN
+        SET v_Limit = 10;
+    ELSEIF v_Limit > 50 THEN
+        SET v_Limit = 50;
+    END IF;
+
+    -- Récupère BrandID/ModelID du produit de référence.
+    SELECT BrandID, ModelID INTO v_BrandID, v_ModelID
+    FROM Products
+    WHERE ProductID = v_ProductID;
+
+    -- Une ligne existe même si BrandID/ModelID sont NULL -> distinguer
+    -- "produit introuvable" de "produit trouvé mais sans marque/modèle".
+    IF ROW_COUNT() = 0 THEN
+        SET v_Message = 'Produit introuvable.';
+    ELSEIF v_BrandID IS NULL AND v_ModelID IS NULL THEN
+        -- Rien à comparer : le produit n'a ni marque ni modèle renseigné.
+        SET v_Success = TRUE;
+        SET v_Message = 'Ce produit n''a ni marque ni modèle renseigné.';
+        SELECT NULL AS ProductID LIMIT 0;
+    ELSE
+        SET v_Success = TRUE;
+        SET v_Message = 'OK';
+
+        SELECT
+            p.ProductID,
+            p.Name AS ProductName,
+            p.Description AS ProductDesc,
+            p.BasePrice,
+            IFNULL(b.Name, 'No Brand') AS BrandName,
+            IFNULL(b.BrandID, 0) AS BrandID,
+            IFNULL(m.Name, 'No Model') AS ModelName,
+            p.Stock,
+            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) AS TotalOrders,
+            (SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID) AS TotalWishlists,
+            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) AS TotalLikes
+        FROM Products p
+        LEFT JOIN Brands b ON b.BrandID = p.BrandID
+        LEFT JOIN Models m ON m.ModelID = p.ModelID
+        WHERE p.ProductID != v_ProductID
+          AND (
+                (v_BrandID IS NOT NULL AND p.BrandID = v_BrandID)
+             OR (v_ModelID IS NOT NULL AND p.ModelID = v_ModelID)
+          )
+        ORDER BY
+            -- Même modèle prioritaire sur simple même marque (signal plus fort de similarité).
+            (CASE WHEN v_ModelID IS NOT NULL AND p.ModelID = v_ModelID THEN 1 ELSE 0 END) DESC,
+            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) DESC,
+            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) DESC
+        LIMIT v_Limit;
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetSimilarProductsByCategory (
+    IN v_ProductID INT,
+    IN v_Limit      INT,
+    OUT v_Success   BOOLEAN,
+    OUT v_Message   VARCHAR(255)
+)
+BEGIN
+    DECLARE v_CategoryCount INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetSimilarProductsByCategory',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('ProductID', v_ProductID, 'Limit', v_Limit)
+        );
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération des produits similaires.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    IF v_Limit IS NULL OR v_Limit < 1 THEN
+        SET v_Limit = 10;
+    ELSEIF v_Limit > 50 THEN
+        SET v_Limit = 50;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM Products WHERE ProductID = v_ProductID) THEN
+        SET v_Message = 'Produit introuvable.';
+    ELSE
+        SELECT COUNT(*) INTO v_CategoryCount
+        FROM ProductCategories
+        WHERE ProductID = v_ProductID;
+
+        IF v_CategoryCount = 0 THEN
+            SET v_Success = TRUE;
+            SET v_Message = 'Ce produit n''a aucune catégorie renseignée.';
+            SELECT NULL AS ProductID LIMIT 0;
+        ELSE
+            SET v_Success = TRUE;
+            SET v_Message = 'OK';
+
+            SELECT
+                p.ProductID,
+                p.Name AS ProductName,
+                p.Description AS ProductDesc,
+                p.BasePrice,
+                IFNULL(b.Name, 'No Brand') AS BrandName,
+                IFNULL(b.BrandID, 0) AS BrandID,
+                IFNULL(m.Name, 'No Model') AS ModelName,
+                p.Stock,
+                (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) AS TotalOrders,
+                (SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID) AS TotalWishlists,
+                (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) AS TotalLikes,
+                COUNT(DISTINCT pc.CategoryID) AS SharedCategoriesCount
+            FROM Products p
+            INNER JOIN ProductCategories pc ON pc.ProductID = p.ProductID
+            LEFT JOIN Brands b ON b.BrandID = p.BrandID
+            LEFT JOIN Models m ON m.ModelID = p.ModelID
+            WHERE pc.CategoryID IN (
+                    SELECT CategoryID FROM ProductCategories WHERE ProductID = v_ProductID
+                  )
+              AND p.ProductID != v_ProductID
+            GROUP BY
+                p.ProductID, p.Name, p.Description, p.BasePrice,
+                b.Name, b.BrandID, m.Name, p.Stock
+            ORDER BY
+                -- Plus un produit partage de catégories avec le produit de référence,
+                -- plus il est considéré similaire (ex: 2 catégories communes > 1 seule).
+                SharedCategoriesCount DESC,
+                (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) DESC,
+                (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) DESC
+            LIMIT v_Limit;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
