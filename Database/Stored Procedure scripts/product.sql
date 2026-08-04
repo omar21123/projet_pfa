@@ -1223,3 +1223,18 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_GetProductAllowedPayments`(
+    IN p_ProductID INT
+)
+BEGIN
+    SELECT pm.PaymentMethodID, pm.Name, pm.Code, pm.IconURL, pm.WithdrawTax, pm.IsOnline
+    FROM ProductAllowedPayements pap
+    JOIN PaymentMethods pm ON pm.PaymentMethodID = pap.PayementMethodID
+    WHERE pap.ProductID = p_ProductID;
+END
+
+DELIMITER ;
