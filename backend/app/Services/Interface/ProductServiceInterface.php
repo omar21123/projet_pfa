@@ -20,6 +20,7 @@ use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\PaginatedProductItemResponseDto;
 use App\DTOs\Product\ProductInfoResponseDto;
 use App\DTOs\Product\ProductSearchResultDto;
+use App\DTOs\Product\SimilarProductsGroupedDto;
 
 interface ProductServiceInterface
 {
@@ -41,5 +42,5 @@ interface ProductServiceInterface
     public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto;
     public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto;
     public function getProductInfo(GetProductInfoDto $dto): ProductInfoResponseDto;
-
+    public function getSimilarProducts(int $productId, int $limit = 10): SimilarProductsGroupedDto;
 }

@@ -644,4 +644,65 @@ class ProductRepository implements ProductRepositoryInterface
 
         return (bool) $result->found;
     }
+    public function getSimilarProducts(int $productId, int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByName(?, ?, @success, @message)', [
+            $productId,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return array_map(fn($row) => PublicProductInfoDto::fromRow($row), $rows);
+    }
+    public function getSimilarProductsByBrandOrModel(int $productId, int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByBrandOrModel(?, ?, @success, @message)', [
+            $productId,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        // Resultset vide filtré (cas "ni marque ni modèle" : une ligne ProductID NULL).
+        return array_values(array_filter(
+            array_map(
+                fn($row) => $row->ProductID !== null ? PublicProductInfoDto::fromRow($row) : null,
+                $rows
+            )
+        ));
+    }
+    public function getSimilarProductsByCategory(int $productId, int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByCategory(?, ?, @success, @message)', [
+            $productId,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        // Resultset vide filtré (cas "aucune catégorie renseignée" : une ligne ProductID NULL),
+        // même comportement que getSimilarProductsByBrandOrModel().
+        return array_values(array_filter(
+            array_map(
+                fn($row) => $row->ProductID !== null ? PublicProductInfoDto::fromRow($row) : null,
+                $rows
+            )
+        ));
+    }
 }

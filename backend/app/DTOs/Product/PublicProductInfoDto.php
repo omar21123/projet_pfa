@@ -34,4 +34,21 @@ class PublicProductInfoDto
             totalLikes: (int) $row->TotalLikes,
         );
     }
+
+    public function toArray(): array
+    {
+        return [
+            'ProductID'      => $this->productId,
+            'ProductName'    => $this->productName,
+            'ProductDesc'    => $this->productDesc,
+            'BasePrice'      => $this->basePrice,
+            'BrandName'      => $this->brandName,
+            'BrandID'        => $this->brandId,
+            'ModelName'      => $this->modelName,
+            'Stock'          => $this->stock,
+            'TotalOrders'    => $this->totalOrders,
+            'TotalWishlists' => $this->totalWishlists,
+            'TotalLikes'     => $this->totalLikes,
+        ];
+    }
 }

@@ -27,6 +27,7 @@ use App\Http\Requests\Product\UpdateProductCombinationRequest;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\Http\Requests\Product\GetProductInfoRequest;
 use App\Http\Requests\Product\GetVendorProductsRequest;
+use Symfony\Component\HttpFoundation\Request;
 
 // ...
 
@@ -397,7 +398,7 @@ class ProductController extends Controller
                 'message' => 'Votre profil vendeur n\'est pas vérifié.'
             ], 403);
         }
-$validated['VendorID'] = $userInfo->userId;
+        $validated['VendorID'] = $userInfo->userId;
         if (!empty($validated['BrandID'])) {
             if (!$this->brandService->existsById($validated['BrandID'])) {
                 return response()->json([
@@ -1513,6 +1514,77 @@ $validated['VendorID'] = $userInfo->userId;
 
         try {
             $result = $this->productService->getProductInfo($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/products/{product}/similar",
+        tags: ["Products"],
+        summary: "Lister les produits similaires",
+        description: "Retourne les produits dont le nom commence par le même premier mot que le produit de référence (heuristique de type de produit), triés par popularité (commandes puis likes).",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "product",
+        in: "path",
+        required: true,
+        description: "Identifiant du produit de référence.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 12
+    )]
+    #[OA\Parameter(
+        name: "limit",
+        in: "query",
+        required: false,
+        schema: new OA\Schema(type: "integer", default: 10, minimum: 1, maximum: 50)
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Produits similaires récupérés avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Produit introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Produit introuvable."),
+            ]
+        )
+    )]
+    public function getSimilarProducts(Request $request, int $product): JsonResponse
+    {
+        if ($product <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de produit invalide.',
+            ], 404);
+        }
+
+        $limit = (int) $request->query('limit', 10);
+
+        try {
+            $result = $this->productService->getSimilarProducts($product, $limit);
         } catch (\App\Exceptions\BusinessValidationException $e) {
             return response()->json([
                 'success' => false,

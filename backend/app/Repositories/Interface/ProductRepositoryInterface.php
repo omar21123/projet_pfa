@@ -77,4 +77,7 @@ interface ProductRepositoryInterface
     public function getProductTags(int $productId): array;
     public function getProductPromotion(int $productId): ?ProductInfoPromotionDto;
     public function hasActivePromotion(int $productId): bool;
+    public function getSimilarProducts(int $productId, int $limit = 10): array;
+    public function getSimilarProductsByBrandOrModel(int $productId, int $limit = 10): array;
+    public function getSimilarProductsByCategory(int $productId, int $limit = 10): array;
 }

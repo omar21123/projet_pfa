@@ -21,6 +21,7 @@ use App\DTOs\Product\ProductInfoCombinationConfigDto;
 use App\DTOs\Product\ProductInfoResponseDto;
 use App\DTOs\Product\ProductSearchResultDto;
 use App\DTOs\Product\SearchProductsByTermDto;
+use App\DTOs\Product\SimilarProductsGroupedDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
@@ -109,7 +110,7 @@ class ProductService implements ProductServiceInterface
         }
 
         $productbasicInfos = $this->productRepository->getPublicProductInfo($dto->productId);
-        if(!$productbasicInfos) {
+        if (!$productbasicInfos) {
             throw new \App\Exceptions\BusinessValidationException(
                 'Product not found or not visible to the public.',
                 404
@@ -129,22 +130,22 @@ class ProductService implements ProductServiceInterface
         $images = $this->productRepository->getProductImages($dto->productId);
         $productOptionsCombinaison = $this->productRepository->getProductCombinations($dto->productId);
         foreach ($productOptionsCombinaison as $combination) {
-             $combinationConfig= $this->productRepository->getCombinationConfigs($combination->combinationId);
+            $combinationConfig = $this->productRepository->getCombinationConfigs($combination->combinationId);
             $combination->configs = $combinationConfig;
         }
         $productTags = $this->productRepository->getProductTags($dto->productId);
-         $hasPromotion = $this->productRepository->hasActivePromotion($dto->productId);
-         if ($hasPromotion) {
-             $productPromotion = $this->productRepository->getProductPromotion($dto->productId);
-         } else {
-             $productPromotion = null;
-         }
+        $hasPromotion = $this->productRepository->hasActivePromotion($dto->productId);
+        if ($hasPromotion) {
+            $productPromotion = $this->productRepository->getProductPromotion($dto->productId);
+        } else {
+            $productPromotion = null;
+        }
         return new ProductInfoResponseDto(
             productName: $productbasicInfos->productName,
             productDescription: $productbasicInfos->productDesc,
-            productID : $productbasicInfos->productId,
+            productID: $productbasicInfos->productId,
             basePrice: $productbasicInfos->basePrice,
-            brandID : $productbasicInfos->brandId,
+            brandID: $productbasicInfos->brandId,
             brandName: $productbasicInfos->brandName,
             modelName: $productbasicInfos->modelName,
             stock: $productbasicInfos->stock,
@@ -159,6 +160,17 @@ class ProductService implements ProductServiceInterface
             productTags: $productTags,
             HasPromotion: $hasPromotion,
             productPromotion: $productPromotion,
+        );
+    }
+    public function getSimilarProducts(int $productId, int $limit = 10): SimilarProductsGroupedDto
+    {
+        $similarProducts = $this->productRepository->getSimilarProducts($productId, $limit);
+        $similarinBrandsOrModels = $this->productRepository->getSimilarProductsByBrandOrModel($productId, $limit);
+        $similarinCategories = $this->productRepository->getSimilarProductsByCategory($productId, $limit);
+        return new SimilarProductsGroupedDto(
+            similarProducts: $similarProducts,
+            similarInBrandsOrModels: $similarinBrandsOrModels,
+            similarInCategories: $similarinCategories
         );
     }
 }
