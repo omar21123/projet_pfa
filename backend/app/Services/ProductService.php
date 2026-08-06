@@ -22,17 +22,22 @@ use App\DTOs\Product\ProductInfoResponseDto;
 use App\DTOs\Product\ProductSearchResultDto;
 use App\DTOs\Product\SearchProductsByTermDto;
 use App\DTOs\Product\SimilarProductsGroupedDto;
+use App\DTOs\Product\Stats\IncrementRegionalProductStatDto;
 use App\DTOs\Product\UpdateProductCombinationDto;
 use App\DTOs\Product\vendor\GetVendorProductsDto;
 use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 use App\Repositories\Interface\SearchRepositoryInterface;
 use App\DTOs\Search\RecordSearchClickDto;
+use App\Repositories\Interface\ProductStatsRepositoryInterface;
+use Illuminate\Support\Facades\Log;
 
 class ProductService implements ProductServiceInterface
 {
     public function __construct(
         protected ProductRepositoryInterface $productRepository,
-        protected SearchRepositoryInterface $searchRepository
+        protected SearchRepositoryInterface $searchRepository,
+        protected ProductStatsRepositoryInterface $productStatsRepository,
+        protected IpWhoIsLocationService $ipWhoIsLocationService
     ) {}
 
     public function createProduct(CreateProductDto $dto): object
@@ -140,6 +145,14 @@ class ProductService implements ProductServiceInterface
         } else {
             $productPromotion = null;
         }
+        $Region = $this->ipWhoIsLocationService->locate($dto->ipAddress);
+        $productStatDto = IncrementRegionalProductStatDto::fromArray([
+            'ProductID'   => $dto->productId,
+            'CountryCode' => $Region?->countryCode ?? null,
+            'Region'      => $Region?->region ?? null,
+        ]);
+        Log::info('Incrementing product view count for Ip: ' . $dto->ipAddress . ', Product ID: ' . $dto->productId . ', Country: ' . ($Region?->countryCode ?? 'N/A') . ', Region: ' . ($Region?->region ?? 'N/A'));
+        $this->productStatsRepository->incrementViewCount($productStatDto);
         return new ProductInfoResponseDto(
             productName: $productbasicInfos->productName,
             productDescription: $productbasicInfos->productDesc,

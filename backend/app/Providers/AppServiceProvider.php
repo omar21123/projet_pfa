@@ -69,6 +69,7 @@ use App\Services\Interface\ConfigAttributeOptionServiceInterface;
 use App\Services\ConfigAttributeOptionService;
 
 use App\Repositories\Interface\ProductRepositoryInterface;
+use App\Repositories\Interface\ProductStatsRepositoryInterface;
 use App\Repositories\sql\ProductRepository;
 use App\Services\Interface\ProductServiceInterface;
 use App\Services\ProductService;
@@ -84,10 +85,13 @@ use App\Repositories\sql\UsergoogleRepository;
 // ==========================================================
 use App\Repositories\Interface\PromotionRepositoryInterface;
 use App\Repositories\sql\CartRepository;
+use App\Repositories\sql\ProductStatsRepository;
 use App\Repositories\sql\PromotionRepository;
 use App\Services\CartService;
 use App\Services\Interface\CartServiceInterface;
+use App\Services\Interface\ProductStatsServiceInterface;
 use App\Services\Interface\PromotionServiceInterface;
+use App\Services\ProductStatsService;
 use App\Services\PromotionService;
 
 class AppServiceProvider extends ServiceProvider
@@ -305,6 +309,12 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(CartRepositoryInterface::class, CartRepository::class);
         $this->app->bind(CartServiceInterface::class, CartService::class);
+        $this->app->bind(ProductStatsRepositoryInterface::class, ProductStatsRepository::class);
+        $this->app->bind(ProductStatsServiceInterface::class, ProductStatsService::class);
+        $this->app->bind(
+            \App\Services\Interface\IpLocationServiceInterface::class,
+            \App\Services\IpWhoIsLocationService::class
+        );
     }
 
     /**
