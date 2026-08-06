@@ -17,6 +17,7 @@ use App\Http\Controllers\ConfigAttributeOptionController;
 use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\ProductRecommendationController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\WishlistsController;
@@ -153,6 +154,7 @@ Route::prefix('config-attribute-options')->group(function () {
 Route::prefix('products')->group(function () {
     Route::post('/info', [ProductController::class, 'getProductInfo']);
     Route::get('/{product}/similar', [ProductController::class, 'getSimilarProducts']);
+    Route::get('/recommendations', [ProductRecommendationController::class, 'index']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
@@ -233,3 +235,4 @@ Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'getCart']);
     });
 });
+

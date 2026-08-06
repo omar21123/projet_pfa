@@ -5881,6 +5881,72 @@
                 }
             }
         },
+        "/api/products/recommendations": {
+            "get": {
+                "tags": [
+                    "ProductRecommendation"
+                ],
+                "summary": "Lister les produits recommandés",
+                "description": "Retourne actuellement les produits les plus vendus (commandes livrées/validées uniquement). UserPublicID est déduit du token JWT s'il est présent — route accessible aux invités, auquel cas IsLiked/IsWishedList sont toujours false.",
+                "operationId": "a1046b0122c5b9c39f8e28822ab03ee1",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Produits recommandés récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation ou lors de la récupération",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/products-config-attributes/create": {
             "post": {
                 "tags": [
@@ -8930,6 +8996,10 @@
         {
             "name": "Models",
             "description": "Gestion des modèles de produits"
+        },
+        {
+            "name": "ProductRecommendation",
+            "description": "Recommandations produit (produits les plus vendus, et sources futures)"
         },
         {
             "name": "ProductsConfigAttribute",
