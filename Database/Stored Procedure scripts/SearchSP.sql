@@ -667,19 +667,17 @@ BEGIN
 END$$
 
 DELIMITER ;
-
-DELIMITER $$ 
-
-CREATE DEFINER=`root`@`%` PROCEDURE `SP_LogUserSearch`(
-    IN v_UserPublicID VARCHAR(36),
-    IN v_SearchTermID INT,
-    IN v_IPAddress    VARCHAR(45),
-    OUT v_Success     BOOLEAN,
-    OUT v_Message     VARCHAR(255)
+DELIMITER $$
+CREATE PROCEDURE SP_LogUserSearch (
+    IN  v_UserPublicID VARCHAR(36),
+    IN  v_SearchTermID INT,
+    IN  v_IPAddress    VARCHAR(45),
+    OUT v_Success      BOOLEAN,
+    OUT v_Message      VARCHAR(255)
 )
 BEGIN
-    DECLARE v_UserID INT DEFAULT NULL;
-    DECLARE v_AlreadyExists INT DEFAULT 0;
+    DECLARE v_UserID        INT     DEFAULT NULL;
+    DECLARE v_AlreadyExists INT     DEFAULT 0;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -702,31 +700,31 @@ BEGIN
     SET v_Success = FALSE;
     SET v_Message = '';
 
-    -- UserID facultatif : couvre aussi les recherches invitées (non connectées).
-    IF v_UserPublicID IS NOT NULL THEN
-        SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
-    END IF;
-
     IF v_SearchTermID IS NULL THEN
         SET v_Message = 'SearchTermID est requis.';
     ELSE
-        -- Déduplication : par UserID pour un utilisateur connecté,
-        -- par IPAddress pour un invité (UserID NULL).
+
+        IF v_UserPublicID IS NOT NULL THEN
+            SELECT UserID INTO v_UserID FROM Users WHERE PublicID = v_UserPublicID;
+        END IF;
+
+        -- If PublicID was provided but no matching user found, v_UserID stays NULL
+        -- In both cases (not provided / not found) → fall back to IP-only
+
         IF v_UserID IS NOT NULL THEN
             SELECT COUNT(*) INTO v_AlreadyExists
             FROM UserSearchHistory
-            WHERE UserID = v_UserID
+            WHERE UserID       = v_UserID
               AND SearchTermID = v_SearchTermID;
         ELSE
             SELECT COUNT(*) INTO v_AlreadyExists
             FROM UserSearchHistory
-            WHERE UserID IS NULL
-              AND IPAddress = v_IPAddress
+            WHERE UserID      IS NULL
+              AND IPAddress    = v_IPAddress
               AND SearchTermID = v_SearchTermID;
         END IF;
 
         IF v_AlreadyExists > 0 THEN
-            -- Déjà enregistré pour cet utilisateur/IP -> on ne fait rien.
             SET v_Success = TRUE;
             SET v_Message = 'Recherche déjà enregistrée pour cet utilisateur.';
         ELSE
@@ -736,7 +734,9 @@ BEGIN
             SET v_Success = TRUE;
             SET v_Message = 'OK';
         END IF;
+
     END IF;
-END
+
+END$$
 
 DELIMITER ;

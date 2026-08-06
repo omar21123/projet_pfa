@@ -23,16 +23,19 @@ class GetProductRecommendationsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'limit' => 'nullable|integer|min:1|max:100',
+            'limit'       => 'nullable|integer|min:1|max:100',
+            'category_id' => 'nullable|integer|min:1|exists:Categories,CategoryID',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'limit.integer' => 'limit doit être un nombre entier.',
-            'limit.min'     => 'limit doit être au moins 1.',
-            'limit.max'     => 'limit ne doit pas dépasser 100.',
+            'limit.integer'        => 'limit doit être un nombre entier.',
+            'limit.min'             => 'limit doit être au moins 1.',
+            'limit.max'             => 'limit ne doit pas dépasser 100.',
+            'category_id.integer'  => 'category_id doit être un nombre entier.',
+            'category_id.exists'   => 'La catégorie spécifiée n\'existe pas.',
         ];
     }
 }

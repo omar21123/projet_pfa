@@ -3,6 +3,8 @@
 namespace App\Repositories\Interface;
 
 use App\DTOs\Product\GetMostSoldProductsDto;
+use App\DTOs\Product\GetNewProductsDto;
+use App\DTOs\Product\GetPopularInYourRegionDto;
 
 interface ProductRecommendationRepositoryInterface
 {
@@ -11,12 +13,10 @@ interface ProductRecommendationRepositoryInterface
      */
     public function getMostSoldProducts(GetMostSoldProductsDto $dto): array;
     public function getMostViewedProducts(GetMostSoldProductsDto $dto): array;
-    // TODO: getMostWishedProducts() — tri par COUNT(WishListItems), même forme
-    // de SELECT que getMostSoldProducts() mais ORDER BY TotalWishlist DESC.
+    public function getPromotionsProducts(GetMostSoldProductsDto $dto): array;
+    public function getTrendingProducts(GetMostSoldProductsDto $dto): array;
+    public function getFromYourLastActivityProducts(GetMostSoldProductsDto $dto ,?string $IpAddress): array;
+    public function getPopularInYourRegion(GetPopularInYourRegionDto $dto): array;
+    public function getNewProducts(GetNewProductsDto $dto): array;
 
-    // TODO: getTrendingProducts() — une fois RegionalProductStats.TrendScore
-    // effectivement calculé (voir dette technique du module ProductStats).
-
-    // TODO: getRecentlyAddedProducts() — ORDER BY p.CreatedAt DESC, filtré sur
-    // les produits actifs/non bloqués.
 }

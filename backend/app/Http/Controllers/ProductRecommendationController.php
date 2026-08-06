@@ -6,6 +6,7 @@ use App\Http\Requests\Product\GetProductRecommendationsRequest;
 use App\Services\Interface\ProductRecommendationServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
+use Illuminate\Support\Facades\Log;
 
 #[OA\Tag(
     name: "ProductRecommendation",
@@ -28,6 +29,12 @@ class ProductRecommendationController extends Controller
         in: "query",
         required: false,
         schema: new OA\Schema(type: "integer", default: 20, minimum: 1, maximum: 100)
+    )]
+    #[OA\Parameter(
+        name: "category_id",
+        in: "query",
+        required: false,
+        schema: new OA\Schema(type: "integer", minimum: 1)
     )]
     #[OA\Response(
         response: 200,
@@ -55,9 +62,12 @@ class ProductRecommendationController extends Controller
     $validated = $request->validated();
 
     try {
+        $ipAddress = $request->ip(); // Récupère l'adresse IP du client
         $result = $this->productRecommendationService->getRecommendations(
             $publicId,
-            $validated['limit']
+            $validated['limit'],
+            $validated['category_id'] ?? null    ,
+            $ipAddress
         );
     } catch (\App\Exceptions\BusinessValidationException $e) {
         return response()->json([
@@ -70,7 +80,12 @@ class ProductRecommendationController extends Controller
             'message' => $e->getMessage(),
         ], 500);
     }
-
+    Log::info('Product recommendations retrieved successfully', [
+        'user_id' => $publicId,
+        'limit' => $validated['limit'],
+        'category_id' => $validated['category_id'] ?? null,
+        'result_count' => count($result->mostSold) + count($result->mostViewed) + count($result->promotions) + count($result->trending),
+    ]);
     return response()->json([
         'success' => true,
         'data' => $result->toArray(), // ⬅ plus de array_map ici, le DTO gère déjà sa forme

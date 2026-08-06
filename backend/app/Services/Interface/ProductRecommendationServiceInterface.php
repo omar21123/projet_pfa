@@ -6,5 +6,5 @@ use App\DTOs\Product\ProductRecommendationsGroupedDto;
 
 interface ProductRecommendationServiceInterface
 {
-    public function getRecommendations(?string $userPublicId, int $limit = 20): ProductRecommendationsGroupedDto;
+    public function getRecommendations(?string $userPublicId, int $limit = 20, ?int $categoryId = null , ?string $IpAddress = null): ProductRecommendationsGroupedDto;
 }

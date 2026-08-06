@@ -62,18 +62,14 @@ class SearchService implements SearchServiceInterface
             ])
         );
         $termID = $upsetResult->searchTermId;
+        $this->searchRepository->logUserSearch(
+            LogUserSearchDto::fromArray([
+                'userPublicId' => $userPublicId,
+                'searchTermId' => $termID,
+                'ipAddress'    => $IpAddress,
+            ])
+        );
 
-        // Log uniquement si l'utilisateur est connecté (UserID NOT NULL en base).
-        // Les recherches invitées ne sont pas historisées.
-        if ($userPublicId !== null) {
-            $this->searchRepository->logUserSearch(
-                LogUserSearchDto::fromArray([
-                    'userPublicId' => $userPublicId,
-                    'searchTermId' => $termID,
-                    'ipAddress'    => $IpAddress,
-                ])
-            );
-        }
 
         // Cas 1 : la page demandée est entièrement couverte par la source primaire.
         if ($needed <= 0) {
