@@ -40,6 +40,34 @@ export interface SearchCombinationsPage {
   total?: number;
 }
 
+export interface SearchProductBrand {
+  name: string | null;
+  logo: string | null;
+}
+
+export interface SearchProduct {
+  ProductID: number;
+  ProductName: string;
+  ProductImage: string | null;
+  Description: string | null;
+  Price: number;
+  Brand: SearchProductBrand | null;
+  ModelName: string | null;
+  TotalWishlist: number;
+  TotalLikes: number;
+  TotalOrders: number;
+  IsLiked: boolean;
+  IsWishedList: boolean;
+}
+
+export interface SearchProductsPage {
+  products: SearchProduct[];
+  currentPage: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
 interface RawCombination {
   text?: unknown;
   combination?: unknown;
@@ -81,6 +109,37 @@ const normalizeHistory = (value: unknown): SearchHistoryData => {
   return {
     latest: normalizeItems(value.latest),
     famous: normalizeItems(value.famous),
+  };
+};
+
+const normalizeSearchProduct = (value: unknown): SearchProduct | null => {
+  if (!isRecord(value)) return null;
+
+  const productId = Number(value.ProductID);
+  const productName = value.ProductName;
+  if (!Number.isFinite(productId) || typeof productName !== "string") return null;
+
+  const rawBrand = isRecord(value.Brand) ? value.Brand : null;
+  const brand = rawBrand
+    ? {
+        name: typeof rawBrand.name === "string" ? rawBrand.name : null,
+        logo: typeof rawBrand.logo === "string" ? rawBrand.logo : null,
+      }
+    : null;
+
+  return {
+    ProductID: productId,
+    ProductName: productName,
+    ProductImage: typeof value.ProductImage === "string" ? value.ProductImage : null,
+    Description: typeof value.Description === "string" ? value.Description : null,
+    Price: Number(value.Price) || 0,
+    Brand: brand,
+    ModelName: typeof value.ModelName === "string" ? value.ModelName : null,
+    TotalWishlist: Number(value.TotalWishlist) || 0,
+    TotalLikes: Number(value.TotalLikes) || 0,
+    TotalOrders: Number(value.TotalOrders) || 0,
+    IsLiked: Boolean(value.IsLiked),
+    IsWishedList: Boolean(value.IsWishedList),
   };
 };
 
@@ -176,5 +235,53 @@ export async function fetchSearchCombinations(
       ? Number(pagination?.last_page)
       : undefined,
     total: Number.isFinite(Number(pagination?.total)) ? Number(pagination?.total) : undefined,
+  };
+}
+
+/** Produits retournés par le matching de recherche utilisé sur la page d'accueil. */
+export async function fetchSearchProducts(
+  query: string,
+  page = 1,
+  pageSize = 20,
+): Promise<SearchProductsPage> {
+  const normalizedQuery = query.trim();
+  const normalizedPage = Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
+  const normalizedPageSize = normalizePositiveInteger(pageSize, 20);
+
+  if (!normalizedQuery) {
+    return {
+      products: [],
+      currentPage: normalizedPage,
+      pageSize: normalizedPageSize,
+      total: 0,
+      hasMore: false,
+    };
+  }
+
+  const response = await axiosInstance.get("/api/search", {
+    params: {
+      q: normalizedQuery,
+      page: normalizedPage,
+      page_size: normalizedPageSize,
+    },
+  });
+
+  const payload: unknown = response.data;
+  const root = isRecord(payload) ? payload : {};
+  const products = Array.isArray(root.data)
+    ? root.data.reduce<SearchProduct[]>((result, item) => {
+        const product = normalizeSearchProduct(item);
+        if (product) result.push(product);
+        return result;
+      }, [])
+    : [];
+  const meta = isRecord(root.meta) ? root.meta : {};
+
+  return {
+    products,
+    currentPage: Number(meta.page) || normalizedPage,
+    pageSize: Number(meta.page_size) || normalizedPageSize,
+    total: Number(meta.total) || products.length,
+    hasMore: Boolean(meta.has_more),
   };
 }

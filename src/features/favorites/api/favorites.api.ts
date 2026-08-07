@@ -1,32 +1,33 @@
-import { STORAGE_KEYS } from "@/config/constants";
-import { getAuthAccessToken } from "@/api/axiosInstance";
 import { apiClient } from "@/api/client";
+import type {
+  AddFavoriteRequest,
+  FavoriteCreated,
+  FavoritesResponse,
+} from "@/features/favorites/types";
+import type { ApiMessageResult, ApiSuccess } from "@/types/wishlist";
 
-export interface FavoriteCountResponse {
-  data: number;
-  message: string;
-}
+export const getFavorites = async (): Promise<FavoritesResponse> => {
+  const { data } = await apiClient.get<FavoritesResponse>("/api/favorites");
+  return data;
+};
 
-const getBearerToken = () => getAuthAccessToken() ?? localStorage.getItem(STORAGE_KEYS.TOKEN);
+export const addFavorite = async (
+  payload: AddFavoriteRequest,
+): Promise<ApiSuccess<FavoriteCreated>> => {
+  const { data } = await apiClient.post<ApiSuccess<FavoriteCreated>>(
+    "/api/favorites",
+    payload,
+  );
+  return data;
+};
 
-const getAuthHeaders = () => {
-  const token = getBearerToken();
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+export const removeFavorite = async (productId: number): Promise<ApiMessageResult> => {
+  const { data } = await apiClient.delete<ApiMessageResult>(`/api/favorites/${productId}`);
+  return data;
 };
 
 export const favoritesApi = {
-  add: async (annonceId: string | number): Promise<FavoriteCountResponse> => {
-    const { data } = await apiClient.post<FavoriteCountResponse>(`/add/${annonceId}`, undefined, {
-      headers: getAuthHeaders(),
-    });
-
-    return data;
-  },
-  remove: async (annonceId: string | number): Promise<FavoriteCountResponse> => {
-    const { data } = await apiClient.delete<FavoriteCountResponse>(`/remove/${annonceId}`, {
-      headers: getAuthHeaders(),
-    });
-
-    return data;
-  },
+  list: getFavorites,
+  add: addFavorite,
+  remove: removeFavorite,
 };

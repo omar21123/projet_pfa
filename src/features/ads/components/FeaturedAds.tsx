@@ -1,8 +1,24 @@
 import { MapPin, Clock, Store, CheckCircle2, ArrowRight, Megaphone, Tag } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useSearchProducts } from "@/components/search/useSearchProducts";
+import { getMediaUrl } from "@/utils/mediaUtils";
+
+interface FeaturedAd {
+  id: string;
+  title: string;
+  price: number;
+  oldPrice?: number;
+  location: string;
+  time: string;
+  category: string;
+  image: string;
+  store: string;
+  isSponsored: boolean;
+  isVerified: boolean;
+}
 
 // 6 Annonces de test
-const MOCK_ADS = [
+const MOCK_ADS: FeaturedAd[] = [
   {
     id: "1",
     title: "iPhone 15 Pro 256Go — Titane Naturel",
@@ -81,6 +97,25 @@ const MOCK_ADS = [
 ];
 
 const FeaturedAdsGrid = () => {
+  const [searchParams] = useSearchParams();
+  const searchTerm = searchParams.get("q")?.trim() ?? "";
+  const { data: searchResults, isLoading } = useSearchProducts(searchTerm);
+
+  const ads: FeaturedAd[] = searchTerm
+    ? (searchResults?.products ?? []).slice(0, 6).map((product) => ({
+        id: String(product.ProductID),
+        title: product.ProductName,
+        price: product.Price,
+        location: "Non renseignée",
+        time: "Résultat de recherche",
+        category: product.Brand?.name?.toUpperCase() ?? "PRODUIT",
+        image: getMediaUrl(product.ProductImage),
+        store: product.Brand?.name ?? "Vendeur",
+        isSponsored: false,
+        isVerified: false,
+      }))
+    : MOCK_ADS;
+
   return (
     <section className="py-12 px-4 bg-background">
       <div className="max-w-7xl mx-auto">
@@ -99,8 +134,19 @@ const FeaturedAdsGrid = () => {
         </div>
 
         {/* Grille de 6 annonces (3 par ligne sur desktop) */}
+        {searchTerm && isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-[210px] rounded-2xl bg-muted/50 animate-pulse" />
+            ))}
+          </div>
+        ) : searchTerm && ads.length === 0 ? (
+          <p className="py-10 text-center text-muted-foreground">
+            Aucun produit trouvé pour « {searchTerm} ».
+          </p>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {MOCK_ADS.map((ad) => {
+          {ads.map((ad) => {
             const discount = ad.oldPrice ? Math.round(((ad.oldPrice - ad.price) / ad.oldPrice) * 100) : null;
 
             return (
@@ -174,6 +220,7 @@ const FeaturedAdsGrid = () => {
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );

@@ -20,6 +20,7 @@ const CreateAd = lazy(() => import("@/pages/NouvelleAnnoncePage"));
 const UserDashboard = lazy(() => import("@/pages/UserDashboard"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
+const Wishlists = lazy(() => import("@/pages/Wishlists"));
 const Cart = lazy(() => import("@/pages/Cart"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Unauthorized = lazy(() => import("@/pages/Unauthorized"));
@@ -59,6 +60,8 @@ export const AppRouter = () => {
         {/* Routes Publiques & Standard */}
         <Route path="/" element={<Index />} />
         <Route path="/ad/:id" element={<AdDetails />} />
+        {/* Legacy / localized product route (French) used across the UI; keep in sync with /ad/:id */}
+        <Route path="/produit/:id" element={<AdDetails />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
@@ -101,6 +104,14 @@ export const AppRouter = () => {
           element={
             <ProtectedRoute>
               <Favorites />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wishlists"
+          element={
+            <ProtectedRoute>
+              <Wishlists />
             </ProtectedRoute>
           }
         />

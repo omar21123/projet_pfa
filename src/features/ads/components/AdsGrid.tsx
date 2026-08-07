@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAds } from "@/features/ads/hooks/useAds";
 import { getMediaUrl } from "@/utils/mediaUtils";
+import { useSearchProducts } from "@/components/search/useSearchProducts";
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -39,6 +40,7 @@ const AdsGrid = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const searchTerm = searchParams.get("q")?.trim() ?? "";
   const categoryId = searchParams.get("category");
   const subCategoryId = searchParams.get("subCategory");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,14 +52,29 @@ const AdsGrid = () => {
 
   const {
     data: ads = [],
-    isLoading,
-    isError,
-    error,
-  } = useAds({
-    categoryId: categoryId !== null ? Number(categoryId) : 0,
-    subCategoryId: subCategoryId !== null ? Number(subCategoryId) : 0,
-    ville: villeToSend ?? undefined,
-  });
+    isLoading: adsLoading,
+    isError: adsError,
+    error: adsQueryError,
+  } = useAds(
+    {
+      categoryId: categoryId !== null ? Number(categoryId) : 0,
+      subCategoryId: subCategoryId !== null ? Number(subCategoryId) : 0,
+      ville: villeToSend ?? undefined,
+    },
+    { enabled: !searchTerm }
+  );
+
+  const {
+    data: searchResults,
+    isLoading: searchLoading,
+    isError: searchError,
+    error: searchQueryError,
+  } = useSearchProducts(searchTerm);
+
+  const isSearchMode = searchTerm.length > 0;
+  const isLoading = isSearchMode ? searchLoading : adsLoading;
+  const isError = isSearchMode ? searchError : adsError;
+  const error = isSearchMode ? searchQueryError : adsQueryError;
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -88,28 +105,72 @@ const AdsGrid = () => {
     });
   }, [ads, filters]);
 
+  const filteredSearchProducts = useMemo(
+    () =>
+      (searchResults?.products ?? []).filter(
+        (product) =>
+          product.Price >= filters.priceRange[0] && product.Price <= filters.priceRange[1]
+      ),
+    [filters.priceRange, searchResults?.products]
+  );
+
   const noResultsMessage = useMemo(() => {
+    if (searchTerm) {
+      return `Aucun produit trouvé pour « ${searchTerm} ».`;
+    }
     if (categoryId || subCategoryId || activeFilterCount > 0) {
       return "Aucune annonce ne correspond à ces critères.";
     }
     return t("no_ads_found");
-  }, [categoryId, subCategoryId, activeFilterCount, t]);
+  }, [categoryId, subCategoryId, activeFilterCount, searchTerm, t]);
 
-  const cardAds = useMemo(
-    () =>
-      filteredAds.map((ad) => ({
-        id: String(ad.id),
-        title: ad.titre,
-        price: ad.prix,
-        city: ad.ville || "Non renseignée",
-        image: getMediaUrl(ad.photosUrls[0]),
-        date: formatDate(ad.datepublication),
-        ownerId: ad.idutilisateur,
-        favoritesCount: ad.numberoffavorites,
-        isFollowed: ad.isFollowed,
-      })),
-    [filteredAds],
-  );
+  // Normalisation + DÉDUPLICATION DES DONNÉES (Fix des clés doubles 274, 295)
+  const cardAds = useMemo(() => {
+    const rawList = isSearchMode
+      ? filteredSearchProducts.map((product) => {
+          const rawImg = product.ProductImage;
+          const image = rawImg && !rawImg.includes("via.placeholder.com")
+            ? getMediaUrl(rawImg)
+            : "/placeholder-ad.png";
+
+          return {
+            id: String(product.ProductID),
+            title: product.ProductName,
+            price: product.Price,
+            city: "Non renseignée",
+            image,
+            date: "",
+            favoritesCount: product.TotalLikes,
+            isFollowed: product.IsLiked,
+          };
+        })
+      : filteredAds.map((ad) => {
+          const rawImg = ad.photosUrls?.[0];
+          const image = rawImg && !rawImg.includes("via.placeholder.com")
+            ? getMediaUrl(rawImg)
+            : "/placeholder-ad.png";
+
+          return {
+            id: String(ad.id),
+            title: ad.titre,
+            price: ad.prix,
+            city: ad.ville || "Non renseignée",
+            image,
+            date: formatDate(ad.datepublication),
+            ownerId: ad.idutilisateur,
+            favoritesCount: ad.numberoffavorites,
+            isFollowed: ad.isFollowed,
+          };
+        });
+
+    // Supprime les doublons d'ID renvoyés par l'API
+    const seen = new Set<string>();
+    return rawList.filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [filteredAds, filteredSearchProducts, isSearchMode]);
 
   const activeChips = useMemo(() => {
     const chips: { label: string; onRemove: () => void }[] = [];
@@ -124,13 +185,13 @@ const AdsGrid = () => {
         label: cat,
         onRemove: () =>
           setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== cat) })),
-      }),
+      })
     );
     filters.cities.forEach((city) =>
       chips.push({
         label: city,
         onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((c) => c !== city) })),
-      }),
+      })
     );
     return chips;
   }, [filters]);

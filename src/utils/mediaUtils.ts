@@ -4,7 +4,7 @@ const BACKEND_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost";
 
 export const getMediaUrl = (path?: string | null): string => {
   if (!path || typeof path !== "string" || path.trim() === "") {
-    return "/placeholder-image.png";
+    return "https://via.placeholder.com/800x600?text=Image+indisponible";
   }
 
   // 1. Nettoyer les antislashs d'échappement JSON (transforme \/ en /)

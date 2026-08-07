@@ -38,10 +38,10 @@ const loadFavoritesState = (): FavoritesState => {
     if (!raw) return {};
 
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return Object.entries(parsed).reduce<FavoritesState>((accumulator, [annonceId, record]) => {
+    return Object.entries(parsed).reduce<FavoritesState>((accumulator, [productId, record]) => {
       const normalized = sanitizeRecord(record);
       if (normalized) {
-        accumulator[annonceId] = normalized;
+        accumulator[productId] = normalized;
       }
       return accumulator;
     }, {});
@@ -85,13 +85,13 @@ export const useFavoritesState = () => {
 };
 
 export const useFavorite = (
-  annonceId?: string | number,
+  productId?: string | number,
   initialFallback?: { isFavorite?: boolean; favoritesCount?: number },
   options?: { ownerId?: number },
 ) => {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const normalizedId = annonceId === undefined || annonceId === null ? null : String(annonceId);
+  const normalizedId = productId === undefined || productId === null ? null : String(productId);
   const ownerId = options?.ownerId;
   const { user } = useUser();
 
@@ -128,14 +128,23 @@ export const useFavorite = (
   const mutation = useMutation({
     mutationFn: async (nextValue: boolean) => {
       if (!normalizedId) {
-        throw new Error("Missing annonce identifier.");
+        throw new Error("Missing product identifier.");
       }
 
       if (!isAuthenticated) {
         throw new Error("Veuillez vous connecter pour gérer vos favoris.");
       }
 
-      return nextValue ? favoritesApi.add(normalizedId) : favoritesApi.remove(normalizedId);
+      const productIdNumber = Number(normalizedId);
+
+      if (!Number.isFinite(productIdNumber)) {
+        throw new Error("Identifiant de produit invalide.");
+      }
+
+      // POST /api/favorites attend { product_id }, DELETE /api/favorites/{productId} attend un number.
+      return nextValue
+        ? favoritesApi.add({ product_id: productIdNumber })
+        : favoritesApi.remove(productIdNumber);
     },
     onMutate: async (nextValue: boolean) => {
       if (!normalizedId) return undefined;
@@ -160,28 +169,33 @@ export const useFavorite = (
       queryClient.setQueryData(FAVORITES_QUERY_KEY, context.previousState);
       persistFavoritesState(context.previousState);
     },
-    onSuccess: (response, nextValue) => {
+    onSuccess: (_response, nextValue) => {
       if (!normalizedId) return;
 
+      // add() renvoie { productLikeId }, remove() renvoie { success, message } :
+      // aucun des deux ne donne un favoritesCount fiable. On garde le compte
+      // optimiste posé par onMutate et on se contente de confirmer isFavorite.
       const currentState = queryClient.getQueryData<FavoritesState>(FAVORITES_QUERY_KEY) ?? {};
-      const previousRecord = currentState[normalizedId];
-      const nextState = {
-        ...currentState,
-        [normalizedId]: mergeRecord(previousRecord, nextValue, response.data),
-      };
+      const currentRecord = currentState[normalizedId];
 
-      queryClient.setQueryData(FAVORITES_QUERY_KEY, nextState);
-      persistFavoritesState(nextState);
+      if (currentRecord) {
+        const confirmedState = {
+          ...currentState,
+          [normalizedId]: { ...currentRecord, isFavorite: nextValue },
+        };
+        queryClient.setQueryData(FAVORITES_QUERY_KEY, confirmedState);
+        persistFavoritesState(confirmedState);
+      }
 
-      if (nextValue && ownerId && Number(user?.id) !== ownerId) {
+     /* if (nextValue && ownerId && Number(user?.id) !== ownerId) {
         void envoyerNotification({
           to: ownerId,
           idUtilisateur: ownerId,
-          title: "Nouvelle favori",
-          content: `${user?.name ?? "Un utilisateur"} a ajouté votre annonce aux favoris.`,
-          entityType: "annonce",
+          title: "Nouveau favori",
+          content: `${user?.name ?? "Un utilisateur"} a ajouté votre produit aux favoris.`,
+          entityType: "produit",
           entityId: Number(normalizedId),
-          lienAction: `/annonce/${normalizedId}`,
+          lienAction: `/produit/${normalizedId}`, // ⚠️ à confirmer : route réelle de la fiche produit
           dateExpiration: new Date(
             Date.now() + 24 * 60 * 60 * 1000 * (1 + Math.floor(Math.random() * 7)),
           ).toISOString(),
@@ -189,7 +203,7 @@ export const useFavorite = (
         }).catch(() => {
           // ignore notification failures
         });
-      }
+      }*/
     },
   });
 

@@ -7,7 +7,7 @@ import { useAuth, useLanguage } from "@/contexts";
 import { useFavorite } from "@/features/favorites/hooks/useFavorite";
 
 interface FavoriteButtonProps {
-  annonceId: string | number;
+  productId: string | number;
   ownerId?: number;
   className?: string;
   showCount?: boolean;
@@ -17,7 +17,7 @@ interface FavoriteButtonProps {
 }
 
 const FavoriteButton = ({
-  annonceId,
+  productId,
   ownerId,
   className,
   showCount = true,
@@ -29,7 +29,7 @@ const FavoriteButton = ({
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { isFavorite, favoritesCount, isPending, toggleFavorite } = useFavorite(
-    annonceId,
+    productId,
     {
       isFavorite: initialIsFavorite,
       favoritesCount: initialFavoritesCount,

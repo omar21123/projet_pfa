@@ -18,7 +18,8 @@ export default function SearchBar() {
 
     const params = new URLSearchParams({ q: normalizedTerm });
     if (searchType !== "all") params.set("type", searchType);
-    navigate(`/search?${params.toString()}`);
+    // Les résultats sont affichés dans les sections de la page d'accueil.
+    navigate(`/?${params.toString()}`);
   };
 
   const {

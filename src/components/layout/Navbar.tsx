@@ -1,8 +1,8 @@
-// src/components/navigation/Navbar.tsx
 import {
   Plus,
   User,
   Heart,
+  Bookmark,
   MessageCircle,
   ShoppingCart,
   LayoutDashboard,
@@ -23,17 +23,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts";
-import { useCart } from "@/hooks/useCart";
+import { useCart } from "@/features/cart/hooks/useCart";
 import { useLanguage } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Categories from "@/components/navigation/Categories";
 import SearchBar from "@/components/search/SearchBar";
 
-/* ──────────────────────────────────────────────
-   SOUS-COMPOSANTS
-   ────────────────────────────────────────────── */
-
-/** Toggle clair/sombre avec persistance localStorage */
 const DarkModeToggle = () => {
   const [isDark, setIsDark] = React.useState(() =>
     document.documentElement.classList.contains("dark"),
@@ -66,7 +61,6 @@ const DarkModeToggle = () => {
   );
 };
 
-/** Lien icône avec tooltip réutilisable */
 const NavIconLink = ({
   to,
   icon: Icon,
@@ -98,7 +92,6 @@ const NavIconLink = ({
   </Tooltip>
 );
 
-/** Badge compteur pour le panier */
 const CartBadge = ({ count }: { count: number }) => {
   if (count <= 0) return null;
   return (
@@ -108,20 +101,15 @@ const CartBadge = ({ count }: { count: number }) => {
   );
 };
 
-/* ──────────────────────────────────────────────
-   COMPOSANT PRINCIPAL
-   ────────────────────────────────────────────── */
-
 const Navbar = () => {
   const { isAuthenticated, isBootstrapping, logout } = useAuth();
   const { totalItems } = useCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  /* ── Handlers ── */
   const handleLogout = () => logout();
 
-  const handleCategoryFilter = (filters: { categoryId?: number; subCategoryId?: number }) => {
+  const handleCategoryFilter = (filters: { categoryId?: number | null; subCategoryId?: number | null; label: string }) => {
     const params = new URLSearchParams();
     if (filters.categoryId !== undefined) {
       params.set("category", String(filters.categoryId));
@@ -132,11 +120,9 @@ const Navbar = () => {
     navigate(`/?${params.toString()}`);
   };
 
-  /* ── Rendu ── */
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <nav className="mx-auto max-w-7xl px-2 md:px-4 h-14 flex items-center justify-between gap-3">
-        {/* LOGO */}
         <Link to="/" className="shrink-0">
           <span className="text-xl font-black tracking-tight text-teal font-heading">
             CONNECTIA
@@ -145,20 +131,14 @@ const Navbar = () => {
 
         <SearchBar />
 
-        {/* ═══════════════════════════════════════
-            ZONE ACTIONS (DROITE)
-            ═══════════════════════════════════════ */}
         <TooltipProvider>
           <div className="flex items-center gap-2 md:gap-3 text-xs font-medium shrink-0">
-            {/* 1. Thème */}
             <DarkModeToggle />
 
-            {/* 2. Langue */}
             <div className="shrink-0">
               <LanguageSwitcher />
             </div>
 
-            {/* 3. Panier */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
@@ -175,7 +155,6 @@ const Navbar = () => {
               </TooltipContent>
             </Tooltip>
 
-            {/* 4. Auth */}
             {isBootstrapping ? (
               <div className="h-8 w-24 bg-muted/60 animate-pulse rounded-lg shrink-0" />
             ) : isAuthenticated ? (
@@ -183,9 +162,16 @@ const Navbar = () => {
                 <NavIconLink
                   to="/favorites"
                   icon={Heart}
-                  label="Favoris"
-                  tooltip="Mes favoris"
+                  label="Likes"
+                  tooltip="Mes likes"
                   accent="promo"
+                />
+
+                <NavIconLink
+                  to="/wishlists"
+                  icon={Bookmark}
+                  label="Wishlists"
+                  tooltip="Mes wishlists"
                 />
 
                 <NavIconLink
@@ -247,7 +233,6 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* 5. Publier */}
             <Link to="/create" className="shrink-0">
               <button
                 type="button"
@@ -261,7 +246,6 @@ const Navbar = () => {
         </TooltipProvider>
       </nav>
 
-      {/* CATÉGORIES */}
       <Categories onFilter={handleCategoryFilter} />
     </header>
   );

@@ -53,7 +53,7 @@ export const setAuthAccessToken = (token: string | null): void => {
 export const getAuthAccessToken = (): string | null => accessToken;
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL || undefined,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -64,8 +64,7 @@ axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 🟢 FIX : ne pas écraser un Authorization déjà injecté manuellement
     // (ex: Bearer <google_id_token> pour l'onboarding)
-    const existingAuth =
-      config.headers?.Authorization || config.headers?.authorization;
+    const existingAuth = config.headers?.Authorization || config.headers?.authorization;
 
     if (accessToken && !existingAuth) {
       config.headers = config.headers ?? {};

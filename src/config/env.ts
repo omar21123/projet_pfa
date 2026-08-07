@@ -6,7 +6,10 @@ interface Env {
 const normalizeUrl = (value: string): string => value.replace(/\/$/, "");
 
 const resolveApiUrl = (): string =>
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost";
+  // If no API URL is provided via env, default to an empty string so axios
+  // will use the current origin (relative requests). This prevents requests
+  // being sent to http://localhost:80 which often causes 401/404 in dev.
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "";
 
 const resolveGoogleClientId = (): string => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock } from "lucide-react";
-import { type CreateProductPayload } from "@/api/product";
 import { useCreateProduct } from "@/hooks/useProducts";
+import axios from "axios";
 
 import { STEPS } from "@/features/nouvelle-annonce/steps.config";
 import { initialState, type FormState } from "@/features/nouvelle-annonce/types";
@@ -108,13 +108,6 @@ export default function NouvelleAnnoncePage() {
           String(parseFloat(combo.price) || parseFloat(form.basePrice) || 0),
         );
 
-        if (combo.compareAtPrice) {
-          formData.append(
-            `Combinations[${cIdx}][CompareAtPrice]`,
-            String(parseFloat(combo.compareAtPrice)),
-          );
-        }
-
         formData.append(`Combinations[${cIdx}][Stock]`, String(parseInt(combo.stock, 10) || 0));
         formData.append(`Combinations[${cIdx}][IsDefault]`, combo.isDefault ? "1" : "0");
 
@@ -129,17 +122,19 @@ export default function NouvelleAnnoncePage() {
       });
 
       // Envoi à l'API
-      mutate(formData as any, {
+      mutate(formData, {
         onSuccess: () => {
           setIsSuccess(true);
           setTimeout(() => navigate("/"), 5000);
         },
-        onError: (err: any) => {
-          if (err.response?.data?.errors) {
+        onError: (err: unknown) => {
+          if (axios.isAxiosError(err) && err.response?.data?.errors) {
             const allErrors = Object.values(err.response.data.errors).flat().join(" | ");
             setApiError(`Erreurs de validation : ${allErrors}`);
-          } else {
+          } else if (axios.isAxiosError(err)) {
             setApiError(err.response?.data?.message || "Erreur lors de la création du produit.");
+          } else {
+            setApiError("Erreur lors de la création du produit.");
           }
         },
       });
