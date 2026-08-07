@@ -155,6 +155,14 @@ Route::prefix('products')->group(function () {
     Route::post('/info', [ProductController::class, 'getProductInfo']);
     Route::get('/{product}/similar', [ProductController::class, 'getSimilarProducts']);
     Route::get('/recommendations', [ProductRecommendationController::class, 'index']);
+    Route::get('/', [ProductRecommendationController::class, 'index']);
+    Route::get('/most-sold/load-more', [ProductRecommendationController::class, 'loadMoreMostSold']);
+    Route::get('/most-viewed/load-more', [ProductRecommendationController::class, 'loadMoreMostViewed']);
+    Route::get('/most-promoted/load-more', [ProductRecommendationController::class, 'loadMoreMostPromoted']);
+    Route::get('/trending/load-more', [ProductRecommendationController::class, 'loadMoreTrending']);
+    Route::get('/last-activity/load-more', [ProductRecommendationController::class, 'loadMoreLastActivity']);
+    Route::get('/popular-in-region/load-more', [ProductRecommendationController::class, 'loadMorePopularInRegion']);
+    Route::get('/new/load-more', [ProductRecommendationController::class, 'loadMoreNew']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
