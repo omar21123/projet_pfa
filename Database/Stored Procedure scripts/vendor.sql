@@ -70,18 +70,16 @@ END main_block $$
 
 DELIMITER ;
 
-
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS sp_GetVendorPublicProfile $$
 
 CREATE PROCEDURE sp_GetVendorPublicProfile(
-    IN  p_UserPublicID VARCHAR(36),
-    OUT v_Success      BOOLEAN,
-    OUT v_Message      VARCHAR(255)
+    IN  p_VendorProfileID INT,
+    OUT v_Success         BOOLEAN,
+    OUT v_Message         VARCHAR(255)
 )
 main_block: BEGIN
-    DECLARE v_UserID INT DEFAULT NULL;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -95,7 +93,7 @@ main_block: BEGIN
             @p_sqlstate,
             @p_errno,
             @p_message,
-            JSON_OBJECT('UserPublicID', p_UserPublicID)
+            JSON_OBJECT('VendorProfileID', p_VendorProfileID)
         );
         SET v_Success = FALSE;
         SET v_Message = 'Une erreur est survenue lors de la récupération du profil public vendeur.';
@@ -104,21 +102,8 @@ main_block: BEGIN
     SET v_Success = FALSE;
     SET v_Message = '';
 
-    -- Validate input
-    IF p_UserPublicID IS NULL THEN
-        SET v_Message = 'UserPublicID est requis.';
-        LEAVE main_block;
-    END IF;
-
-    -- Resolve PublicID → UserID
-    SELECT UserID
-    INTO   v_UserID
-    FROM   Users
-    WHERE  PublicID = p_UserPublicID
-    LIMIT  1;
-
-    IF v_UserID IS NULL THEN
-        SET v_Message = 'Utilisateur introuvable.';
+    IF p_VendorProfileID IS NULL THEN
+        SET v_Message = 'VendorProfileID est requis.';
         LEAVE main_block;
     END IF;
 
@@ -148,8 +133,8 @@ main_block: BEGIN
         (
             SELECT GROUP_CONCAT(c.Name SEPARATOR ', ')
             FROM   ProductCategories pc
-            INNER JOIN Categories c  ON c.CategoryID  = pc.CategoryID
-            INNER JOIN Products   p  ON p.ProductID   = pc.ProductID
+            INNER JOIN Categories c ON c.CategoryID = pc.CategoryID
+            INNER JOIN Products   p ON p.ProductID  = pc.ProductID
             WHERE  p.VendorID = v.UserID
         ) AS HasProductsInCategories,
         (
@@ -160,14 +145,14 @@ main_block: BEGIN
         (
             SELECT COUNT(*)
             FROM   Orders o
-            INNER JOIN OrderItems      oi ON oi.OrderID        = o.OrderID
-            INNER JOIN VendorProfiles  vp ON vp.VendorProfileID = oi.VendorProfileID
+            INNER JOIN OrderItems     oi ON oi.OrderID         = o.OrderID
+            INNER JOIN VendorProfiles vp ON vp.VendorProfileID = oi.VendorProfileID
             WHERE  vp.UserID = v.UserID
               AND  o.OrderStatusID NOT IN (1, 5)
         ) AS TotalVentes
     FROM VendorProfiles v
     LEFT JOIN Addresses a ON a.UserID = v.UserID
-    WHERE v.UserID = v_UserID
+    WHERE v.VendorProfileID = p_VendorProfileID
     LIMIT 1;
 
 END main_block $$

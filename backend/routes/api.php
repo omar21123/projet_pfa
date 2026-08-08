@@ -20,6 +20,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProductRecommendationController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\VendorController;
 use App\Http\Controllers\WishlistsController;
 
 Route::prefix('auth')->group(function () {
@@ -154,6 +155,7 @@ Route::prefix('config-attribute-options')->group(function () {
 Route::prefix('products')->group(function () {
     Route::post('/info', [ProductController::class, 'getProductInfo']);
     Route::get('/{product}/similar', [ProductController::class, 'getSimilarProducts']);
+    Route::get('vendor/{vendorProfileID}', [ProductController::class, 'getVendorPublicProducts']);
     Route::get('/recommendations', [ProductRecommendationController::class, 'index']);
     Route::get('/', [ProductRecommendationController::class, 'index']);
     Route::get('/most-sold/load-more', [ProductRecommendationController::class, 'loadMoreMostSold']);
@@ -244,3 +246,4 @@ Route::prefix('cart')->group(function () {
     });
 });
 
+Route::get('/vendors/{vendorProfileID}/public-profile', [VendorController::class, 'publicProfile']);

@@ -43,4 +43,11 @@ interface ProductServiceInterface
     public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto;
     public function getProductInfo(GetProductInfoDto $dto): ProductInfoResponseDto;
     public function getSimilarProducts(int $productId, int $limit = 10): SimilarProductsGroupedDto;
+    public function getVendorPublicProducts(
+    int     $vendorProfileID,
+    ?string $userPublicID,
+    ?int    $categoryID,
+    int     $pageNumber,
+    int     $pageSize
+): array;
 }
