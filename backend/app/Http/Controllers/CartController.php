@@ -32,9 +32,20 @@ class CartController extends Controller
             required: ["productID", "UnitPrice"],
             properties: [
                 new OA\Property(property: "productID", type: "integer", example: 12345),
+
                 new OA\Property(property: "FromSearch", type: "boolean", nullable: true, example: true),
                 new OA\Property(property: "SearchTerm", type: "string", nullable: true, example: "example search term"),
                 new OA\Property(property: "CompositionID", type: "integer", nullable: true, example: 10),
+                new OA\Property(
+                    property: "Quantity",
+                    type: "number",
+                    format: "float",
+                    nullable: true,
+                    minimum: 0,
+                    default: 1,
+                    example: 2,
+                    description: "Quantité à ajouter au panier. Si null, absente ou <= 0, une valeur de 1 est appliquée par défaut."
+                ),
                 new OA\Property(property: "UnitPrice", type: "number", format: "float", example: 19.99),
             ]
         )
@@ -73,7 +84,7 @@ class CartController extends Controller
 
 
 
-    
+
     #[OA\Delete(
         path: "/api/cart/items",
         tags: ["Cart"],
@@ -122,33 +133,32 @@ class CartController extends Controller
     }
 
 
-#[OA\Get(
-    path: "/api/cart",
-    tags: ["Cart"],
-    summary: "Récupérer le contenu du panier de l'utilisateur",
-    security: [["bearerAuth" => []]]
-)]
-#[OA\Response(
-    response: 200,
-    description: "Contenu du panier",
-    content: new OA\JsonContent(
-        properties: [
-            new OA\Property(property: "success", type: "boolean", example: true),
-            new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
-        ]
-    )
-)]
+    #[OA\Get(
+        path: "/api/cart",
+        tags: ["Cart"],
+        summary: "Récupérer le contenu du panier de l'utilisateur",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Contenu du panier",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "data", type: "array", items: new OA\Items(type: "object")),
+            ]
+        )
+    )]
+    public function getCart(GetCartRequest $request): JsonResponse
+    {
+        $userPublicId = $request->attributes->get('user_id');
+        $dto = new GetCartDto($userPublicId);
 
-public function getCart(GetCartRequest $request): JsonResponse
-{
-    $userPublicId = $request->attributes->get('user_id');
-    $dto = new GetCartDto($userPublicId);
+        $response = $this->cartService->getCart($dto);
 
-    $response = $this->cartService->getCart($dto);
-
-    return response()->json([
-        'success' => true,
-        'data'    => $response,
-    ], 200);
-}
+        return response()->json([
+            'success' => true,
+            'data'    => $response,
+        ], 200);
+    }
 }

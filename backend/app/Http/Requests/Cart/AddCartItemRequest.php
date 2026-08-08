@@ -19,6 +19,7 @@ class AddCartItemRequest extends FormRequest
             'FromSearch'    => 'nullable|boolean',
             'SearchTerm'    => 'nullable|string|max:255|required_if:FromSearch,true',
             'CompositionID' => 'nullable|integer|min:1',
+            'Quantity'      => 'nullable|numeric|min:0',
             'UnitPrice'     => 'required|numeric|min:0',
         ];
     }
@@ -29,6 +30,8 @@ class AddCartItemRequest extends FormRequest
             'productID.required'     => 'L\'identifiant du produit est requis.',
             'UnitPrice.required'     => 'Le prix unitaire est requis.',
             'SearchTerm.required_if' => 'SearchTerm est requis lorsque FromSearch est vrai.',
+            'Quantity.numeric'       => 'La quantité doit être un nombre.',
+            'Quantity.min'           => 'La quantité ne peut pas être négative.',
         ];
     }
 }

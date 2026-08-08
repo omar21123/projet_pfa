@@ -644,10 +644,11 @@ class ProductRepository implements ProductRepositoryInterface
 
         return (bool) $result->found;
     }
-    public function getSimilarProducts(int $productId, int $limit = 10): array
+    public function getSimilarProducts(int $productId,?string $UserPublicID ,int $limit = 10): array
     {
-        $rows = DB::select('CALL SP_GetSimilarProductsByName(?, ?, @success, @message)', [
+        $rows = DB::select('CALL SP_GetSimilarProductsByName(?, ?,?, @success, @message)', [
             $productId,
+            $UserPublicID,
             $limit,
         ]);
 
@@ -658,12 +659,13 @@ class ProductRepository implements ProductRepositoryInterface
             throw new BusinessValidationException($result->message, $status);
         }
 
-        return array_map(fn($row) => PublicProductInfoDto::fromRow($row), $rows);
+        return array_map(fn($row) => ProductItemDto::fromRow($row), $rows);
     }
-    public function getSimilarProductsByBrandOrModel(int $productId, int $limit = 10): array
+    public function getSimilarProductsByBrandOrModel(int $productId, ?string $UserPublicID, int $limit = 10): array
     {
-        $rows = DB::select('CALL SP_GetSimilarProductsByBrandOrModel(?, ?, @success, @message)', [
+        $rows = DB::select('CALL SP_GetSimilarProductsByBrandOrModel(?, ?, ?, @success, @message)', [
             $productId,
+            $UserPublicID,
             $limit,
         ]);
 
@@ -677,15 +679,16 @@ class ProductRepository implements ProductRepositoryInterface
         // Resultset vide filtré (cas "ni marque ni modèle" : une ligne ProductID NULL).
         return array_values(array_filter(
             array_map(
-                fn($row) => $row->ProductID !== null ? PublicProductInfoDto::fromRow($row) : null,
+                fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null,
                 $rows
             )
         ));
     }
-    public function getSimilarProductsByCategory(int $productId, int $limit = 10): array
+    public function getSimilarProductsByCategory(int $productId, ?string $UserPublicID, int $limit = 10): array
     {
-        $rows = DB::select('CALL SP_GetSimilarProductsByCategory(?, ?, @success, @message)', [
+        $rows = DB::select('CALL SP_GetSimilarProductsByCategory(?, ?,?, @success, @message)', [
             $productId,
+            $UserPublicID,
             $limit,
         ]);
 
@@ -700,7 +703,7 @@ class ProductRepository implements ProductRepositoryInterface
         // même comportement que getSimilarProductsByBrandOrModel().
         return array_values(array_filter(
             array_map(
-                fn($row) => $row->ProductID !== null ? PublicProductInfoDto::fromRow($row) : null,
+                fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null,
                 $rows
             )
         ));

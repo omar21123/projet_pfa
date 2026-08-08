@@ -28,6 +28,7 @@ class CartService implements CartServiceInterface
                 $this->searchRepository->recordSearchClick(
                     new RecordSearchClickDto($dto->searchTerm, $dto->productId)
                 );
+                $this->cartRepository->addItem($dto);
             } catch (BusinessValidationException $e) {
                 // Terme introuvable dans le dictionnaire -> non bloquant pour l'ajout au panier.
             }

@@ -2038,6 +2038,15 @@
                                         "example": 10,
                                         "nullable": true
                                     },
+                                    "Quantity": {
+                                        "description": "Quantité à ajouter au panier. Si null, absente ou <= 0, une valeur de 1 est appliquée par défaut.",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 2,
+                                        "nullable": true,
+                                        "default": 1,
+                                        "minimum": 0
+                                    },
                                     "UnitPrice": {
                                         "type": "number",
                                         "format": "float",

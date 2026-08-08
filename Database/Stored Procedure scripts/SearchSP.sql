@@ -338,7 +338,7 @@ BEGIN
             p.Name AS ProductName,
             pr.ResourcesPath AS ProductDefaultImage,
             p.Description,
-            p.BasePrice AS DefaultPrice,
+            p.BasePrice AS DefaultPrice,s
             b.Name AS BrandName,
             b.LogoURL AS BrandLogo,
             m.Name AS ModelName,
