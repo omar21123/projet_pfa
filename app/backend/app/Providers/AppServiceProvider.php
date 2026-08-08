@@ -38,6 +38,7 @@ use App\Services\TagService;
 
 // 🏭 AJOUT DES IMPORTS POUR LES BRANDS (Repository + Service)
 use App\Repositories\Interface\BrandRepositoryInterface;
+use App\Repositories\Interface\CartRepositoryInterface;
 use App\Repositories\sql\BrandRepository;
 use App\Services\Interface\BrandServiceInterface;
 use App\Services\BrandService;
@@ -68,6 +69,7 @@ use App\Services\Interface\ConfigAttributeOptionServiceInterface;
 use App\Services\ConfigAttributeOptionService;
 
 use App\Repositories\Interface\ProductRepositoryInterface;
+use App\Repositories\Interface\ProductStatsRepositoryInterface;
 use App\Repositories\sql\ProductRepository;
 use App\Services\Interface\ProductServiceInterface;
 use App\Services\ProductService;
@@ -76,7 +78,21 @@ use App\Repositories\Interface\VendorRepositoryInterface;
 use App\Repositories\sql\VendorRepository;
 use App\Services\Interface\VendorServiceInterface;
 use App\Services\VendorService;
-
+use App\Repositories\Interface\UsergoogleRepositoryInterface;
+use App\Repositories\sql\UsergoogleRepository;
+// ==========================================================
+// 🎟️ AJOUT : Liaisons pour la gestion des Promotions
+// ==========================================================
+use App\Repositories\Interface\PromotionRepositoryInterface;
+use App\Repositories\sql\CartRepository;
+use App\Repositories\sql\ProductStatsRepository;
+use App\Repositories\sql\PromotionRepository;
+use App\Services\CartService;
+use App\Services\Interface\CartServiceInterface;
+use App\Services\Interface\ProductStatsServiceInterface;
+use App\Services\Interface\PromotionServiceInterface;
+use App\Services\ProductStatsService;
+use App\Services\PromotionService;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -237,6 +253,74 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             VendorServiceInterface::class,
             VendorService::class
+        );
+        $this->app->bind(
+            UsergoogleRepositoryInterface::class,
+            UsergoogleRepository::class
+        );
+        $this->app->bind(
+            VendorServiceInterface::class,
+            VendorService::class
+        );
+
+        // ==========================================================
+        // 🎟️ AJOUT : Liaisons pour la gestion des Promotions
+        // ==========================================================
+        $this->app->bind(
+            PromotionRepositoryInterface::class,
+            PromotionRepository::class
+        );
+
+        $this->app->bind(
+            PromotionServiceInterface::class,
+            PromotionService::class
+        );
+
+        $this->app->bind(
+            UsergoogleRepositoryInterface::class,
+            UsergoogleRepository::class
+        );
+
+        $this->app->bind(
+            \App\Repositories\Interface\SearchRepositoryInterface::class,
+            \App\Repositories\sql\SearchRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\SearchServiceInterface::class,
+            \App\Services\SearchService::class,
+        );
+
+        $this->app->bind(
+            \App\Repositories\Interface\WishlistRepositoryInterface::class,
+            \App\Repositories\sql\WishlistRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\WishlistServiceInterface::class,
+            \App\Services\WishlistService::class,
+        );
+        $this->app->bind(
+            \App\Repositories\Interface\ProductLikeRepositoryInterface::class,
+            \App\Repositories\sql\ProductLikeRepository::class,
+        );
+        $this->app->bind(
+            \App\Services\Interface\ProductLikeServiceInterface::class,
+            \App\Services\ProductLikeService::class,
+        );
+        $this->app->bind(CartRepositoryInterface::class, CartRepository::class);
+        $this->app->bind(CartServiceInterface::class, CartService::class);
+        $this->app->bind(ProductStatsRepositoryInterface::class, ProductStatsRepository::class);
+        $this->app->bind(ProductStatsServiceInterface::class, ProductStatsService::class);
+        $this->app->bind(
+            \App\Services\Interface\IpLocationServiceInterface::class,
+            \App\Services\IpWhoIsLocationService::class
+        );
+         $this->app->bind(
+            \App\Services\Interface\ProductRecommendationServiceInterface::class,
+            \App\Services\ProductRecommendationService::class
+        );
+        $this->app->bind(
+            \App\Repositories\Interface\ProductRecommendationRepositoryInterface::class,
+            \App\Repositories\sql\ProductRecommendationRepository::class
         );
     }
 

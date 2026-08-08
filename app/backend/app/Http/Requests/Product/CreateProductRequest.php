@@ -30,11 +30,23 @@ class CreateProductRequest extends FormRequest
             'Categories'               => ['required', 'array', 'min:1'],
             'Categories.*'             => ['integer'],
 
-            'Attribute'                          => ['nullable', 'array'],
-            'Attribute.*.ConfigName'             => ['required_with:Attribute', 'string', 'max:150'],
-            'Attribute.*.ConfigOptions'          => ['required_with:Attribute', 'array', 'min:1'],
-            'Attribute.*.ConfigOptions.*.Name'   => ['required', 'string', 'max:150'],
-            'Attribute.*.ConfigOptions.*.IsDefault' => ['nullable', 'boolean'],
+            'Attribute'                             => ['nullable', 'array'],
+            'Attribute.*.ConfigName'                => ['required_with:Attribute', 'string', 'max:150'],
+            'Attribute.*.ConfigOptions'              => ['required_with:Attribute', 'array', 'min:1'],
+            'Attribute.*.ConfigOptions.*.Name'       => ['required', 'string', 'max:150'],
+            'Attribute.*.ConfigOptions.*.IsDefault'  => ['nullable', 'boolean'],
+
+            // ---- Combinations (variants) ----
+            'Combinations'                           => ['nullable', 'array'],
+            'Combinations.*.SKU'                      => ['nullable', 'string', 'max:64'],
+            'Combinations.*.Price'                    => ['required_with:Combinations', 'numeric', 'min:0'],
+            'Combinations.*.CompareAtPrice'           => ['nullable', 'numeric', 'min:0'],
+            'Combinations.*.Stock'                    => ['nullable', 'integer', 'min:0'],
+            'Combinations.*.IsDefault'                => ['nullable', 'boolean'],
+            'Combinations.*.Image'                    => ['nullable', 'file', 'image', 'max:10240'], // 10MB
+            'Combinations.*.Options'                  => ['required_with:Combinations', 'array', 'min:1'],
+            'Combinations.*.Options.*.ConfigName'     => ['required', 'string', 'max:150'],
+            'Combinations.*.Options.*.OptionName'     => ['required', 'string', 'max:150'],
 
             'Tags'                     => ['nullable', 'array'],
             'Tags.*'                   => ['string', 'max:100'],
@@ -47,10 +59,15 @@ class CreateProductRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'Ressource.required'        => 'Au moins une ressource (vidéo/image) est requise.',
-            'Ressource.*.file.required' => 'Chaque ressource doit contenir un fichier.',
-            'Categories.required'       => 'Au moins une catégorie est requise.',
-            'AllowedPayment.required'   => 'Au moins un mode de paiement est requis.',
+            'Ressource.required'                     => 'Au moins une ressource (vidéo/image) est requise.',
+            'Ressource.*.file.required'               => 'Chaque ressource doit contenir un fichier.',
+            'Categories.required'                     => 'Au moins une catégorie est requise.',
+            'AllowedPayment.required'                 => 'Au moins un mode de paiement est requis.',
+
+            'Combinations.*.Price.required_with'      => 'Le prix est requis pour chaque combinaison.',
+            'Combinations.*.Options.required_with'    => 'Chaque combinaison doit contenir au moins une option.',
+            'Combinations.*.Options.*.ConfigName.required' => 'Le nom de l\'attribut est requis pour chaque option de combinaison.',
+            'Combinations.*.Options.*.OptionName.required' => 'Le nom de l\'option est requis pour chaque option de combinaison.',
         ];
     }
 }

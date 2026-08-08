@@ -9,26 +9,37 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\admin\AdminProfileController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductModelController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ProductsConfigAttributeController;
 use App\Http\Controllers\ConfigAttributeOptionController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\ProductRecommendationController;
+use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\WishlistsController;
 
 Route::prefix('auth')->group(function () {
 
     // ⚠️ Rate limiting disabled for DEV — re-enable before deploying to prod
     // Route::middleware('throttle:auth')->group(function () {
-        Route::post('/mobile/register', [AuthController::class, 'Customerregister']);
-        Route::post('/web/customer/register', [AuthController::class, 'CustomerRegisterWeb']);
-        Route::post('/mobile/login', [AuthController::class, 'login']);
-        Route::post('/web/login', [AuthController::class, 'webLogin']);
-        Route::post('/mobile/refresh', [AuthController::class, 'refresh']);
-        Route::post('/web/refresh', [AuthController::class, 'webRefresh']);
-        Route::post('/mobile/logout', [AuthController::class, 'logout']);
-        Route::post('/web/logout', [AuthController::class, 'webLogout']);
-        Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
-    // });
+    Route::post('/mobile/register', [AuthController::class, 'Customerregister']);
+    Route::post('/web/customer/register', [AuthController::class, 'CustomerRegisterWeb']);
+    Route::post('/mobile/login', [AuthController::class, 'login']);
+    Route::post('/web/login', [AuthController::class, 'webLogin']);
+    Route::post('/mobile/refresh', [AuthController::class, 'refresh']);
+    Route::post('/web/refresh', [AuthController::class, 'webRefresh']);
+    Route::post('/mobile/logout', [AuthController::class, 'logout']);
+    Route::post('/web/logout', [AuthController::class, 'webLogout']);
+    Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
+    Route::post('/mobile/google', [GoogleAuthController::class, 'mobileGoogleLogin']);
+    Route::post('/web/google', [GoogleAuthController::class, 'webGoogleLogin']);
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/google/complete-profile', [GoogleAuthController::class, 'completeProfile']);
+    });    // });
 
     // TODO — pas encore implémentés
     // Route::post('/set-password', [AuthController::class, 'setPassword']);
@@ -67,7 +78,6 @@ Route::prefix('brands')->group(function () {
         Route::put('/{id}/disable', [BrandController::class, 'disable']);
         Route::put('/{id}/enable', [BrandController::class, 'enable']);
     });
-
 });
 Route::prefix('models')->group(function () {
     // 🌐 Route Publique
@@ -93,7 +103,6 @@ Route::prefix('units')->group(function () {
         Route::put('/{id}/disable', [UnitController::class, 'disable']);
         Route::put('/{id}/enable', [UnitController::class, 'enable']);
     });
-
 });
 //for admin
 Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
@@ -104,13 +113,12 @@ Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(funct
         Route::post('/vendors/{vendorProfileId}/approve', [AdminVendorController::class, 'AdminApproveVendor']);
         Route::post('/vendors/{vendorProfileId}/reject', [AdminVendorController::class, 'AdminRejectVendor']);
         Route::post('/vendors/{vendorProfileId}/reset-to-pending', [AdminVendorController::class, 'AdminResetVendorToPending']);
-    });// Ajouter un nouvel admin
+    }); // Ajouter un nouvel admin
 });
 
 Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
     // Route GET pour récupérer le profil complet de l'administrateur connecté
     Route::get('/admin/profile', [AdminProfileController::class, 'show']);
-
 });
 
 Route::get('/countries', [CountryController::class, 'index']);
@@ -126,7 +134,6 @@ Route::prefix('products-config-attributes')->group(function () {
         Route::put('/{id}/disable', [ProductsConfigAttributeController::class, 'disable']);
         Route::put('/{id}/enable', [ProductsConfigAttributeController::class, 'enable']);
     });
-
 });
 Route::prefix('config-attribute-options')->group(function () {
 
@@ -135,7 +142,7 @@ Route::prefix('config-attribute-options')->group(function () {
 
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
-            Route::get('/by-attribute/{attributeID}', [ConfigAttributeOptionController::class, 'getAllOptionsByAttributeID']);
+        Route::get('/by-attribute/{attributeID}', [ConfigAttributeOptionController::class, 'getAllOptionsByAttributeID']);
         Route::get('/admin', [ConfigAttributeOptionController::class, 'adminIndex']);
         Route::get('/exists', [ConfigAttributeOptionController::class, 'existsByName']);
         Route::post('/create', [ConfigAttributeOptionController::class, 'store']);
@@ -143,22 +150,97 @@ Route::prefix('config-attribute-options')->group(function () {
         Route::put('/{id}/disable', [ConfigAttributeOptionController::class, 'disable']);
         Route::put('/{id}/enable', [ConfigAttributeOptionController::class, 'enable']);
     });
-
 });
 Route::prefix('products')->group(function () {
-
+    Route::post('/info', [ProductController::class, 'getProductInfo']);
+    Route::get('/{product}/similar', [ProductController::class, 'getSimilarProducts']);
+    Route::get('/recommendations', [ProductRecommendationController::class, 'index']);
+    Route::get('/', [ProductRecommendationController::class, 'index']);
+    Route::get('/most-sold/load-more', [ProductRecommendationController::class, 'loadMoreMostSold']);
+    Route::get('/most-viewed/load-more', [ProductRecommendationController::class, 'loadMoreMostViewed']);
+    Route::get('/most-promoted/load-more', [ProductRecommendationController::class, 'loadMoreMostPromoted']);
+    Route::get('/trending/load-more', [ProductRecommendationController::class, 'loadMoreTrending']);
+    Route::get('/last-activity/load-more', [ProductRecommendationController::class, 'loadMoreLastActivity']);
+    Route::get('/popular-in-region/load-more', [ProductRecommendationController::class, 'loadMorePopularInRegion']);
+    Route::get('/new/load-more', [ProductRecommendationController::class, 'loadMoreNew']);
     // 🔒 Routes Protégées : Réservées uniquement aux administrateurs connectés
-    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:VENDOR,ADMIN'])->group(function () {
         Route::post('/create', [ProductController::class, 'store']);
-
+        Route::get('/{product}/combinations', [ProductController::class, 'getCombinations']);
+        Route::get('/combinations/{combination}', [ProductController::class, 'showCombination']);
+        Route::put('/combinations/{combination}', [ProductController::class, 'updateCombination']);
+    });
+    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+        Route::get('/vendor/me', [ProductController::class, 'getVendorProducts']);
     });
 
-    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {    
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/admin', [ProductController::class, 'index']);
         Route::get('/{product}', [ProductController::class, 'show']);
         Route::patch('/{product}/validate', [ProductController::class, 'validateProduct']);
         Route::patch('/{product}/block', [ProductController::class, 'blockProduct']);
         Route::patch('/{product}/refuse', [ProductController::class, 'refuseProduct']);
     });
-
 });
+
+Route::prefix('promotions')->group(function () {
+    Route::get('/lookups', [PromotionController::class, 'lookups']);
+
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::put('/{promotion}', [PromotionController::class, 'update']);
+    });
+    Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
+        Route::post('/product', [PromotionController::class, 'createForProduct']);
+        Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
+        Route::get('/{promotion}', [PromotionController::class, 'show']);
+
+
+    });
+    Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
+        Route::post('/category', [PromotionController::class, 'createForCategory']);
+        Route::get('/category/{category}', [PromotionController::class, 'getByCategory']);
+        Route::get('/', [PromotionController::class, 'index']);
+    });
+    Route::middleware(['jwt.custom', 'role:ADMIN,VENDOR'])->group(function () {
+        Route::patch('/{promotion}/deactivate', [PromotionController::class, 'deactivate']);
+        Route::get('/{promotion}', [PromotionController::class, 'show']);
+        Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
+    });
+});
+
+Route::prefix('search')->group(function () {
+    Route::get('/suggestions', [SearchController::class, 'suggestions']);
+    
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::get('/history', [SearchController::class, 'history']);
+           
+
+    });
+     Route::get('/', [SearchController::class, 'search']);
+});
+
+Route::prefix('wishlists')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+    Route::get('/', [WishlistsController::class, 'index']);
+    Route::post('/', [WishlistsController::class, 'store']);
+    Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
+    Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
+    Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
+});
+});
+Route::prefix('favorites')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::get('/', [FavoritesController::class, 'index']);
+        Route::post('/', [FavoritesController::class, 'store']);
+        Route::delete('/{productId}', [FavoritesController::class, 'destroy']);
+    });
+});
+
+Route::prefix('cart')->group(function () {
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/items', [CartController::class, 'addItem']);
+        Route::delete('/items', [CartController::class, 'removeItem']);
+        Route::get('/', [CartController::class, 'getCart']);
+    });
+});
+

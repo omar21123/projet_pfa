@@ -11,13 +11,13 @@ use App\DTOs\Auth\VendorRegisterDto;
 interface UserRepositoryInterface
 {
     public function createUser(RegisterDto $dto, string $passwordHash): int;
-       public function createCustomerUser(
-    RegisterDto $dto,
-    string $passwordHash,
-    string $tokenHash,
-    ?string $ipAddress,
-    int $ttl
-): string;
+    public function createCustomerUser(
+        RegisterDto $dto,
+        string $passwordHash,
+        string $tokenHash,
+        ?string $ipAddress,
+        int $ttl
+    ): string;
     public function getRoleIdByCode(string $code): ?int;
 
     public function assignRole(int $userId, int $roleId): void;
@@ -31,28 +31,37 @@ interface UserRepositoryInterface
     public function findById(int $id): ?UserDto;
 
     public function updateLastLogin(int $id): void;
+    // Retourne un tableau d'objets ou de résultats de rôles pour UserDto
+    public function getRolesForUser(int $userId): ?array;
 
-      public function getRoleForUser(int $userId): string;
+    // Optionnel : Si vous gardez aussi la version au singulier pour retourner une string
+    public function getRoleForUser(int $userId): ?string;
+
     public function emailExists(string $email): bool;
     public function phoneNumberExists(string $phoneNumber): bool;
     public function getLoginInfoByEmail(string $email): ?LoginInfoDto;
     public function createRefreshToken(
-    int $userId,
-    string $tokenHash,
-    ?string $ipAddress,
-    int $ttl
-): void;
-public function getReadNotificationsCount(int $userId): int;
-public function getUserStandardInformation(int $userId): ?UserStandardInfoDto;
-// App\Repositories\Interface\AuthRepositoryInterface
+        int $userId,
+        string $tokenHash,
+        ?string $ipAddress,
+        int $ttl
+    ): void;
+    public function getReadNotificationsCount(int $userId): int;
+    public function getUserStandardInformation(int $userId): ?UserStandardInfoDto;
+    // App\Repositories\Interface\AuthRepositoryInterface
 
-public function createVendor(
-    VendorRegisterDto $dto,
-    string $passwordHash,
-    string $tokenHash,
-    string $ipAddress,
-    int $ttlDays
-): array;
-public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
-
+    public function createVendor(
+        VendorRegisterDto $dto,
+        string $passwordHash,
+        string $tokenHash,
+        string $ipAddress,
+        int $ttlDays
+    ): array;
+    public function getUserStandardInformationByPublicID(string $publicID): ?UserStandardInfoDto;
+    public function updateGoogleUserProfile(
+        int $userId,
+        ?string $phoneNumber,
+        ?string $birthDate,
+        ?int $gender
+    ): void;
 }

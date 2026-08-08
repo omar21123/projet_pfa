@@ -21,8 +21,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Définir le dossier de travail
 WORKDIR /var/www
 
-# Copier le projet
+# Copier uniquement composer.json et composer.lock en premier
+# (meilleur cache Docker)
+COPY composer.json composer.lock ./
+
+# Installer les dépendances PHP AVANT de copier tout le projet
+RUN composer install --no-interaction --optimize-autoloader --no-scripts
+
+# Copier le reste du projet
 COPY . .
+
+# Supprimer le symlink public/storage s'il existe (cause de l'erreur)
+RUN rm -rf public/storage
 
 # Créer les dossiers nécessaires à Laravel
 RUN mkdir -p \
@@ -31,13 +41,12 @@ RUN mkdir -p \
     storage/framework/sessions \
     storage/framework/testing \
     storage/framework/views \
-    storage/logs
+    storage/logs \
+    public/storage
 
 # Donner les permissions
-RUN chmod -R 775 storage bootstrap/cache
-
-# Installer les dépendances PHP
-RUN composer install --no-interaction --optimize-autoloader
+RUN chown -R www-data:www-data storage bootstrap/cache public/storage \
+    && chmod -R 775 storage bootstrap/cache public/storage
 
 EXPOSE 9000
 
@@ -45,8 +54,8 @@ CMD sh -c "\
     if [ ! -f .env ]; then \
         cp .env.example .env && php artisan key:generate; \
     fi && \
-    touch database/database.sqlite && \
-    chown -R www-data:www-data storage bootstrap/cache database && \
-    chmod -R 775 storage bootstrap/cache database && \
+    php artisan storage:link --force && \
+    chown -R www-data:www-data storage bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache && \
     php artisan migrate --force && \
     php-fpm"

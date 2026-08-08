@@ -14,14 +14,49 @@ use App\DTOs\Product\ProductDetailsDto;
 use App\DTOs\Product\RefuseProductDto;
 use App\DTOs\Product\RefuseProductResultDto;
 use App\DTOs\Product\ValidateProductDto;
+use App\DTOs\Product\ProductCombinationDto;
+use App\DTOs\Product\ProductCombinationDetailDto;
+use App\DTOs\Product\UpdateProductCombinationDto;
+use App\Exceptions\NotFoundException; // adapte si tu as une exception dédiée 404
+use App\DTOs\Product\vendor\GetVendorProductsDto;
+use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
+use App\DTOs\Product\vendor\VendorProductItemDto;
+
+// ProductRepository — add this method alongside getProductsForVendor()
+use App\DTOs\Product\SearchProductsByTermDto;
+use App\DTOs\Product\PaginatedProductItemResponseDto;
+use App\DTOs\Product\ProductInfoAllowedPaymentDto;
+use App\DTOs\Product\ProductInfoCategoryDto;
+use App\DTOs\Product\ProductInfoCombinationConfigDto;
+use App\DTOs\Product\ProductInfoCombinationDto;
+use App\DTOs\Product\ProductInfoConfigDto;
+use App\DTOs\Product\ProductInfoConfigOptionDto;
+use App\DTOs\Product\ProductInfoPromotionDto;
+use App\DTOs\Product\ProductInfoTagDto;
+use App\DTOs\Product\ProductItemDto;
+use App\DTOs\Product\ProductSearchResultDto;
+use App\DTOs\Product\PublicProductInfoDto;
+use Illuminate\Support\Facades\Log;
 
 class ProductRepository implements ProductRepositoryInterface
 {
+
+
     public function create(CreateProductDto $dto): ?object
     {
         return DB::transaction(function () use ($dto) {
 
-            // 1) Create the product
+            Log::info("========== CREATE PRODUCT START ==========");
+
+            // 1) Product
+            Log::info("STEP 1 - Create Product", [
+                'vendorID' => $dto->vendorID,
+                'brandID' => $dto->brandID,
+                'modelID' => $dto->modelID,
+                'name' => $dto->name,
+                'barcode' => $dto->barcode,
+            ]);
+
             DB::select('CALL SP_CreateProduct(?, ?, ?, ?, ?, ?, ?, ?, @productId, @success, @message)', [
                 $dto->vendorID,
                 $dto->brandID,
@@ -35,6 +70,8 @@ class ProductRepository implements ProductRepositoryInterface
 
             $result = DB::selectOne('SELECT @productId AS productId, @success AS success, @message AS message');
 
+            Log::info("STEP 1 RESULT", (array) $result);
+
             if (!$result->success) {
                 throw new BusinessValidationException($result->message, 422);
             }
@@ -42,7 +79,12 @@ class ProductRepository implements ProductRepositoryInterface
             $productId = (int) $result->productId;
 
             // 2) Resources
+            Log::info("STEP 2 - Resources");
+
             foreach ($dto->resources as $resource) {
+
+                Log::info("Resource", (array) $resource);
+
                 DB::select('CALL SP_CreateProductResource(?, ?, ?, ?, @resourceId, @success, @message)', [
                     $productId,
                     $resource->type,
@@ -52,40 +94,66 @@ class ProductRepository implements ProductRepositoryInterface
 
                 $result = DB::selectOne('SELECT @resourceId AS resourceId, @success AS success, @message AS message');
 
+                Log::info("Resource Result", (array) $result);
+
                 if (!$result->success) {
                     throw new BusinessValidationException($result->message, 422);
                 }
             }
 
             // 3) Categories
+            Log::info("STEP 3 - Categories");
+
             foreach ($dto->categories as $categoryId) {
+
+                Log::info("Category", ['id' => $categoryId]);
+
                 DB::select('CALL SP_CreateProductCategory(?, ?, @success, @message)', [
                     $productId,
-                    $categoryId,
+                    $categoryId
                 ]);
 
                 $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+                Log::info("Category Result", (array) $result);
 
                 if (!$result->success) {
                     throw new BusinessValidationException($result->message, 422);
                 }
             }
 
-            // 4) Attributes + ConfigOptions
+            // 4) Attributes
+            Log::info("STEP 4 - Attributes");
+
+            $optionMap = [];
+
             foreach ($dto->attributes as $attribute) {
+
+                Log::info("Attribute", (array) $attribute);
+
                 $result = DB::select('CALL SP_GetOrCreateProductsConfigAttributeByName(?, @attributeId, @success, @message)', [
                     $attribute->configName,
                 ]);
 
                 $result = $result[0] ?? null;
 
+                Log::info("Attribute Result", (array) $result);
+
                 if (!$result || !$result->Success) {
-                    throw new BusinessValidationException($result->Message ?? 'Erreur lors de la récupération de l\'attribut.', 422);
+                    throw new BusinessValidationException(
+                        $result->Message ?? 'Erreur attribut',
+                        422
+                    );
                 }
 
                 $attributeId = (int) $result->AttributeID;
 
+                $optionMap[$attribute->configName] = [];
+
                 foreach ($attribute->configOptions as $option) {
+
+                    Log::info("Option", (array) $option);
+
                     DB::select('CALL SP_CreateProductDetailByOptionName(?, ?, ?, ?, @detailId, @optionId, @success, @message)', [
                         $productId,
                         $attributeId,
@@ -93,41 +161,74 @@ class ProductRepository implements ProductRepositoryInterface
                         $option->isDefault ? 1 : 0,
                     ]);
 
-                    $result = DB::selectOne('SELECT @detailId AS detailId, @optionId AS optionId, @success AS success, @message AS message');
+                    $res = DB::selectOne('SELECT @detailId AS detailId,@optionId AS optionId,@success AS success,@message AS message');
 
-                    if (!$result->success) {
-                        throw new BusinessValidationException($result->message, 422);
+                    Log::info("Option Result", (array) $res);
+
+                    if (!$res->success) {
+                        throw new BusinessValidationException($res->message, 422);
                     }
+
+                    $optionMap[$attribute->configName][$option->name] = [
+                        'attributeId' => $attributeId,
+                        'optionId' => (int) $res->optionId
+                    ];
                 }
             }
 
-            // 5) Tags
-            foreach ($dto->tags as $tagName) {
-                DB::select('CALL SP_AddProductTagByName(?, ?, @tagId, @success, @message)', [
+            // 5) Combinations
+            Log::info("STEP 5 - Combinations");
+
+            foreach ($dto->combinations as $combination) {
+
+                Log::info("Combination", (array) $combination);
+
+                $optionsPairs = [];
+
+                foreach ($combination->options as $opt) {
+
+                    Log::info("Combination Option", (array) $opt);
+
+                    if (!isset($optionMap[$opt->configName][$opt->optionName])) {
+                        throw new BusinessValidationException(
+                            "Option introuvable : {$opt->configName} -> {$opt->optionName}",
+                            422
+                        );
+                    }
+
+                    $optionsPairs[] = $optionMap[$opt->configName][$opt->optionName];
+                }
+
+                Log::info("Options JSON", $optionsPairs);
+
+                DB::select('CALL SP_CreateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, @combinationId, @success, @message)', [
                     $productId,
-                    $tagName,
+                    $combination->sku,
+                    $combination->price,
+                    $combination->compareAtPrice,
+                    $combination->stock,
+                    $combination->imagePath,
+                    $combination->isDefault ? 1 : 0,
+                    json_encode($optionsPairs),
                 ]);
 
-                $result = DB::selectOne('SELECT @tagId AS tagId, @success AS success, @message AS message');
+                $res = DB::selectOne('SELECT @combinationId AS combinationId,@success AS success,@message AS message');
 
-                if (!$result->success) {
-                    throw new BusinessValidationException($result->message, 422);
+                Log::info("Combination Result", (array) $res);
+
+                if (!$res->success) {
+                    throw new BusinessValidationException($res->message, 422);
                 }
             }
 
-            // 6) Allowed Payments
-            foreach ($dto->allowedPayment as $paymentMethodId) {
-                DB::insert('INSERT INTO ProductAllowedPayements (ProductID, PayementMethodID) VALUES (?, ?)', [
-                    $productId,
-                    $paymentMethodId,
-                ]);
-            }
+            Log::info("========== CREATE PRODUCT SUCCESS ==========");
 
-            // 7) Return the created product
-            return DB::selectOne('SELECT * FROM Products WHERE ProductID = ?', [$productId]);
+            return DB::selectOne(
+                'SELECT * FROM Products WHERE ProductID=?',
+                [$productId]
+            );
         });
     }
-
     public function getAllProductsAdmin(GetAllProductsAdminDto $dto): PaginatedProductAdminResponseDto
     {
         $rows = DB::select(
@@ -270,5 +371,341 @@ class ProductRepository implements ProductRepositoryInterface
             message: $result->message,
             autoBlocked: (bool) $result->autoBlocked,
         );
+    }
+
+    public function getProductCombinationsForVendor(string $userPublicId, int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCombinationsForVendor(?, ?)', [
+            $userPublicId,
+            $productId,
+        ]);
+
+        return ProductCombinationDto::fromRows($rows);
+    }
+
+
+    public function getCombinationById(string $userPublicId, int $combinationId): ProductCombinationDetailDto
+    {
+        $pdo = DB::connection()->getPdo();
+
+        $stmt = $pdo->prepare('CALL SP_GetProductCombinationByID(?, ?, @success, @message)');
+        $stmt->bindValue(1, $userPublicId, \PDO::PARAM_STR);
+        $stmt->bindValue(2, $combinationId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $combinationRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        $combinationRow = $combinationRows[0] ?? null;
+
+        $optionRows = [];
+        if ($combinationRow) {
+            $stmt->nextRowset();
+            $optionRows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        }
+
+        while ($stmt->nextRowset()) {
+            // drain
+        }
+        $stmt->closeCursor();
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 404;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return ProductCombinationDetailDto::fromRow($combinationRow, $optionRows);
+    }
+
+    public function updateCombination(UpdateProductCombinationDto $dto): ProductCombinationDetailDto
+    {
+        DB::select('CALL SP_UpdateProductCombination(?, ?, ?, ?, ?, ?, ?, ?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->combinationId,
+            $dto->sku,
+            $dto->price,
+            $dto->compareAtPrice,
+            $dto->stock,
+            $dto->imagePath,
+            $dto->isDefault ? 1 : 0,
+            $dto->isActive ? 1 : 0,
+        ]);
+
+        $row = DB::selectOne('SELECT * FROM ProductOptionsCombiniason WHERE CombinationID = ?', [$dto->combinationId]);
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'Accès refusé') ? 403 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return ProductCombinationDetailDto::fromRow($row);
+    }
+
+
+    public function getProductsForVendor(GetVendorProductsDto $dto): PaginatedVendorProductResponseDto
+    {
+        $rows = DB::select(
+            'CALL SP_GetProductsForVendor(?, ?, ?, ?, ?, ?, ?, @totalCount, @success, @message)',
+            [
+                $dto->userPublicId,
+                $dto->status,
+                $dto->search,
+                $dto->isActive === null ? null : (int) $dto->isActive,
+                $dto->isBlocked === null ? null : (int) $dto->isBlocked,
+                $dto->pageNumber,
+                $dto->pageSize,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
+        
+        return new PaginatedVendorProductResponseDto(
+            items: $items,
+            total: (int) $result->totalCount,
+            page: $dto->pageNumber,
+            pageSize: $dto->pageSize,
+        );
+    }
+
+
+
+    public function searchByTerm(SearchProductsByTermDto $dto): PaginatedProductItemResponseDto
+    {
+        $rows = DB::select(
+            'CALL SP_SearchProductsByTerm(?, ?, ?, ?, @totalCount, @success, @message)',
+            [
+                $dto->query,
+                $dto->userPublicId,
+                $dto->pageNumber,
+                $dto->pageSize,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        // Le resultset "vide" (terme introuvable) renvoie une ligne avec ProductID NULL — on la filtre.
+        $items = array_values(array_filter(
+            array_map(fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null, $rows)
+        ));
+
+        return new PaginatedProductItemResponseDto(
+            items: $items,
+            total: (int) $result->totalCount,
+            page: $dto->pageNumber,
+            pageSize: $dto->pageSize,
+        );
+    }
+
+    public function searchProductsFullText(string $query, ?string $userPublicId): ProductSearchResultDto
+    {
+        $rows = DB::select(
+            'CALL SP_SearchProductsFullText(?, ?, @totalCount, @success, @message)',
+            [
+                $query,
+                $userPublicId,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @totalCount AS totalCount, @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        $items = array_values(array_filter(
+            array_map(fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null, $rows)
+        ));
+
+        return new ProductSearchResultDto(
+            items: $items,
+            total: (int) $result->totalCount,
+        );
+    }
+    public function getPublicProductInfo(int $productId): PublicProductInfoDto
+    {
+        $rows = DB::select('CALL SP_GetPublicProductInfo(?, @success, @message)', [
+            $productId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        return PublicProductInfoDto::fromRow($rows[0]);
+    }
+    /**
+     * @return ProductInfoCategoryDto[]
+     */
+    public function getProductCategories(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCategories(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoCategoryDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoAllowedPaymentDto[]
+     */
+    public function getProductAllowedPayments(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductAllowedPayments(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoAllowedPaymentDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoConfigDto[]
+     */
+    public function getProductConfigs(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductConfigs(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoConfigDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoConfigOptionDto[]
+     */
+    public function getProductConfigOptions(int $productId, int $configId): array
+    {
+        $rows = DB::select('CALL SP_GetProductConfigOptions(?, ?)', [
+            $productId,
+            $configId,
+        ]);
+
+        return array_map(fn($row) => ProductInfoConfigOptionDto::fromRow($row), $rows);
+    }
+    /**
+     * @return string[]
+     */
+    public function getProductImages(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductImages(?)', [$productId]);
+
+        return array_map(fn($row) => $row->ResourcesPath, $rows);
+    }
+    /**
+     * @return ProductInfoCombinationDto[]
+     */
+    public function getProductCombinations(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductCombinations(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoCombinationDto::fromRow($row), $rows);
+    }
+    /**
+     * @return ProductInfoCombinationConfigDto|null
+     */
+    public function getCombinationConfigs(int $combinationId): ?ProductInfoCombinationConfigDto
+    {
+        $rows = DB::select('CALL SP_GetCombinationConfigs(?)', [$combinationId]);
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        return ProductInfoCombinationConfigDto::fromRow($rows[0]);
+    }
+    /**
+     * @return ProductInfoTagDto[]
+     */
+    public function getProductTags(int $productId): array
+    {
+        $rows = DB::select('CALL SP_GetProductTags(?)', [$productId]);
+
+        return array_map(fn($row) => ProductInfoTagDto::fromRow($row), $rows);
+    }
+    public function getProductPromotion(int $productId): ?ProductInfoPromotionDto
+    {
+        $rows = DB::select('CALL SP_GetProductPromotion(?)', [$productId]);
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        return ProductInfoPromotionDto::fromRow($rows[0]);
+    }
+    public function hasActivePromotion(int $productId): bool
+    {
+        DB::select('CALL SP_HasActivePromotion(?, @found)', [$productId]);
+
+        $result = DB::selectOne('SELECT @found AS found');
+
+        return (bool) $result->found;
+    }
+    public function getSimilarProducts(int $productId,?string $UserPublicID ,int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByName(?, ?,?, @success, @message)', [
+            $productId,
+            $UserPublicID,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return array_map(fn($row) => ProductItemDto::fromRow($row), $rows);
+    }
+    public function getSimilarProductsByBrandOrModel(int $productId, ?string $UserPublicID, int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByBrandOrModel(?, ?, ?, @success, @message)', [
+            $productId,
+            $UserPublicID,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        // Resultset vide filtré (cas "ni marque ni modèle" : une ligne ProductID NULL).
+        return array_values(array_filter(
+            array_map(
+                fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null,
+                $rows
+            )
+        ));
+    }
+    public function getSimilarProductsByCategory(int $productId, ?string $UserPublicID, int $limit = 10): array
+    {
+        $rows = DB::select('CALL SP_GetSimilarProductsByCategory(?, ?,?, @success, @message)', [
+            $productId,
+            $UserPublicID,
+            $limit,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404 : 422;
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        // Resultset vide filtré (cas "aucune catégorie renseignée" : une ligne ProductID NULL),
+        // même comportement que getSimilarProductsByBrandOrModel().
+        return array_values(array_filter(
+            array_map(
+                fn($row) => $row->ProductID !== null ? ProductItemDto::fromRow($row) : null,
+                $rows
+            )
+        ));
     }
 }
