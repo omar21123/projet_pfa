@@ -13,10 +13,10 @@ import { useState } from "react";
 import { SplashScreen } from "@/pages/SplashScreen_ameliore";
 import { env } from "./config";
 
-const CategoriesPrefetch = () => {
+/*const CategoriesPrefetch = () => {
   useCategories();
   return null;
-};
+};*/
 
 const queryClient = new QueryClient();
 
@@ -39,7 +39,7 @@ const App = () => {
                     <Toaster />
                     <Sonner />
                     <BrowserRouter>
-                      <CategoriesPrefetch />
+                      {/*<CategoriesPrefetch />*/}
                       <AppRouter />
                     </BrowserRouter>
                   </TooltipProvider>

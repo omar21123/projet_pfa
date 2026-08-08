@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   MapPin,
@@ -34,6 +34,7 @@ import { AvisSection } from "@/features/avis";
 import { useProductInfo } from "@/features/ads/hooks/useProductInfo";
 import { FavoriteButton } from "@/features/favorites";
 import { ShoppingCartButton } from "@/features/cart/ShoppingCartButton";
+import SimilarProductsSection from "@/features/ads/components/SimilarProductsSection";
 import { getMediaUrl } from "@/utils/mediaUtils";
 import type { Ad as LocalAd } from "@/types/ad.types";
 import type { ProductCombination, ProductInfoData } from "@/types/product-info";
@@ -84,22 +85,33 @@ const buildSeller = (profile: unknown, fallback: Seller): Seller => {
   if (!profile || typeof profile !== "object") return fallback;
   const p = profile as Record<string, unknown>;
   const fullName = [p["prenom"], p["nom"]].filter(Boolean).join(" ").trim();
+  const profileId = p["id"] ?? p["VendorProfileID"];
+  const profileDate = p["dateInscription"] ?? p["MemberSince"];
+  const hasVerificationFields =
+    "IdentityVerified" in p || "BusinessVerified" in p || "IsApproved" in p;
+  const isVerified =
+    typeof p["isVerified"] === "boolean"
+      ? p["isVerified"]
+      : hasVerificationFields
+        ? Boolean(p["IdentityVerified"] || p["BusinessVerified"])
+        : true;
 
   return {
-    id: (p["id"] as number) ?? undefined,
-    name: fullName || (p["name"] as string) || fallback.name,
-    joined: p["dateInscription"]
-      ? `Membre depuis ${new Date(String(p["dateInscription"])).getFullYear()}`
+    id:
+      profileId !== undefined && Number.isFinite(Number(profileId)) ? Number(profileId) : undefined,
+    name: fullName || (p["name"] as string) || (p["StoreName"] as string) || fallback.name,
+    joined: profileDate
+      ? `Membre depuis ${new Date(String(profileDate)).getFullYear()}`
       : fallback.joined,
     rating: (p["rating"] as number) ?? fallback.rating,
     reviewCount: (p["reviewCount"] as number) ?? fallback.reviewCount,
     email: (p["email"] as string) ?? undefined,
     telephone: (p["telephone"] as string) ?? undefined,
     role: (p["role"] as string) ?? undefined,
-    isVerified: (p["isVerified"] as boolean) ?? true,
+    isVerified,
     estActif: (p["estActif"] as boolean) ?? true,
-    dateInscription: (p["dateInscription"] as string) ?? undefined,
-    avatar: (p["avatar"] as string) ?? undefined,
+    dateInscription: (profileDate as string) ?? undefined,
+    avatar: (p["avatar"] as string) ?? (p["LogoURL"] as string) ?? undefined,
   };
 };
 
@@ -114,20 +126,66 @@ const normalizeLocalAd = (ad: LocalAd, index: number): DetailAd => ({
   seller: SELLERS[0],
 });
 
+const normalizeToken = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+
+const optionMatchesSku = (optionValue: string, sku: string): boolean => {
+  const token = normalizeToken(optionValue);
+  if (!token) return false;
+
+  const skuTokens = sku
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  return skuTokens.some(
+    (skuToken) => skuToken === token || (token.length >= 3 && skuToken === token.slice(0, 3)),
+  );
+};
+
+const getProductImagePaths = (value: ProductInfoData["DefaultProductImage"]): string[] => {
+  if (!value) return [];
+
+  const values = Array.isArray(value) ? value : [value];
+  return values.flatMap((item) => {
+    if (typeof item === "string") return [item];
+    const path = item.url || item.path;
+    return path ? [path] : [];
+  });
+};
+
 const AdDetails = () => {
   const { t } = useLanguage();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
 
   const productIdNum = Number(id);
   const isValidId = !Number.isNaN(productIdNum) && productIdNum > 0;
+  const searchTerm = searchParams.get("searchTerm")?.trim() ?? "";
+  const fromSearch = searchParams.get("fromSearch") === "true" && searchTerm.length > 0;
 
   // Récupération via useProductInfo
-  const { data: productInfoResponse, isLoading: isLoadingInfo, isError } = useProductInfo(
-    { ProductID: productIdNum, FromSearch: false },
-    { enabled: isValidId }
+  const {
+    data: productInfoResponse,
+    isLoading: isLoadingInfo,
+    isError,
+  } = useProductInfo(
+    {
+      ProductID: productIdNum,
+      FromSearch: fromSearch,
+      SearchTerm: fromSearch ? searchTerm : undefined,
+    },
+    { enabled: isValidId },
   );
 
   const [currentImage, setCurrentImage] = useState(0);
@@ -184,27 +242,64 @@ const AdDetails = () => {
       return null;
     }
 
-    return (
-      pData.ProductOptionsCombiniason.find((combo) => {
-        if (!combo.Configs) return false;
-        const configsArray = Array.isArray(combo.Configs) ? combo.Configs : [combo.Configs];
-        return configsArray.every(
-          (cfg) => selectedOptions[cfg.ConfigID] === cfg.OptionID
+    const details = pData.ProductDetails ?? [];
+    const scoredCombinations = pData.ProductOptionsCombiniason.flatMap((combo) => {
+      if (!combo.Configs) return [];
+
+      const configsArray = Array.isArray(combo.Configs) ? combo.Configs : [combo.Configs];
+      const explicitConfigIds = new Set(configsArray.map((config) => config.ConfigID));
+      const explicitMatches = configsArray.every(
+        (config) => selectedOptions[config.ConfigID] === config.OptionID,
+      );
+
+      if (!explicitMatches) return [];
+
+      let score = configsArray.length * 100;
+      details.forEach((detail) => {
+        const selectedOptionId = selectedOptions[detail.ConfigID];
+        if (selectedOptionId === undefined || explicitConfigIds.has(detail.ConfigID)) return;
+
+        const selectedOption = detail.Options?.find(
+          (option) => option.OptionID === selectedOptionId,
         );
-      }) || null
+        if (
+          selectedOption &&
+          (optionMatchesSku(selectedOption.OptionValue, combo.SKU) ||
+            optionMatchesSku(selectedOption.OptionLabel, combo.SKU))
+        ) {
+          score += 10;
+        }
+      });
+
+      return [
+        { combo, score, isComplete: explicitConfigIds.size >= Object.keys(selectedOptions).length },
+      ];
+    });
+
+    const completeMatches = scoredCombinations.filter((item) => item.isComplete);
+    const candidates = completeMatches.length > 0 ? completeMatches : scoredCombinations;
+    return (
+      candidates.sort(
+        (left, right) =>
+          right.score - left.score || Number(right.combo.IsDefault) - Number(left.combo.IsDefault),
+      )[0]?.combo ?? null
     );
-  }, [pData?.ProductOptionsCombiniason, selectedOptions]);
+  }, [pData?.ProductDetails, pData?.ProductOptionsCombiniason, selectedOptions]);
 
   // Valeurs dynamiques pour le prix et le stock
   const activePrice = matchedCombination
     ? matchedCombination.CombinationPrice
-    : pData?.BasePrice ?? 0;
+    : (pData?.BasePrice ?? 0);
 
   const comparePrice = matchedCombination?.CompareAtPrice ?? null;
 
   const activeStock = matchedCombination
     ? matchedCombination.CombinationStock
-    : pData?.Stock ?? 0;
+    : (pData?.Stock ?? 0);
+
+  const activeCombinationImage = matchedCombination?.CombinationImage
+    ? getMediaUrl(matchedCombination.CombinationImage)
+    : null;
 
   // Normalisation des données pour l'affichage
   const selectedAd = useMemo<DetailAd | null>(() => {
@@ -213,12 +308,7 @@ const AdDetails = () => {
     if (pData) {
       const images: string[] = [];
 
-      if (pData.DefaultProductImage) {
-        const img = typeof pData.DefaultProductImage === "string"
-          ? pData.DefaultProductImage
-          : pData.DefaultProductImage.url || pData.DefaultProductImage.path;
-        if (img) images.push(img);
-      }
+      images.push(...getProductImagePaths(pData.DefaultProductImage));
 
       if (pData.ProductOptionsCombiniason) {
         pData.ProductOptionsCombiniason.forEach((c) => {
@@ -236,7 +326,7 @@ const AdDetails = () => {
         images: media,
         city: pData.ProductCity || CITIES[0],
         date: formatDate(pData.PublishedAt),
-        seller: buildSeller(pData.ProductVendor, SELLERS[0]),
+        seller: buildSeller(pData.ProductVendor ?? pData.VendorProfile, SELLERS[0]),
       };
     }
 
@@ -249,8 +339,16 @@ const AdDetails = () => {
   }, [id, pData, activePrice]);
 
   useEffect(() => {
-    setCurrentImage(0);
-  }, [selectedAd?.id]);
+    if (!selectedAd) return;
+
+    if (!activeCombinationImage) {
+      setCurrentImage(0);
+      return;
+    }
+
+    const imageIndex = selectedAd.images.findIndex((image) => image === activeCombinationImage);
+    setCurrentImage(imageIndex >= 0 ? imageIndex : 0);
+  }, [activeCombinationImage, selectedAd]);
 
   const handleOptionSelect = (configID: number, optionID: number) => {
     setSelectedOptions((prev) => ({
@@ -390,7 +488,6 @@ const AdDetails = () => {
                 </div>
               </div>
 
-            
               <AvisSection annonceId={Number(selectedAd.id)} />
             </div>
 
@@ -413,6 +510,11 @@ const AdDetails = () => {
                         {cat.CategoryName}
                       </span>
                     ))}
+                    {(pData?.HasPromotion || pData?.ProductPromotion) && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        <Tag className="h-3 w-3" /> Promotion active
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -434,7 +536,9 @@ const AdDetails = () => {
                       <Package className="w-4 h-4 text-primary" />
                       Stock:{" "}
                       {activeStock > 0 ? (
-                        <span className="text-emerald-600 font-bold">{activeStock} disponibles</span>
+                        <span className="text-emerald-600 font-bold">
+                          {activeStock} disponibles
+                        </span>
                       ) : (
                         <span className="text-red-500 font-bold">Rupture de stock</span>
                       )}
@@ -581,6 +685,7 @@ const AdDetails = () => {
             </div>
           </div>
         </div>
+        <SimilarProductsSection productId={productIdNum} />
       </main>
 
       {/* Modal du Profil Vendeur */}

@@ -55,10 +55,21 @@ export interface ProductVendorInfo {
   avatar?: string;
 }
 
+export interface ProductVendorProfile {
+  VendorProfileID: string | number;
+  StoreName: string;
+  BannerURL: string | null;
+  LogoURL: string | null;
+  MemberSince: string;
+  IdentityVerified: boolean;
+  BusinessVerified: boolean;
+  IsApproved: boolean;
+}
+
 export interface ProductInfoData {
   ProductID: string | number;
   ProductName: string;
-  ProductDescription: string;
+  ProductDescription: string | null;
   BasePrice: number;
   BrandName?: string | null;
   BrandID?: string | number | null;
@@ -70,8 +81,17 @@ export interface ProductInfoData {
   ProductCategories?: ProductCategoryInfo[];
   ProductAllowedPayements?: ProductAllowedPayment[];
   ProductDetails?: ProductConfigDetail[];
-  DefaultProductImage?: string | { url?: string; path?: string } | null;
+  DefaultProductImage?:
+    | string
+    | string[]
+    | { url?: string; path?: string }
+    | Array<{ url?: string; path?: string }>
+    | null;
   ProductOptionsCombiniason?: ProductCombination[];
+  ProductTags?: string[];
+  ProductPromotion?: Record<string, unknown> | null;
+  HasPromotion?: boolean;
+  VendorProfile?: ProductVendorProfile | null;
   ProductCity?: string;
   PublishedAt?: string;
   ProductVendor?: ProductVendorInfo;

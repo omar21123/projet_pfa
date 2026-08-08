@@ -7,6 +7,11 @@ export { usersApi } from "@/api/users.api";
 //export { adsApi } from "@/api/ads.api"; //  Décommenté (si le fichier existe)
 export { annonceApi, buildAnnonceFormData } from "@/api/annonce.api";
 export { fetchProductInfo, productInfoApi } from "@/api/productInfoApi";
+export {
+  productRecommendationApi,
+  productRecommendationsApi,
+} from "@/api/productRecommendationsApi";
+export { getSimilarProducts, productSimilarApi } from "@/api/productSimilarApi";
 
 // APIs Interactions (Messages & Favoris & Panier)
 export { conversationApi } from "@/api/conversation.api";
@@ -25,9 +30,4 @@ export {
   removeWishlistItem,
   wishlistApi,
 } from "@/api/wishlist.api";
-export {
-  addCartItem,
-  cartApi,
-  getCart,
-  removeCartItem,
-} from "@/features/cart/cart.api";
+export { addCartItem, cartApi, getCart, removeCartItem } from "@/features/cart/cart.api";

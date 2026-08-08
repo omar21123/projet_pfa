@@ -61,7 +61,7 @@ const AdsGrid = () => {
       subCategoryId: subCategoryId !== null ? Number(subCategoryId) : 0,
       ville: villeToSend ?? undefined,
     },
-    { enabled: !searchTerm }
+    { enabled: !searchTerm },
   );
 
   const {
@@ -109,9 +109,9 @@ const AdsGrid = () => {
     () =>
       (searchResults?.products ?? []).filter(
         (product) =>
-          product.Price >= filters.priceRange[0] && product.Price <= filters.priceRange[1]
+          product.Price >= filters.priceRange[0] && product.Price <= filters.priceRange[1],
       ),
-    [filters.priceRange, searchResults?.products]
+    [filters.priceRange, searchResults?.products],
   );
 
   const noResultsMessage = useMemo(() => {
@@ -129,9 +129,10 @@ const AdsGrid = () => {
     const rawList = isSearchMode
       ? filteredSearchProducts.map((product) => {
           const rawImg = product.ProductImage;
-          const image = rawImg && !rawImg.includes("via.placeholder.com")
-            ? getMediaUrl(rawImg)
-            : "/placeholder-ad.png";
+          const image =
+            rawImg && !rawImg.includes("via.placeholder.com")
+              ? getMediaUrl(rawImg)
+              : "/placeholder-ad.png";
 
           return {
             id: String(product.ProductID),
@@ -142,13 +143,15 @@ const AdsGrid = () => {
             date: "",
             favoritesCount: product.TotalLikes,
             isFollowed: product.IsLiked,
+            searchTerm,
           };
         })
       : filteredAds.map((ad) => {
           const rawImg = ad.photosUrls?.[0];
-          const image = rawImg && !rawImg.includes("via.placeholder.com")
-            ? getMediaUrl(rawImg)
-            : "/placeholder-ad.png";
+          const image =
+            rawImg && !rawImg.includes("via.placeholder.com")
+              ? getMediaUrl(rawImg)
+              : "/placeholder-ad.png";
 
           return {
             id: String(ad.id),
@@ -170,7 +173,7 @@ const AdsGrid = () => {
       seen.add(item.id);
       return true;
     });
-  }, [filteredAds, filteredSearchProducts, isSearchMode]);
+  }, [filteredAds, filteredSearchProducts, isSearchMode, searchTerm]);
 
   const activeChips = useMemo(() => {
     const chips: { label: string; onRemove: () => void }[] = [];
@@ -185,13 +188,13 @@ const AdsGrid = () => {
         label: cat,
         onRemove: () =>
           setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== cat) })),
-      })
+      }),
     );
     filters.cities.forEach((city) =>
       chips.push({
         label: city,
         onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((c) => c !== city) })),
-      })
+      }),
     );
     return chips;
   }, [filters]);
@@ -206,7 +209,9 @@ const AdsGrid = () => {
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-xl font-heading font-bold">{t("recent_ads")}</h2>
+          <h2 className="text-xl font-heading font-bold">
+            {isSearchMode ? "Résultats de recherche" : t("recent_ads")}
+          </h2>
           <div className="flex items-center gap-2">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button variant="outline" size="sm" onClick={openSidebar} className="gap-2">
@@ -312,10 +317,13 @@ const AdsGrid = () => {
                         <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-muted/40 flex items-center justify-center">
                           <Search className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-2xl font-semibold mb-2">Aucune annonce trouvée</h3>
+                        <h3 className="text-2xl font-semibold mb-2">
+                          {isSearchMode ? "Aucun produit trouvé" : "Aucune annonce trouvée"}
+                        </h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Aucune annonce ne correspond à cette catégorie. Veuillez changer de
-                          catégorie ou essayer d'autres produits.
+                          {isSearchMode
+                            ? `Aucun produit ne correspond à « ${searchTerm} ».`
+                            : "Aucune annonce ne correspond à cette catégorie. Veuillez changer de catégorie ou essayer d'autres produits."}
                         </p>
                         <div className="flex items-center justify-center gap-3">
                           <Button variant="outline" onClick={clearAllFilters}>
@@ -337,7 +345,9 @@ const AdsGrid = () => {
                         Impossible de charger les annonces
                       </p>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Vérifie l’API `/api/Annonce/getall` et la configuration `VITE_API_URL`.
+                        {isSearchMode
+                          ? "La recherche n'a pas pu être chargée. Vérifie l'API de recherche et la configuration VITE_API_URL."
+                          : "Vérifie l’API `/api/Annonce/getall` et la configuration `VITE_API_URL`."}
                       </p>
                     </motion.div>
                   );

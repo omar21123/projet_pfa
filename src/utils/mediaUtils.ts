@@ -1,7 +1,7 @@
 // src/utils/mediaUtils.ts
+import { env } from "@/config/env";
 
-const BACKEND_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost";
-
+const BACKEND_BASE_URL = env.apiUrl;
 export const getMediaUrl = (path?: string | null): string => {
   if (!path || typeof path !== "string" || path.trim() === "") {
     return "https://via.placeholder.com/800x600?text=Image+indisponible";

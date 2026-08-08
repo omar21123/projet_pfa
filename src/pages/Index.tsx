@@ -2,7 +2,7 @@ import Navbar from "@/components/Navbar";
 import HomeHero from "@/components/HomeHero";
 import AdsGrid from "@/components/AdsGrid";
 import Footer from "@/components/Footer";
-import FeaturedAds from "@/components/FeaturedAds";
+import ProductRecommendations from "@/features/ads/components/ProductRecommendations";
 import AnimatedStats from "@/components/AnimatedStats";
 import Testimonials from "@/components/Testimonials";
 import HowItWorks from "@/components/HowItWorks";
@@ -10,6 +10,7 @@ import FeaturedSellers from "@/components/marketing/FeaturedSellers";
 import FAQ from "@/components/FAQ";
 import ChatBot from "@/components/ChatBot";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 30 },
@@ -39,6 +40,9 @@ const scaleUp = {
 };
 
 const Index = () => {
+  const [searchParams] = useSearchParams();
+  const isSearchMode = Boolean(searchParams.get("q")?.trim());
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -49,27 +53,17 @@ const Index = () => {
     >
       <Navbar />
       <main className="flex-1">
-         <HomeHero />
+        <HomeHero />
         <FeaturedSellers />
 
-        {/* Featured Ads Section */}
+        {/* Recherche : uniquement les produits renvoyés par l'API search. */}
         <motion.div
           variants={slideInLeft}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
         >
-          <FeaturedAds />
-        </motion.div>
-
-        {/* Recent Ads */}
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-        >
-          <AdsGrid />
+          {isSearchMode ? <AdsGrid /> : <ProductRecommendations />}
         </motion.div>
 
         {/* Animated Statistics */}
