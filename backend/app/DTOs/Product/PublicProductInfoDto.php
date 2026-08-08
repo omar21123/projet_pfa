@@ -7,6 +7,7 @@ class PublicProductInfoDto
     public function __construct(
         public readonly int $productId,
         public readonly string $productName,
+        public readonly ?string $ProductDefaultImage,
         public readonly ?string $productDesc,
         public readonly float $basePrice,
         public readonly string $brandName,
@@ -23,6 +24,7 @@ class PublicProductInfoDto
         return new self(
             productId: (int) $row->ProductID,
             productName: $row->ProductName,
+            ProductDefaultImage: $row->ProductDefaultImage,
             productDesc: $row->ProductDesc,
             basePrice: (float) $row->BasePrice,
             brandName: $row->BrandName,
@@ -40,6 +42,7 @@ class PublicProductInfoDto
         return [
             'ProductID'      => $this->productId,
             'ProductName'    => $this->productName,
+            'ProductDefaultImage' => $this->ProductDefaultImage,
             'ProductDesc'    => $this->productDesc,
             'BasePrice'      => $this->basePrice,
             'BrandName'      => $this->brandName,

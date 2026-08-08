@@ -839,30 +839,42 @@ DELIMITER ;
 
 
 DELIMITER $$
-CREATE PROCEDURE SP_GetSimilarProductsByName (
+
+CREATE PROCEDURE SP_GetSimilarProductsByName(
     IN v_ProductID INT,
-    IN v_Limit      INT,
-    OUT v_Success   BOOLEAN,
-    OUT v_Message   VARCHAR(255)
+    IN v_Limit INT,
+    OUT v_Success BOOLEAN,
+    OUT v_Message VARCHAR(255)
 )
 BEGIN
-    DECLARE v_Name       VARCHAR(255);
-    DECLARE v_FirstWord   VARCHAR(255);
+    DECLARE v_Name VARCHAR(255);
+    DECLARE v_FirstWord VARCHAR(255);
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         GET DIAGNOSTICS CONDITION 1
             @p_sqlstate = RETURNED_SQLSTATE,
-            @p_errno    = MYSQL_ERRNO,
-            @p_message  = MESSAGE_TEXT;
-        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+            @p_errno = MYSQL_ERRNO,
+            @p_message = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (
+            ProcedureName,
+            ErrorSQLState,
+            ErrorNumber,
+            ErrorMessage,
+            ContextData
+        )
         VALUES (
             'SP_GetSimilarProductsByName',
             @p_sqlstate,
             @p_errno,
             @p_message,
-            JSON_OBJECT('ProductID', v_ProductID, 'Limit', v_Limit)
+            JSON_OBJECT(
+                'ProductID', v_ProductID,
+                'Limit', v_Limit
+            )
         );
+
         SET v_Success = FALSE;
         SET v_Message = 'Une erreur est survenue lors de la récupération des produits similaires.';
     END;
@@ -876,17 +888,20 @@ BEGIN
         SET v_Limit = 50;
     END IF;
 
-    -- Récupère le nom du produit de référence.
-    SELECT Name INTO v_Name
+    SELECT Name
+    INTO v_Name
     FROM Products
     WHERE ProductID = v_ProductID;
 
     IF v_Name IS NULL THEN
+
         SET v_Message = 'Produit introuvable.';
+
     ELSE
-        -- Premier mot significatif du nom (ex: "Clavier Samsung" -> "Clavier").
-        -- Sert de signal de similarité simple : type de produit avant la marque/modèle.
-        SET v_FirstWord = TRIM(SUBSTRING_INDEX(v_Name, ' ', 1));
+
+        SET v_FirstWord = TRIM(
+            SUBSTRING_INDEX(v_Name, ' ', 1)
+        );
 
         SET v_Success = TRUE;
         SET v_Message = 'OK';
@@ -895,28 +910,67 @@ BEGIN
             p.ProductID,
             p.Name AS ProductName,
             p.Description AS ProductDesc,
+            pr.ResourcesPath AS ProductDefaultImage,
             p.BasePrice,
             IFNULL(b.Name, 'No Brand') AS BrandName,
             IFNULL(b.BrandID, 0) AS BrandID,
             IFNULL(m.Name, 'No Model') AS ModelName,
             p.Stock,
-            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) AS TotalOrders,
-            (SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID) AS TotalWishlists,
-            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) AS TotalLikes
+
+            (
+                SELECT COUNT(*)
+                FROM OrderItems o
+                WHERE o.ProductID = p.ProductID
+            ) AS TotalOrders,
+
+            (
+                SELECT COUNT(*)
+                FROM WishListItems wli
+                WHERE wli.ProductID = p.ProductID
+            ) AS TotalWishlists,
+
+            (
+                SELECT COUNT(*)
+                FROM ProductLikes pl
+                WHERE pl.ProductID = p.ProductID
+            ) AS TotalLikes
+
         FROM Products p
-        LEFT JOIN Brands b ON b.BrandID = p.BrandID
-        LEFT JOIN Models m ON m.ModelID = p.ModelID
+
+        LEFT JOIN Brands b
+            ON b.BrandID = p.BrandID
+
+        LEFT JOIN Models m
+            ON m.ModelID = p.ModelID
+
+        LEFT JOIN ProductResources pr
+            ON pr.ProductID = p.ProductID
+            AND pr.ResourceRoleID = 2
+
         WHERE p.Name LIKE CONCAT(v_FirstWord, '%')
           AND p.ProductID != v_ProductID
+
         ORDER BY
-            -- Les produits les plus vendus/populaires remontent en premier parmi les similaires.
-            (SELECT COUNT(*) FROM OrderItems o WHERE o.ProductID = p.ProductID) DESC,
-            (SELECT COUNT(*) FROM ProductLikes pl WHERE pl.ProductID = p.ProductID) DESC
+            (
+                SELECT COUNT(*)
+                FROM OrderItems o
+                WHERE o.ProductID = p.ProductID
+            ) DESC,
+
+            (
+                SELECT COUNT(*)
+                FROM ProductLikes pl
+                WHERE pl.ProductID = p.ProductID
+            ) DESC
+
         LIMIT v_Limit;
+
     END IF;
+
 END$$
 
 DELIMITER ;
+
 
 
 DELIMITER $$
@@ -980,6 +1034,8 @@ BEGIN
             p.ProductID,
             p.Name AS ProductName,
             p.Description AS ProductDesc,
+            pr.ResourcesPath AS ProductDefaultImage,
+
             p.BasePrice,
             IFNULL(b.Name, 'No Brand') AS BrandName,
             IFNULL(b.BrandID, 0) AS BrandID,
@@ -991,6 +1047,9 @@ BEGIN
         FROM Products p
         LEFT JOIN Brands b ON b.BrandID = p.BrandID
         LEFT JOIN Models m ON m.ModelID = p.ModelID
+           LEFT JOIN ProductResources pr
+            ON pr.ProductID = p.ProductID
+            AND pr.ResourceRoleID = 2
         WHERE p.ProductID != v_ProductID
           AND (
                 (v_BrandID IS NOT NULL AND p.BrandID = v_BrandID)
@@ -1010,7 +1069,6 @@ DELIMITER ;
 
 
 DELIMITER $$
-
 CREATE PROCEDURE SP_GetSimilarProductsByCategory (
     IN v_ProductID INT,
     IN v_Limit      INT,
@@ -1066,6 +1124,7 @@ BEGIN
                 p.ProductID,
                 p.Name AS ProductName,
                 p.Description AS ProductDesc,
+                 pr.ResourcesPath AS ProductDefaultImage,
                 p.BasePrice,
                 IFNULL(b.Name, 'No Brand') AS BrandName,
                 IFNULL(b.BrandID, 0) AS BrandID,
@@ -1079,6 +1138,9 @@ BEGIN
             INNER JOIN ProductCategories pc ON pc.ProductID = p.ProductID
             LEFT JOIN Brands b ON b.BrandID = p.BrandID
             LEFT JOIN Models m ON m.ModelID = p.ModelID
+             LEFT JOIN ProductResources pr
+            ON pr.ProductID = p.ProductID
+            AND pr.ResourceRoleID = 2
             WHERE pc.CategoryID IN (
                     SELECT CategoryID FROM ProductCategories WHERE ProductID = v_ProductID
                   )
