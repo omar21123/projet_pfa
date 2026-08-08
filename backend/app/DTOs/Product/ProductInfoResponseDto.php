@@ -2,35 +2,38 @@
 // App\DTOs\Product\ProductInfoResponseDto
 namespace App\DTOs\Product;
 
+use App\DTOs\Vendor\VendorProfileResponseDto;
+
 class ProductInfoResponseDto
 {
     /**
-     * @param ProductInfoCategoryDto[] $productCategories
+     * @param ProductInfoCategoryDto[]       $productCategories
      * @param ProductInfoAllowedPaymentDto[] $productAllowedPayments
-     * @param ProductInfoConfigDto[] $productDetails
-     * @param ProductInfoCombinationDto[] $productOptionsCombinaison
-     * @param ProductInfoTagDto[] $productTags
+     * @param ProductInfoConfigDto[]         $productDetails
+     * @param ProductInfoCombinationDto[]    $productOptionsCombinaison
+     * @param ProductInfoTagDto[]            $productTags
      */
     public function __construct(
-        public readonly string $productID,
-        public readonly string $productName,
-        public readonly ?string $productDescription,
-        public readonly float $basePrice,
-        public readonly ?string $brandName,
-        public readonly ?string $brandID,
-        public readonly ?string $modelName,
-        public readonly int $stock,
-        public readonly int $totalSales,
-        public readonly int $totalLiked,
-        public readonly int $totalWishlists,
-        public readonly array $productCategories,
-        public readonly array $productAllowedPayments,
-        public readonly array $productDetails,
-        public readonly ?array $defaultProductImage,
-        public readonly array $productOptionsCombinaison,
-        public readonly array $productTags,
-        public readonly bool $HasPromotion,
-        public readonly ?ProductInfoPromotionDto $productPromotion = null,
+        public readonly string                   $productID,
+        public readonly string                   $productName,
+        public readonly ?string                  $productDescription,
+        public readonly float                    $basePrice,
+        public readonly ?string                  $brandName,
+        public readonly ?string                  $brandID,
+        public readonly ?string                  $modelName,
+        public readonly int                      $stock,
+        public readonly int                      $totalSales,
+        public readonly int                      $totalLiked,
+        public readonly int                      $totalWishlists,
+        public readonly array                    $productCategories,
+        public readonly array                    $productAllowedPayments,
+        public readonly array                    $productDetails,
+        public readonly ?array                   $defaultProductImage,
+        public readonly array                    $productOptionsCombinaison,
+        public readonly array                    $productTags,
+        public readonly bool                     $HasPromotion,
+        public readonly ?VendorProfileResponseDto $vendorProfile = null,
+        public readonly ?ProductInfoPromotionDto  $productPromotion = null,
     ) {}
 
     public function toArray(): array
@@ -53,8 +56,9 @@ class ProductInfoResponseDto
             'DefaultProductImage'        => $this->defaultProductImage,
             'ProductOptionsCombiniason'  => array_map(fn($c) => $c->toArray(), $this->productOptionsCombinaison),
             'ProductTags'                => array_map(fn($t) => $t->toArray(), $this->productTags),
-            'ProductPromotion'           => $this->productPromotion ? $this->productPromotion->toArray() : null,
             'HasPromotion'               => $this->HasPromotion,
+            'ProductPromotion'           => $this->productPromotion?->toArray(),
+            'VendorProfile'              => $this->vendorProfile?->toArray(),
         ];
     }
 }

@@ -29,6 +29,7 @@ use App\DTOs\Product\vendor\PaginatedVendorProductResponseDto;
 use App\Repositories\Interface\SearchRepositoryInterface;
 use App\DTOs\Search\RecordSearchClickDto;
 use App\Repositories\Interface\ProductStatsRepositoryInterface;
+use App\Repositories\Interface\VendorRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 
 class ProductService implements ProductServiceInterface
@@ -37,7 +38,8 @@ class ProductService implements ProductServiceInterface
         protected ProductRepositoryInterface $productRepository,
         protected SearchRepositoryInterface $searchRepository,
         protected ProductStatsRepositoryInterface $productStatsRepository,
-        protected IpWhoIsLocationService $ipWhoIsLocationService
+        protected IpWhoIsLocationService $ipWhoIsLocationService,
+        protected VendorRepositoryInterface $vendor_repository
     ) {}
 
     public function createProduct(CreateProductDto $dto): object
@@ -121,6 +123,7 @@ class ProductService implements ProductServiceInterface
                 404
             );
         }
+        $productvendor = $this->vendor_repository->findByProductId($dto->productId);
         $categories = $this->productRepository->getProductCategories($dto->productId);
         $allowedPayments = $this->productRepository->getProductAllowedPayments($dto->productId);
         $productDetails = [];
@@ -151,8 +154,10 @@ class ProductService implements ProductServiceInterface
             'CountryCode' => $Region?->countryCode ?? null,
             'Region'      => $Region?->region ?? null,
         ]);
+
         Log::info('Incrementing product view count for Ip: ' . $dto->ipAddress . ', Product ID: ' . $dto->productId . ', Country: ' . ($Region?->countryCode ?? 'N/A') . ', Region: ' . ($Region?->region ?? 'N/A'));
         $this->productStatsRepository->incrementViewCount($productStatDto);
+
         return new ProductInfoResponseDto(
             productName: $productbasicInfos->productName,
             productDescription: $productbasicInfos->productDesc,
@@ -173,6 +178,7 @@ class ProductService implements ProductServiceInterface
             productTags: $productTags,
             HasPromotion: $hasPromotion,
             productPromotion: $productPromotion,
+            vendorProfile: $productvendor
         );
     }
     public function getSimilarProducts(int $productId, int $limit = 10): SimilarProductsGroupedDto
