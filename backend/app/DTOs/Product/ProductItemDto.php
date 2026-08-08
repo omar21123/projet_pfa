@@ -18,6 +18,8 @@ class ProductItemDto
         public readonly int $totalOrders,
         public readonly bool $isLiked,
         public readonly bool $isWishedList,
+        public readonly bool $hasPromotion,
+        public readonly ?PromotionDetailsDto $promotionDetails,
     ) {}
 
     public static function fromRow(object $row): self
@@ -36,24 +38,28 @@ class ProductItemDto
             totalOrders: (int) $row->TotalOrders,
             isLiked: (bool) $row->IsLiked,
             isWishedList: (bool) $row->IsWishedList,
+            hasPromotion: (bool) $row->HasPromo,
+            promotionDetails: PromotionDetailsDto::fromRow($row),
         );
     }
 
     public function toArray(): array
     {
         return [
-            'ProductID'      => $this->productId,
-            'ProductName'    => $this->productName,
-            'ProductImage'   => $this->productDefaultImage,
-            'Description'    => $this->description,
-            'Price'          => $this->defaultPrice,
-            'Brand'          => ['name' => $this->brandName, 'logo' => $this->brandLogo],
-            'ModelName'      => $this->modelName,
-            'TotalWishlist'  => $this->totalWishlist,
-            'TotalLikes'     => $this->totalLikes,
-            'TotalOrders'    => $this->totalOrders,
-            'IsLiked'        => $this->isLiked,
-            'IsWishedList'   => $this->isWishedList,
+            'ProductID'         => $this->productId,
+            'ProductName'       => $this->productName,
+            'ProductImage'      => $this->productDefaultImage,
+            'Description'       => $this->description,
+            'Price'             => $this->defaultPrice,
+            'Brand'             => ['name' => $this->brandName, 'logo' => $this->brandLogo],
+            'ModelName'         => $this->modelName,
+            'TotalWishlist'     => $this->totalWishlist,
+            'TotalLikes'        => $this->totalLikes,
+            'TotalOrders'       => $this->totalOrders,
+            'IsLiked'           => $this->isLiked,
+            'IsWishedList'      => $this->isWishedList,
+            'HasPromotion'      => $this->hasPromotion,
+            'PromotionDetails'  => $this->promotionDetails?->toArray(),
         ];
     }
 }

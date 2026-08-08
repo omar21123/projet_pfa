@@ -58,7 +58,7 @@ class SearchService implements SearchServiceInterface
                 'displayText' => $query,
                 'sourceType'  => 1,
                 'sourceId'    => null,
-                'resultCount' => $firstTotal, // nombre réel de résultats, pas la taille de page
+                'resultCount' => $firstTotal,
             ])
         );
         $termID = $upsetResult->searchTermId;
@@ -69,7 +69,6 @@ class SearchService implements SearchServiceInterface
                 'ipAddress'    => $IpAddress,
             ])
         );
-
 
         // Cas 1 : la page demandée est entièrement couverte par la source primaire.
         if ($needed <= 0) {
@@ -107,10 +106,20 @@ class SearchService implements SearchServiceInterface
             array_push($totalFoundItems, ...$result->items);
         }
 
+        // Plusieurs combos peuvent retrouver le même produit — on ne garde
+        // que la première occurrence (celle du combo au score le plus élevé,
+        // puisque $newResultSearch est déjà trié par score décroissant).
+        $totalFoundItems = $this->dedupeByProductId($totalFoundItems);
+
         $secondTotal = count($totalFoundItems);
         $secondItems = array_slice($totalFoundItems, $secondOffset, $needed);
 
-        $items = array_merge($firstItems, $secondItems);
+        // Un produit déjà renvoyé par la recherche primaire peut aussi être
+        // retrouvé par le full-text — on déduplique le merge final, en gardant
+        // la version de $firstItems en priorité (recherche primaire = source
+        // de vérité pour ce produit, notamment IsLiked/IsWishedList à jour).
+        $items = $this->dedupeByProductId(array_merge($firstItems, $secondItems));
+
         $total = $firstTotal + $secondTotal;
 
         $this->searchRepository->updateSearchTermResultCount(
@@ -135,5 +144,26 @@ class SearchService implements SearchServiceInterface
             'total'    => $total,
             'hasMore'  => ($globalOffset + count($items)) < $total,
         ];
+    }
+
+    /**
+     * Déduplique une liste de ProductItemDto par productId, en gardant
+     * la première occurrence rencontrée. array_values() réindexe le
+     * tableau après filtrage pour éviter des clés numériques trouées.
+     *
+     * @param \App\DTOs\Product\ProductItemDto[] $items
+     * @return \App\DTOs\Product\ProductItemDto[]
+     */
+    private function dedupeByProductId(array $items): array
+    {
+        $seen = [];
+
+        return array_values(array_filter($items, function ($item) use (&$seen) {
+            if (isset($seen[$item->productId])) {
+                return false;
+            }
+            $seen[$item->productId] = true;
+            return true;
+        }));
     }
 }
