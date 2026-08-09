@@ -20,6 +20,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProductRecommendationController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\StoreRatingController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\WishlistsController;
 
@@ -106,7 +107,7 @@ Route::prefix('units')->group(function () {
     });
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -195,8 +196,6 @@ Route::prefix('promotions')->group(function () {
         Route::post('/product', [PromotionController::class, 'createForProduct']);
         Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
         Route::get('/{promotion}', [PromotionController::class, 'show']);
-
-
     });
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/category', [PromotionController::class, 'createForCategory']);
@@ -212,23 +211,21 @@ Route::prefix('promotions')->group(function () {
 
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
-    
+
     Route::middleware(['jwt.custom'])->group(function () {
         Route::get('/history', [SearchController::class, 'history']);
-           
-
     });
-     Route::get('/', [SearchController::class, 'search']);
+    Route::get('/', [SearchController::class, 'search']);
 });
 
 Route::prefix('wishlists')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
-    Route::get('/', [WishlistsController::class, 'index']);
-    Route::post('/', [WishlistsController::class, 'store']);
-    Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
-    Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
-    Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
-});
+        Route::get('/', [WishlistsController::class, 'index']);
+        Route::post('/', [WishlistsController::class, 'store']);
+        Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
+        Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
+        Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
+    });
 });
 Route::prefix('favorites')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
@@ -247,3 +244,11 @@ Route::prefix('cart')->group(function () {
 });
 
 Route::get('/vendors/{vendorProfileID}/public-profile', [VendorController::class, 'publicProfile']);
+Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
+    Route::get('/',    [StoreRatingController::class, 'index']);   // public
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/',   [StoreRatingController::class, 'store']);   // auth
+        Route::put('/',    [StoreRatingController::class, 'update']);  // auth
+        Route::delete('/', [StoreRatingController::class, 'destroy']); // auth
+    });
+});

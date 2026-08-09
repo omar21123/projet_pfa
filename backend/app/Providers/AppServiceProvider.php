@@ -93,6 +93,7 @@ use App\Services\Interface\ProductStatsServiceInterface;
 use App\Services\Interface\PromotionServiceInterface;
 use App\Services\ProductStatsService;
 use App\Services\PromotionService;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -314,13 +315,22 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\IpLocationServiceInterface::class,
             \App\Services\IpWhoIsLocationService::class
         );
-         $this->app->bind(
+        $this->app->bind(
             \App\Services\Interface\ProductRecommendationServiceInterface::class,
             \App\Services\ProductRecommendationService::class
         );
         $this->app->bind(
             \App\Repositories\Interface\ProductRecommendationRepositoryInterface::class,
             \App\Repositories\sql\ProductRecommendationRepository::class
+        );
+        $this->app->bind(
+            \App\Repositories\Interface\StoreRatingRepositoryInterface::class,
+            \App\Repositories\sql\StoreRatingRepository::class,
+        );
+
+        $this->app->bind(
+            \App\Services\Interface\StoreRatingServiceInterface::class,
+            \App\Services\StoreRatingService::class,
         );
     }
 

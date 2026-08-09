@@ -8511,6 +8511,366 @@
                 }
             }
         },
+        "/api/vendors/{vendorProfileID}/ratings": {
+            "get": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Lister les avis d'une boutique",
+                "description": "Retourne la liste paginée des avis d'une boutique avec nom et avatar du commentateur. Note moyenne et total dans les métadonnées.",
+                "operationId": "74f8a34ca56348ea2599f700da91a003",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avis récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "RatingID": {
+                                                        "type": "integer",
+                                                        "example": 12
+                                                    },
+                                                    "Rating": {
+                                                        "type": "integer",
+                                                        "example": 5
+                                                    },
+                                                    "Comment": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "CommenterName": {
+                                                        "type": "string",
+                                                        "example": "Jean Dupont"
+                                                    },
+                                                    "CommenterAvatar": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 48
+                                                },
+                                                "average_rating": {
+                                                    "type": "number",
+                                                    "example": 4.3
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Mettre à jour son avis",
+                "description": "Met à jour la note et le commentaire de l'utilisateur authentifié pour une boutique vendeur.",
+                "operationId": "2786f6d05bb7a75129047e17ae14ef13",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "rating"
+                                ],
+                                "properties": {
+                                    "rating": {
+                                        "type": "integer",
+                                        "example": 5,
+                                        "maximum": 5,
+                                        "minimum": 1
+                                    },
+                                    "comment": {
+                                        "type": "string",
+                                        "example": "Finalement excellent !",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Avis mis à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis mis à jour avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun avis trouvé pour cette boutique",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Aucun avis trouvé pour cette boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Soumettre un avis sur une boutique",
+                "description": "Crée ou met à jour l'avis de l'utilisateur authentifié pour une boutique vendeur. Un utilisateur ne peut pas évaluer sa propre boutique.",
+                "operationId": "76c6ef0eba5ed86a2e19be1c5dfa1729",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "rating"
+                                ],
+                                "properties": {
+                                    "rating": {
+                                        "type": "integer",
+                                        "example": 4,
+                                        "maximum": 5,
+                                        "minimum": 1
+                                    },
+                                    "comment": {
+                                        "type": "string",
+                                        "example": "Très bon vendeur, livraison rapide.",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Avis soumis avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis soumis avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Vous ne pouvez pas évaluer votre propre boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Supprimer son avis",
+                "description": "Supprime (soft delete) l'avis de l'utilisateur authentifié et recalcule la note moyenne.",
+                "operationId": "fe61424e27e11bc0541517c21a13bc45",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avis supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis supprimé avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun avis actif trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Aucun avis actif trouvé pour cette boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -9934,6 +10294,10 @@
         {
             "name": "Search",
             "description": "Recherche et suggestions"
+        },
+        {
+            "name": "StoreRatings",
+            "description": "Avis et notes des boutiques vendeurs"
         },
         {
             "name": "Tags",
