@@ -2,6 +2,7 @@
 // App\DTOs\Vendor\VendorPublicProfileResponseDto
 namespace App\DTOs\Vendor;
 
+
 class VendorPublicProfileResponseDto
 {
     public function __construct(
@@ -14,13 +15,14 @@ class VendorPublicProfileResponseDto
         public readonly bool    $IdentityVerified,
         public readonly bool    $BusinessVerified,
         public readonly bool    $BankVerified,
-        public readonly ?string $description,
-        public readonly ?string $approvedAt,
+        public readonly ?string $Description,
+        public readonly ?string $ApprovedAt,
         public readonly float   $ProfileProgress,
         public readonly string  $Address,
-        public readonly ?string $hasProductsInCategories,
+        public readonly ?string $HasProductsInCategories,
         public readonly int     $TotalProducts,
         public readonly int     $TotalVentes,
+        public readonly float $Progression, 
     ) {}
 
     public static function fromRow(object $row): self
@@ -28,6 +30,7 @@ class VendorPublicProfileResponseDto
         return new self(
             StoreName:               $row->StoreName,
             logoURL:                 $row->LogoURL                  ?? null,
+            Progression : $row->Progression,
             bannerURL:               $row->BannerURL                ?? null,
             Note:                    $row->Note,
             Rating:                  (float) $row->Rating,
@@ -35,11 +38,11 @@ class VendorPublicProfileResponseDto
             IdentityVerified:        (bool)  $row->IdentityVerified,
             BusinessVerified:        (bool)  $row->BusinessVerified,
             BankVerified:            (bool)  $row->BankVerified,
-            description:             $row->Description              ?? null,
-            approvedAt:              $row->ApprovedAt               ?? null,
+            Description:             $row->Description              ?? null,
+            ApprovedAt:              $row->ApprovedAt               ?? null,
             ProfileProgress:         (float) $row->ProfileProgress,
             Address:                 $row->Address,
-            hasProductsInCategories: $row->HasProductsInCategories  ?? null,
+            HasProductsInCategories: $row->HasProductsInCategories  ?? null,
             TotalProducts:           (int)   $row->TotalProducts,
             TotalVentes:             (int)   $row->TotalVentes,
         );
@@ -53,16 +56,17 @@ class VendorPublicProfileResponseDto
             'LogoURL'                 => $this->logoURL,
             'BannerURL'               => $this->bannerURL,
             'Note'                    => $this->Note,
+            'Progression' => $this->Progression,
             'Rating'                  => $this->Rating,
             'ReviewCount'             => $this->ReviewCount,
             'IdentityVerified'        => $this->IdentityVerified,
             'BusinessVerified'        => $this->BusinessVerified,
             'BankVerified'            => $this->BankVerified,
-            'Description'             => $this->description,
-            'ApprovedAt'              => $this->approvedAt,
+            'Description'             => $this->Description,
+            'ApprovedAt'              => $this->ApprovedAt,
             'ProfileProgress'         => $this->ProfileProgress,
             'Address'                 => $this->Address,
-            'HasProductsInCategories' => $this->hasProductsInCategories,
+            'HasProductsInCategories' => $this->HasProductsInCategories,
             'TotalProducts'           => $this->TotalProducts,
             'TotalVentes'             => $this->TotalVentes,
         ];
