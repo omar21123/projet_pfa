@@ -284,3 +284,114 @@ END
 $$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_UpdateCartItemQuantity`(
+    IN  p_UserPublicID VARCHAR(64),
+    IN  p_CartItemID   INT,
+    IN  p_Quantity     DECIMAL(10,2),
+    OUT p_success      TINYINT,
+    OUT p_message      VARCHAR(255)
+)
+BEGIN
+    DECLARE v_UserID       INT DEFAULT NULL;
+    DECLARE v_CartID        INT DEFAULT NULL;
+    DECLARE v_ItemCartID    INT DEFAULT NULL;
+    DECLARE v_ProductID     INT DEFAULT NULL;
+    DECLARE v_ExistsProd    INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Erreur lors de la mise à jour du panier.';
+    END;
+
+    START TRANSACTION;
+
+    -- Résolution UserPublicID -> UserID
+    SELECT UserID INTO v_UserID
+    FROM Users
+    WHERE PublicID = p_UserPublicID
+    LIMIT 1;
+
+    IF v_UserID IS NULL THEN
+        ROLLBACK;
+        SET p_success = 0;
+        SET p_message = 'Utilisateur introuvable.';
+
+    ELSE
+        -- Récupère le panier de l'utilisateur
+        SELECT CartID INTO v_CartID
+        FROM Carts
+        WHERE UserID = v_UserID
+        LIMIT 1;
+
+        IF v_CartID IS NULL THEN
+            ROLLBACK;
+            SET p_success = 0;
+            SET p_message = 'Panier introuvable.';
+
+        ELSE
+            -- Vérifie que la ligne de panier existe ET appartient bien à ce panier
+            -- (empêche un utilisateur de modifier la ligne d'un autre panier via un CartItemID arbitraire).
+            SELECT CartID, ProductID INTO v_ItemCartID, v_ProductID
+            FROM CartItems
+            WHERE CartItemID = p_CartItemID
+            LIMIT 1;
+
+            IF v_ItemCartID IS NULL THEN
+                ROLLBACK;
+                SET p_success = 0;
+                SET p_message = 'Article introuvable dans le panier.';
+
+            ELSEIF v_ItemCartID != v_CartID THEN
+                ROLLBACK;
+                SET p_success = 0;
+                SET p_message = 'Accès refusé : cet article n''appartient pas à votre panier.';
+
+            ELSE
+                -- Le produit doit toujours être actif/disponible pour autoriser la mise à jour
+                SELECT COUNT(*) INTO v_ExistsProd
+                FROM Products
+                WHERE ProductID = v_ProductID
+                  AND IsActive = 1
+                  AND Status = 2;
+
+                IF v_ExistsProd = 0 THEN
+                    ROLLBACK;
+                    SET p_success = 0;
+                    SET p_message = 'Produit introuvable ou non disponible.';
+
+                ELSEIF p_Quantity IS NULL OR p_Quantity <= 0 THEN
+                    -- Quantité nulle ou négative -> on retire la ligne du panier
+                    -- (comportement standard e-commerce : mettre à 0 = supprimer l'article).
+                    DELETE FROM CartItems
+                    WHERE CartItemID = p_CartItemID;
+
+                    UPDATE Carts SET UpdatedAt = NOW() WHERE CartID = v_CartID;
+
+                    COMMIT;
+                    SET p_success = 1;
+                    SET p_message = 'Article retiré du panier.';
+
+                ELSE
+                    UPDATE CartItems
+                    SET Quantity = p_Quantity
+                    WHERE CartItemID = p_CartItemID;
+
+                    UPDATE Carts SET UpdatedAt = NOW() WHERE CartID = v_CartID;
+
+                    COMMIT;
+                    SET p_success = 1;
+                    SET p_message = 'Quantité mise à jour.';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END
+$$
+
+DELIMITER ;
