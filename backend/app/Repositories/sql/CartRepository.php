@@ -12,6 +12,7 @@ use App\DTOs\Cart\CartItemInfoDto;
 use App\DTOs\Cart\CartItemResponseDto;
 use App\DTOs\Cart\CartPromotionInfoDto;
 use App\DTOs\Cart\CombinationDetailInfoDto;
+use App\DTOs\Cart\UpdateCartItemQuantityDto;
 
 class CartRepository implements CartRepositoryInterface
 {
@@ -82,5 +83,23 @@ class CartRepository implements CartRepositoryInterface
         $rows = DB::select('CALL SP_GetCombinationDetails(?)', [$combinationId]);
 
         return array_map(fn($row) => CombinationDetailInfoDto::fromRow($row), $rows);
+    }
+    public function updateItemQuantity(UpdateCartItemQuantityDto $dto): string
+    {
+        DB::select('CALL SP_UpdateCartItemQuantity(?, ?, ?, @success, @message)', [
+            $dto->userPublicId,
+            $dto->cartItemId,
+            $dto->quantity,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        if (!$result->success) {
+            $status = str_contains($result->message, 'introuvable') ? 404
+                : (str_contains($result->message, 'Accès refusé') ? 403 : 422);
+            throw new BusinessValidationException($result->message, $status);
+        }
+
+        return $result->message;
     }
 }

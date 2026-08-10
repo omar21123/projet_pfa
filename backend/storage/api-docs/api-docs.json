@@ -2192,6 +2192,77 @@
                 ]
             }
         },
+        "/api/cart/items/quantity": {
+            "patch": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Modifier la quantité d'un article du panier",
+                "operationId": "3c0be234b1d541252b673bf8b49bc647",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "CartItemID",
+                                    "Quantity"
+                                ],
+                                "properties": {
+                                    "CartItemID": {
+                                        "type": "integer",
+                                        "example": 42
+                                    },
+                                    "Quantity": {
+                                        "description": "Nouvelle quantité. Une valeur de 0 (ou négative) retire l'article du panier.",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quantité mise à jour (ou article retiré si Quantity <= 0)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Quantité mise à jour."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cet article n'appartient pas à votre panier"
+                    },
+                    "404": {
+                        "description": "Utilisateur, panier ou article introuvable"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/categories/create": {
             "post": {
                 "tags": [

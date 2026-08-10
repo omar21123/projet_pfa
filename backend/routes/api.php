@@ -240,6 +240,7 @@ Route::prefix('cart')->group(function () {
         Route::post('/items', [CartController::class, 'addItem']);
         Route::delete('/items', [CartController::class, 'removeItem']);
         Route::get('/', [CartController::class, 'getCart']);
+        Route::patch('/items/quantity', [CartController::class, 'updateItemQuantity']);
     });
 });
 

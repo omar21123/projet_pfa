@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\Cart\AddCartItemDto;
 use App\DTOs\Cart\GetCartDto;
 use App\DTOs\Cart\RemoveCartItemDto;
+use App\DTOs\Cart\UpdateCartItemQuantityDto;
 use App\DTOs\Search\RecordSearchClickDto;
 use App\Services\Interface\CartServiceInterface;
 use App\Repositories\Interface\CartRepositoryInterface;
@@ -54,5 +55,9 @@ class CartService implements CartServiceInterface
             }
         }
         return $productRows;
+    }
+    public function updateItemQuantity(UpdateCartItemQuantityDto $dto): string
+    {
+        return $this->cartRepository->updateItemQuantity($dto);
     }
 }
