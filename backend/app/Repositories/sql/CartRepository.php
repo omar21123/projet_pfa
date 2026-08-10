@@ -15,24 +15,24 @@ use App\DTOs\Cart\CombinationDetailInfoDto;
 
 class CartRepository implements CartRepositoryInterface
 {
-   public function addItem(AddCartItemDto $dto): string
-{
-    $result = DB::select('CALL SP_AddCartItem(?, ?, ?, ?, ?, @p_success, @p_message)', [
-        $dto->userPublicId,
-        $dto->productId,
-        $dto->compositionId,
-        $dto->quantity,
-        $dto->unitPrice,
-    ]);
+    public function addItem(AddCartItemDto $dto): string
+    {
+        $result = DB::select('CALL SP_AddCartItem(?, ?, ?, ?, ?, @p_success, @p_message)', [
+            $dto->userPublicId,
+            $dto->productId,
+            $dto->compositionId,
+            $dto->quantity,
+            $dto->unitPrice,
+        ]);
 
-    $out = DB::select('SELECT @p_success AS success, @p_message AS message')[0];
+        $out = DB::select('SELECT @p_success AS success, @p_message AS message')[0];
 
-    if (! $out->success) {
-        throw new BusinessValidationException($out->message);
+        if (! $out->success) {
+            throw new BusinessValidationException($out->message);
+        }
+
+        return $out->message;
     }
-
-    return $out->message;
-}
 
     public function removeItem(RemoveCartItemDto $dto): string
     {

@@ -72,7 +72,7 @@ DROP PROCEDURE IF EXISTS SP_GetCartInformations;
 
 DELIMITER $$
 
-CREATE PROCEDURE SP_GetCartInformations(
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_GetCartInformations`(
     IN  p_UserPublicID VARCHAR(64),
     OUT p_success      TINYINT,
     OUT p_message      VARCHAR(255)
@@ -93,6 +93,7 @@ BEGIN
         SET p_message = 'Utilisateur introuvable.';
     ELSE
         SELECT
+            ci.CartItemID,
             p.ProductID,
             ci.CombinaisonID AS CombinationID,
             p.Name AS ProductName,
@@ -103,13 +104,16 @@ BEGIN
             ci.Quantity,
             p.Stock,
             poc.SKU,
-            poc.ImagePath
+            IFNULL(poc.ImagePath, (
+                SELECT pr.ResourcesPath FROM ProductResources pr
+                WHERE pr.ProductID = p.ProductID AND pr.ResourceRoleID = 2 LIMIT 1
+            )) AS ImagePath
         FROM CartItems ci
         INNER JOIN Carts c ON c.CartID = ci.CartID
         INNER JOIN Products p ON p.ProductID = ci.ProductID
         LEFT JOIN Brands b ON b.BrandID = p.BrandID
         LEFT JOIN Models m ON m.ModelID = p.ModelID
-        INNER JOIN ProductOptionsCombiniason poc ON poc.CombinationID = ci.CombinaisonID
+        LEFT JOIN ProductOptionsCombiniason poc ON poc.CombinationID = ci.CombinaisonID
         WHERE c.UserID = v_UserID;
 
         SET p_success = 1;
