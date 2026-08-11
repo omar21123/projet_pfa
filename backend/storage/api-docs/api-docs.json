@@ -15,6 +15,429 @@
         }
     ],
     "paths": {
+        "/api/addresses": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Lister les adresses de l'utilisateur connecté",
+                "description": "Retourne toutes les adresses enregistrées pour l'utilisateur authentifié, triées par adresse de livraison par défaut en premier.",
+                "operationId": "33ccea30443418dbab9242aa67931614",
+                "responses": {
+                    "200": {
+                        "description": "Adresses récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Ajouter une adresse",
+                "description": "Crée une nouvelle adresse pour l'utilisateur authentifié. Si IsDefaultShipping=true, toute adresse de livraison par défaut précédente est automatiquement désactivée.",
+                "operationId": "5549e34fec9817a9794302a767fc7fde",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "full_name",
+                                    "country",
+                                    "city",
+                                    "address_line1"
+                                ],
+                                "properties": {
+                                    "full_name": {
+                                        "type": "string",
+                                        "example": "Mohammed Alami"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "+212600000000",
+                                        "nullable": true
+                                    },
+                                    "country": {
+                                        "type": "string",
+                                        "example": "Maroc"
+                                    },
+                                    "region": {
+                                        "type": "string",
+                                        "example": "Casablanca-Settat",
+                                        "nullable": true
+                                    },
+                                    "city": {
+                                        "type": "string",
+                                        "example": "Casablanca"
+                                    },
+                                    "postal_code": {
+                                        "type": "string",
+                                        "example": "20000",
+                                        "nullable": true
+                                    },
+                                    "address_line1": {
+                                        "type": "string",
+                                        "example": "12 Rue Hassan II"
+                                    },
+                                    "address_line2": {
+                                        "type": "string",
+                                        "example": "Appt 4",
+                                        "nullable": true
+                                    },
+                                    "landmark": {
+                                        "type": "string",
+                                        "example": "Près de la pharmacie",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": 33.5731104,
+                                        "nullable": true
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -7.5898434,
+                                        "nullable": true
+                                    },
+                                    "is_default_shipping": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Adresse créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Adresse ajoutée avec succès."
+                                        },
+                                        "address_id": {
+                                            "type": "integer",
+                                            "example": 12
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/{address}": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Détails d'une adresse",
+                "description": "Retourne une adresse spécifique appartenant à l'utilisateur authentifié.",
+                "operationId": "72b5e1a569a26416ce98652e6b3a0e66",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse récupérée avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Mettre à jour une adresse",
+                "description": "Met à jour une adresse existante appartenant à l'utilisateur authentifié.",
+                "operationId": "b71276024d0a845244b455b67cd1eae4",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse mise à jour avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Supprimer une adresse",
+                "description": "Supprime définitivement une adresse appartenant à l'utilisateur authentifié.",
+                "operationId": "225747ebbc189734860d975104b1555c",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse supprimée avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/{address}/default-shipping": {
+            "patch": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Définir comme adresse de livraison par défaut",
+                "description": "Définit une adresse comme adresse de livraison par défaut pour l'utilisateur. Désactive automatiquement toute adresse de livraison par défaut précédente.",
+                "operationId": "7733f76bfc3fa4728d3bc97ea6ce4346",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison par défaut mise à jour"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/shipping/default": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Récupérer l'adresse de livraison par défaut",
+                "operationId": "2c840fcac12f189d1ba11d8c64a9562f",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "FullName": {
+                                                    "type": "string",
+                                                    "example": "Mohammed Alami"
+                                                },
+                                                "Phone": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Country": {
+                                                    "type": "string",
+                                                    "example": "Maroc"
+                                                },
+                                                "Region": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "City": {
+                                                    "type": "string",
+                                                    "example": "Casablanca"
+                                                },
+                                                "PostalCode": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "AddressLine1": {
+                                                    "type": "string",
+                                                    "example": "12 Rue Hassan II"
+                                                },
+                                                "AddressLine2": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Landmark": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Latitude": {
+                                                    "type": "number",
+                                                    "nullable": true
+                                                },
+                                                "Longitude": {
+                                                    "type": "number",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable ou aucune adresse enregistrée"
+                    }
+                }
+            }
+        },
+        "/api/addresses/orders/{order}/shipping-address": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Récupérer l'adresse de livraison d'une commande",
+                "description": "Accessible aux vendeurs ayant un article dans la commande et aux administrateurs.",
+                "operationId": "bf549e597d341b897cd1a2077f890ade",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 101
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison récupérée avec succès"
+                    },
+                    "403": {
+                        "description": "Accès non autorisé"
+                    },
+                    "404": {
+                        "description": "Commande, profil vendeur ou adresse introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/admin/register": {
             "post": {
                 "tags": [
@@ -10300,6 +10723,9 @@
         }
     },
     "components": {
+        "schemas": {
+            "UserIDRequest": {}
+        },
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
@@ -10310,6 +10736,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Addresses",
+            "description": "Gestion des adresses utilisateur"
+        },
         {
             "name": "Administration",
             "description": "Actions réservées aux administrateurs système"

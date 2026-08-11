@@ -332,6 +332,15 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\StoreRatingServiceInterface::class,
             \App\Services\StoreRatingService::class,
         );
+        $this->app->bind(
+            \App\Repositories\Interface\AddressRepositoryInterface::class,
+            \App\Repositories\sql\AddressRepository::class,
+        );
+
+        $this->app->bind(
+            \App\Services\Interface\AddressServiceInterface::class,
+            \App\Services\AddressService::class,
+        );
     }
 
     /**

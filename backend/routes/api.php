@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AddressController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
@@ -252,4 +253,16 @@ Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
         Route::put('/',    [StoreRatingController::class, 'update']);  // auth
         Route::delete('/', [StoreRatingController::class, 'destroy']); // auth
     });
+});
+
+Route::get('addresses/shipping/default',             [AddressController::class, 'getDefaultShippingAddress']);
+
+Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
+    Route::middleware('role:VENDOR,ADMIN')->get('/orders/{order}/shipping-address', [AddressController::class, 'getOrderShippingAddress']);
+    Route::get('/',                          [AddressController::class, 'index']);
+    Route::get('/{address}',                 [AddressController::class, 'show']);
+    Route::post('/',                         [AddressController::class, 'store']);
+    Route::put('/{address}',                 [AddressController::class, 'update']);
+    Route::delete('/{address}',              [AddressController::class, 'destroy']);
+    Route::patch('/{address}/default-shipping', [AddressController::class, 'setDefaultShipping']);
 });
