@@ -11,7 +11,7 @@
             "description": "Serveur local"
         },
         {
-            "url": "http://127.0.0.1:8000"
+            "url": "http://localhost"
         }
     ],
     "paths": {
@@ -408,7 +408,7 @@
                 ],
                 "summary": "Récupérer l'adresse de livraison d'une commande",
                 "description": "Accessible aux vendeurs ayant un article dans la commande et aux administrateurs.",
-                "operationId": "bf549e597d341b897cd1a2077f890ade",
+                "operationId": "getOrderShippingAddress",
                 "parameters": [
                     {
                         "name": "order",
@@ -422,7 +422,81 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Adresse de livraison récupérée avec succès"
+                        "description": "Adresse de livraison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "FullName": {
+                                                    "type": "string",
+                                                    "example": "Mohammed Alami"
+                                                },
+                                                "Phone": {
+                                                    "type": "string",
+                                                    "example": "+212600000000",
+                                                    "nullable": true
+                                                },
+                                                "Country": {
+                                                    "type": "string",
+                                                    "example": "Maroc"
+                                                },
+                                                "Region": {
+                                                    "type": "string",
+                                                    "example": "Casablanca-Settat",
+                                                    "nullable": true
+                                                },
+                                                "City": {
+                                                    "type": "string",
+                                                    "example": "Casablanca"
+                                                },
+                                                "PostalCode": {
+                                                    "type": "string",
+                                                    "example": "20000",
+                                                    "nullable": true
+                                                },
+                                                "AddressLine1": {
+                                                    "type": "string",
+                                                    "example": "12 Rue Hassan II"
+                                                },
+                                                "AddressLine2": {
+                                                    "type": "string",
+                                                    "example": "Appt 4",
+                                                    "nullable": true
+                                                },
+                                                "Landmark": {
+                                                    "type": "string",
+                                                    "example": "Près de la pharmacie",
+                                                    "nullable": true
+                                                },
+                                                "Latitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 33.5731104,
+                                                    "nullable": true
+                                                },
+                                                "Longitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": -7.5898434,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
                     },
                     "403": {
                         "description": "Accès non autorisé"

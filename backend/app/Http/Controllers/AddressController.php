@@ -316,10 +316,31 @@ class AddressController extends Controller
         tags: ["Addresses"],
         summary: "Récupérer l'adresse de livraison d'une commande",
         description: "Accessible aux vendeurs ayant un article dans la commande et aux administrateurs.",
+        operationId: "getOrderShippingAddress",
         security: [["bearerAuth" => []]]
     )]
     #[OA\Parameter(name: "order", in: "path", required: true, schema: new OA\Schema(type: "integer"), example: 101)]
-    #[OA\Response(response: 200, description: "Adresse de livraison récupérée avec succès")]
+    #[OA\Response(
+        response: 200,
+        description: "Adresse de livraison récupérée avec succès",
+        content: new OA\JsonContent(properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "data", type: "object", properties: [
+                new OA\Property(property: "FullName", type: "string", example: "Mohammed Alami"),
+                new OA\Property(property: "Phone", type: "string", nullable: true, example: "+212600000000"),
+                new OA\Property(property: "Country", type: "string", example: "Maroc"),
+                new OA\Property(property: "Region", type: "string", nullable: true, example: "Casablanca-Settat"),
+                new OA\Property(property: "City", type: "string", example: "Casablanca"),
+                new OA\Property(property: "PostalCode", type: "string", nullable: true, example: "20000"),
+                new OA\Property(property: "AddressLine1", type: "string", example: "12 Rue Hassan II"),
+                new OA\Property(property: "AddressLine2", type: "string", nullable: true, example: "Appt 4"),
+                new OA\Property(property: "Landmark", type: "string", nullable: true, example: "Près de la pharmacie"),
+                new OA\Property(property: "Latitude", type: "number", format: "float", nullable: true, example: 33.5731104),
+                new OA\Property(property: "Longitude", type: "number", format: "float", nullable: true, example: -7.5898434),
+            ]),
+        ])
+    )]
+    #[OA\Response(response: 401, description: "Non authentifié")]
     #[OA\Response(response: 403, description: "Accès non autorisé")]
     #[OA\Response(response: 404, description: "Commande, profil vendeur ou adresse introuvable")]
     public function getOrderShippingAddress(Request $request, int $order): JsonResponse
