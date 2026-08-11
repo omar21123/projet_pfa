@@ -13,6 +13,8 @@ use App\Repositories\Interface\SearchRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\ProductRepositoryInterface;
 use App\Services\Interface\ProductServiceInterface;
+use Illuminate\Support\Facades\Log;
+
 
 class CartService implements CartServiceInterface
 {
@@ -43,17 +45,63 @@ class CartService implements CartServiceInterface
     }
     public function getCart(GetCartDto $dto): array
     {
+        Log::info("========== GET CART START ==========", [
+            'userPublicId' => $dto->userPublicId,
+        ]);
+
         $productRows = $this->cartRepository->getCartItemsInfo($dto->userPublicId);
+
+        Log::info("STEP 1 - Cart items fetched", [
+            'userPublicId' => $dto->userPublicId,
+            'itemCount'    => count($productRows),
+        ]);
+
         foreach ($productRows as $index => $productRow) {
+
+            Log::info("STEP 2 - Enriching cart item", [
+                'index'         => $index,
+                'productId'     => $productRow->productId,
+                'combinationId' => $productRow->combinationId,
+            ]);
+
             $productRows[$index]->defaultImages = $this->productService->getProductImages($productRow->productId);
+
+            Log::info("Product images loaded", [
+                'productId'  => $productRow->productId,
+                'imageCount' => count($productRows[$index]->defaultImages),
+            ]);
+
             $productRows[$index]->combinationDetails = $this->cartRepository->getCombinationDetails($productRow->combinationId);
+
+            Log::info("Combination details loaded", [
+                'combinationId' => $productRow->combinationId,
+                'detailCount'   => count($productRows[$index]->combinationDetails),
+            ]);
+
             $productRows[$index]->hasPromotion = $this->productService->hasActivePromotion($productRow->productId);
+
+            Log::info("Promotion check result", [
+                'productId'    => $productRow->productId,
+                'hasPromotion' => $productRows[$index]->hasPromotion,
+            ]);
+
             if ($productRows[$index]->hasPromotion) {
                 $productRows[$index]->promotion = $this->cartRepository->getCartItemPromotion($productRow->productId);
+
+                Log::info("Promotion details loaded", [
+                    'productId' => $productRow->productId,
+                    'promotion' => $productRows[$index]->promotion,
+                ]);
             } else {
                 $productRows[$index]->promotion = null;
             }
         }
+
+        Log::info("========== GET CART SUCCESS ==========", [
+            'userPublicId' => $dto->userPublicId,
+            'itemCount'    => count($productRows),
+        ]);
+
         return $productRows;
     }
     public function updateItemQuantity(UpdateCartItemQuantityDto $dto): string

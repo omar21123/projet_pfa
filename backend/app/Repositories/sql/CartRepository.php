@@ -7,7 +7,7 @@ use App\Repositories\Interface\CartRepositoryInterface;
 use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
 use App\DTOs\Cart\RemoveCartItemDto;
-
+use Illuminate\Support\Facades\Log;  // ← ADD THIS
 use App\DTOs\Cart\CartItemInfoDto;
 use App\DTOs\Cart\CartItemResponseDto;
 use App\DTOs\Cart\CartPromotionInfoDto;
@@ -56,15 +56,75 @@ class CartRepository implements CartRepositoryInterface
 
     public function getCartItemsInfo(string $userPublicId): array
     {
-        $rows = DB::select('CALL SP_GetCartInformations(?, @success, @message)', [$userPublicId]);
+        Log::info('[CartRepository::getCartItemsInfo] START', [
+            'userPublicId' => $userPublicId,
+        ]);
 
-        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+        try {
+            $rows = DB::select('CALL SP_GetCartInformations(?, @success, @message)', [$userPublicId]);
 
+            Log::info('[CartRepository::getCartItemsInfo] SP executed', [
+                'userPublicId' => $userPublicId,
+                'rows_count'   => count($rows),
+                'rows_raw'     => $rows,   // Remove in production
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[CartRepository::getCartItemsInfo] SP call FAILED', [
+                'userPublicId' => $userPublicId,
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+
+        try {
+            $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+            Log::info('[CartRepository::getCartItemsInfo] OUT params fetched', [
+                'userPublicId'    => $userPublicId,
+                'result_raw'      => $result,        // See exact values returned
+                'success_value'   => $result->success,
+                'success_type'    => gettype($result->success),  // int / string / bool ?
+                'message_value'   => $result->message,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[CartRepository::getCartItemsInfo] OUT params fetch FAILED', [
+                'userPublicId' => $userPublicId,
+                'error'        => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+
+        // ⚠️ Common trap: MySQL returns '1'/'0' as string, not true/false
         if (!$result->success) {
+            Log::warning('[CartRepository::getCartItemsInfo] SP returned failure', [
+                'userPublicId'  => $userPublicId,
+                'success'       => $result->success,
+                'message'       => $result->message,
+            ]);
             throw new BusinessValidationException($result->message, 404);
         }
 
-        return array_map(fn($row) => CartItemResponseDto::fromInfoDto(CartItemInfoDto::fromRow($row)), $rows);
+        try {
+            $mapped = array_map(
+                fn($row) => CartItemResponseDto::fromInfoDto(CartItemInfoDto::fromRow($row)),
+                $rows
+            );
+
+            Log::info('[CartRepository::getCartItemsInfo] Mapping SUCCESS', [
+                'userPublicId' => $userPublicId,
+                'mapped_count' => count($mapped),
+            ]);
+
+            return $mapped;
+        } catch (\Exception $e) {
+            Log::error('[CartRepository::getCartItemsInfo] DTO mapping FAILED', [
+                'userPublicId' => $userPublicId,
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     public function getCartItemPromotion(int $productId): ?CartPromotionInfoDto
