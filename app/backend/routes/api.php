@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AddressController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
@@ -20,6 +21,8 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProductRecommendationController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\StoreRatingController;
+use App\Http\Controllers\VendorController;
 use App\Http\Controllers\WishlistsController;
 
 Route::prefix('auth')->group(function () {
@@ -105,7 +108,7 @@ Route::prefix('units')->group(function () {
     });
 });
 //for admin
-Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/ ->group(function () {
+Route::prefix('admin')/*->middleware(['jwt.auth', 'role:admin'])*/->group(function () {
     Route::post('/register', [AdminController::class, 'store']);
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::get('/vendors', [AdminVendorController::class, 'AdminGetAll']);
@@ -154,6 +157,7 @@ Route::prefix('config-attribute-options')->group(function () {
 Route::prefix('products')->group(function () {
     Route::post('/info', [ProductController::class, 'getProductInfo']);
     Route::get('/{product}/similar', [ProductController::class, 'getSimilarProducts']);
+    Route::get('vendor/{vendorProfileID}', [ProductController::class, 'getVendorPublicProducts']);
     Route::get('/recommendations', [ProductRecommendationController::class, 'index']);
     Route::get('/', [ProductRecommendationController::class, 'index']);
     Route::get('/most-sold/load-more', [ProductRecommendationController::class, 'loadMoreMostSold']);
@@ -193,8 +197,6 @@ Route::prefix('promotions')->group(function () {
         Route::post('/product', [PromotionController::class, 'createForProduct']);
         Route::delete('/{promotion}', [PromotionController::class, 'destroy']);
         Route::get('/{promotion}', [PromotionController::class, 'show']);
-
-
     });
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
         Route::post('/category', [PromotionController::class, 'createForCategory']);
@@ -210,23 +212,21 @@ Route::prefix('promotions')->group(function () {
 
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
-    
+
     Route::middleware(['jwt.custom'])->group(function () {
         Route::get('/history', [SearchController::class, 'history']);
-           
-
     });
-     Route::get('/', [SearchController::class, 'search']);
+    Route::get('/', [SearchController::class, 'search']);
 });
 
 Route::prefix('wishlists')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
-    Route::get('/', [WishlistsController::class, 'index']);
-    Route::post('/', [WishlistsController::class, 'store']);
-    Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
-    Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
-    Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
-});
+        Route::get('/', [WishlistsController::class, 'index']);
+        Route::post('/', [WishlistsController::class, 'store']);
+        Route::post('/{wishListId}/items', [WishlistsController::class, 'addItem']);
+        Route::delete('/items/{wishListItemId}', [WishlistsController::class, 'removeItem']);
+        Route::delete('/{wishListId}', [WishlistsController::class, 'destroy']);
+    });
 });
 Route::prefix('favorites')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
@@ -241,6 +241,28 @@ Route::prefix('cart')->group(function () {
         Route::post('/items', [CartController::class, 'addItem']);
         Route::delete('/items', [CartController::class, 'removeItem']);
         Route::get('/', [CartController::class, 'getCart']);
+        Route::patch('/items/quantity', [CartController::class, 'updateItemQuantity']);
     });
 });
 
+Route::get('/vendors/{vendorProfileID}/public-profile', [VendorController::class, 'publicProfile']);
+Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
+    Route::get('/',    [StoreRatingController::class, 'index']);   // public
+    Route::middleware(['jwt.custom'])->group(function () {
+        Route::post('/',   [StoreRatingController::class, 'store']);   // auth
+        Route::put('/',    [StoreRatingController::class, 'update']);  // auth
+        Route::delete('/', [StoreRatingController::class, 'destroy']); // auth
+    });
+});
+
+Route::get('addresses/shipping/default',             [AddressController::class, 'getDefaultShippingAddress']);
+
+Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
+    Route::middleware('role:VENDOR,ADMIN')->get('/orders/{order}/shipping-address', [AddressController::class, 'getOrderShippingAddress']);
+    Route::get('/',                          [AddressController::class, 'index']);
+    Route::get('/{address}',                 [AddressController::class, 'show']);
+    Route::post('/',                         [AddressController::class, 'store']);
+    Route::put('/{address}',                 [AddressController::class, 'update']);
+    Route::delete('/{address}',              [AddressController::class, 'destroy']);
+    Route::patch('/{address}/default-shipping', [AddressController::class, 'setDefaultShipping']);
+});

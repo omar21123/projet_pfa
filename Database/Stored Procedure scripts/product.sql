@@ -1586,3 +1586,172 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS SP_GetVendorProducts $$
+
+CREATE PROCEDURE SP_GetVendorProducts (
+    IN  v_VendorProfileID INT,
+    IN  v_UserPublicID    VARCHAR(64),
+    IN  v_CategoryID      INT,
+    IN  v_PageNumber      INT,
+    IN  v_PageSize        INT,
+    OUT v_TotalCount      INT,
+    OUT v_Success         BOOLEAN,
+    OUT v_Message         VARCHAR(255)
+)
+main_block: BEGIN
+    DECLARE v_VendorUserID INT DEFAULT NULL;
+    DECLARE v_UserID       INT DEFAULT NULL;
+    DECLARE v_Offset       INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_GetVendorProducts',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'VendorProfileID', v_VendorProfileID,
+                'UserPublicID',    v_UserPublicID,
+                'CategoryID',      v_CategoryID,
+                'PageNumber',      v_PageNumber,
+                'PageSize',        v_PageSize
+            )
+        );
+        SET v_Success    = FALSE;
+        SET v_Message    = 'Une erreur est survenue lors de la récupération des produits du vendeur.';
+        SET v_TotalCount = 0;
+    END;
+
+    SET v_Success    = FALSE;
+    SET v_Message    = '';
+    SET v_TotalCount = 0;
+
+    IF v_VendorProfileID IS NULL THEN
+        SET v_Message = 'VendorProfileID est requis.';
+        LEAVE main_block;
+    END IF;
+
+    IF v_PageNumber IS NULL OR v_PageNumber < 1 THEN
+        SET v_PageNumber = 1;
+    END IF;
+
+    IF v_PageSize IS NULL OR v_PageSize < 1 THEN
+        SET v_PageSize = 20;
+    ELSEIF v_PageSize > 100 THEN
+        SET v_PageSize = 100;
+    END IF;
+
+    SET v_Offset = (v_PageNumber - 1) * v_PageSize;
+
+    -- Resolve visitor PublicID → UserID (optional)
+    IF v_UserPublicID IS NOT NULL THEN
+        SELECT UserID INTO v_UserID
+        FROM   Users
+        WHERE  PublicID = v_UserPublicID
+        LIMIT  1;
+    END IF;
+
+    -- Resolve VendorProfileID → UserID
+    SELECT UserID INTO v_VendorUserID
+    FROM   VendorProfiles
+    WHERE  VendorProfileID = v_VendorProfileID
+    LIMIT  1;
+
+    IF v_VendorUserID IS NULL THEN
+        SET v_Message = 'Vendeur introuvable.';
+        LEAVE main_block;
+    END IF;
+
+    -- Total count
+    SELECT COUNT(*) INTO v_TotalCount
+    FROM   Products p
+    WHERE  p.VendorID = v_VendorUserID
+      AND (
+          v_CategoryID IS NULL OR EXISTS (
+              SELECT 1 FROM ProductCategories pc
+              WHERE pc.ProductID  = p.ProductID
+                AND pc.CategoryID = v_CategoryID
+          )
+      );
+
+    SET v_Success = TRUE;
+    SET v_Message = 'OK';
+
+    WITH ActivePromotions AS (
+        SELECT
+            p.TargetProductID,
+            pt.Code         AS PromotionCode,
+            p.DiscountValue AS PromotionDiscountValue,
+            ROW_NUMBER() OVER (
+                PARTITION BY p.TargetProductID
+                ORDER BY p.EndDate ASC
+            ) AS rn
+        FROM Promotions p
+        INNER JOIN PromotionDiscountTypes pt ON pt.DiscountTypeID = p.DiscountTypeID
+        WHERE p.ScopeTypeID = 1
+          AND p.StatusID    = 2
+          AND p.IsActive    = 1
+          AND NOW() BETWEEN p.StartDate AND p.EndDate
+          AND p.UsageCount  < p.UsageLimitTotal
+    )
+    SELECT
+        p.ProductID,
+        p.Name                                                                                AS ProductName,
+        pr.ResourcesPath                                                                      AS ProductDefaultImage,
+        p.Description,
+        p.BasePrice                                                                           AS DefaultPrice,
+        IFNULL(b.Name, 'No Brand')                                                            AS BrandName,
+        b.LogoURL                                                                             AS BrandLogo,
+        IFNULL(m.Name, 'No Model')                                                            AS ModelName,
+        IFNULL((SELECT COUNT(*) FROM WishListItems wli WHERE wli.ProductID = p.ProductID), 0) AS TotalWishlist,
+        IFNULL((SELECT COUNT(*) FROM ProductLikes  pl  WHERE pl.ProductID  = p.ProductID), 0) AS TotalLikes,
+        IFNULL((SELECT COUNT(*) FROM OrderItems    oi  WHERE oi.ProductID  = p.ProductID), 0) AS TotalOrders,
+        CASE
+            WHEN v_UserID IS NOT NULL AND EXISTS (
+                SELECT 1 FROM ProductLikes pl2
+                WHERE pl2.ProductID = p.ProductID AND pl2.UserID = v_UserID
+            ) THEN 1 ELSE 0
+        END AS IsLiked,
+        CASE
+            WHEN v_UserID IS NOT NULL AND EXISTS (
+                SELECT 1 FROM WishListItems w2
+                INNER JOIN WishLists wq ON wq.WishListID = w2.WishListID
+                WHERE w2.ProductID = p.ProductID AND wq.UserID = v_UserID
+            ) THEN 1 ELSE 0
+        END AS IsWishedList,
+        IF(ap.TargetProductID IS NOT NULL, 1, 0)                                              AS HasPromo,
+        ap.PromotionCode                                                                      AS PromotionCode,
+        ap.PromotionDiscountValue                                                             AS PromotionDiscountValue
+    FROM Products p
+    LEFT JOIN Brands           b  ON b.BrandID         = p.BrandID
+    LEFT JOIN Models           m  ON m.ModelID          = p.ModelID
+    LEFT JOIN ProductResources pr ON pr.ProductID       = p.ProductID AND pr.ResourceRoleID = 2
+    LEFT JOIN ActivePromotions ap ON ap.TargetProductID = p.ProductID AND ap.rn = 1
+    WHERE p.VendorID = v_VendorUserID
+      AND (
+          v_CategoryID IS NULL OR EXISTS (
+              SELECT 1 FROM ProductCategories pc
+              WHERE pc.ProductID  = p.ProductID
+                AND pc.CategoryID = v_CategoryID
+          )
+      )
+    ORDER BY
+        TotalOrders DESC,
+        TotalLikes  DESC,
+        p.CreatedAt DESC
+    LIMIT  v_PageSize
+    OFFSET v_Offset;
+
+END main_block $$
+
+DELIMITER ;

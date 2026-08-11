@@ -5,7 +5,7 @@ return [
     'documentations' => [
         'default' => [
             'api' => [
-                'title' => 'L5 Swagger UI',
+                'title' => env('L5_SWAGGER_API_TITLE', config('app.name') . ' API Documentation'),
             ],
 
             'routes' => [
@@ -91,7 +91,7 @@ return [
             /*
              * Edit to set the api's base path
              */
-            'base' => env('L5_SWAGGER_BASE_PATH', 'http://127.0.0.1:8000'),
+            'base' => env('L5_SWAGGER_BASE_PATH', env('APP_URL')),
 
             /*
              * Absolute path to directories that should be excluded from scanning
@@ -206,7 +206,7 @@ return [
          * Set this to `true` in development mode so that docs would be regenerated on each request
          * Set this to `false` to disable swagger generation on production
          */
-        'generate_always' => env('L5_SWAGGER_GENERATE_ALWAYS', true),
+        'generate_always' => env('L5_SWAGGER_GENERATE_ALWAYS', false),
 
         /*
          * Set this to `true` to generate a copy of documentation in yaml format

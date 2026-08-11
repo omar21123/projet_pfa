@@ -11,10 +11,507 @@
             "description": "Serveur local"
         },
         {
-            "url": "http://127.0.0.1:8000"
+            "url": "http://localhost"
         }
     ],
     "paths": {
+        "/api/addresses": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Lister les adresses de l'utilisateur connecté",
+                "description": "Retourne toutes les adresses enregistrées pour l'utilisateur authentifié, triées par adresse de livraison par défaut en premier.",
+                "operationId": "33ccea30443418dbab9242aa67931614",
+                "responses": {
+                    "200": {
+                        "description": "Adresses récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Ajouter une adresse",
+                "description": "Crée une nouvelle adresse pour l'utilisateur authentifié. Si IsDefaultShipping=true, toute adresse de livraison par défaut précédente est automatiquement désactivée.",
+                "operationId": "5549e34fec9817a9794302a767fc7fde",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "full_name",
+                                    "country",
+                                    "city",
+                                    "address_line1"
+                                ],
+                                "properties": {
+                                    "full_name": {
+                                        "type": "string",
+                                        "example": "Mohammed Alami"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "+212600000000",
+                                        "nullable": true
+                                    },
+                                    "country": {
+                                        "type": "string",
+                                        "example": "Maroc"
+                                    },
+                                    "region": {
+                                        "type": "string",
+                                        "example": "Casablanca-Settat",
+                                        "nullable": true
+                                    },
+                                    "city": {
+                                        "type": "string",
+                                        "example": "Casablanca"
+                                    },
+                                    "postal_code": {
+                                        "type": "string",
+                                        "example": "20000",
+                                        "nullable": true
+                                    },
+                                    "address_line1": {
+                                        "type": "string",
+                                        "example": "12 Rue Hassan II"
+                                    },
+                                    "address_line2": {
+                                        "type": "string",
+                                        "example": "Appt 4",
+                                        "nullable": true
+                                    },
+                                    "landmark": {
+                                        "type": "string",
+                                        "example": "Près de la pharmacie",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": 33.5731104,
+                                        "nullable": true
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -7.5898434,
+                                        "nullable": true
+                                    },
+                                    "is_default_shipping": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Adresse créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Adresse ajoutée avec succès."
+                                        },
+                                        "address_id": {
+                                            "type": "integer",
+                                            "example": 12
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/{address}": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Détails d'une adresse",
+                "description": "Retourne une adresse spécifique appartenant à l'utilisateur authentifié.",
+                "operationId": "72b5e1a569a26416ce98652e6b3a0e66",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse récupérée avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Mettre à jour une adresse",
+                "description": "Met à jour une adresse existante appartenant à l'utilisateur authentifié.",
+                "operationId": "b71276024d0a845244b455b67cd1eae4",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse mise à jour avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    },
+                    "422": {
+                        "description": "Règle métier violée"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Supprimer une adresse",
+                "description": "Supprime définitivement une adresse appartenant à l'utilisateur authentifié.",
+                "operationId": "225747ebbc189734860d975104b1555c",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse supprimée avec succès"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/{address}/default-shipping": {
+            "patch": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Définir comme adresse de livraison par défaut",
+                "description": "Définit une adresse comme adresse de livraison par défaut pour l'utilisateur. Désactive automatiquement toute adresse de livraison par défaut précédente.",
+                "operationId": "7733f76bfc3fa4728d3bc97ea6ce4346",
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison par défaut mise à jour"
+                    },
+                    "404": {
+                        "description": "Adresse ou utilisateur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/addresses/shipping/default": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Récupérer l'adresse de livraison par défaut",
+                "operationId": "2c840fcac12f189d1ba11d8c64a9562f",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "FullName": {
+                                                    "type": "string",
+                                                    "example": "Mohammed Alami"
+                                                },
+                                                "Phone": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Country": {
+                                                    "type": "string",
+                                                    "example": "Maroc"
+                                                },
+                                                "Region": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "City": {
+                                                    "type": "string",
+                                                    "example": "Casablanca"
+                                                },
+                                                "PostalCode": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "AddressLine1": {
+                                                    "type": "string",
+                                                    "example": "12 Rue Hassan II"
+                                                },
+                                                "AddressLine2": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Landmark": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "Latitude": {
+                                                    "type": "number",
+                                                    "nullable": true
+                                                },
+                                                "Longitude": {
+                                                    "type": "number",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable ou aucune adresse enregistrée"
+                    }
+                }
+            }
+        },
+        "/api/addresses/orders/{order}/shipping-address": {
+            "get": {
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Récupérer l'adresse de livraison d'une commande",
+                "description": "Accessible aux vendeurs ayant un article dans la commande et aux administrateurs.",
+                "operationId": "getOrderShippingAddress",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 101
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adresse de livraison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "FullName": {
+                                                    "type": "string",
+                                                    "example": "Mohammed Alami"
+                                                },
+                                                "Phone": {
+                                                    "type": "string",
+                                                    "example": "+212600000000",
+                                                    "nullable": true
+                                                },
+                                                "Country": {
+                                                    "type": "string",
+                                                    "example": "Maroc"
+                                                },
+                                                "Region": {
+                                                    "type": "string",
+                                                    "example": "Casablanca-Settat",
+                                                    "nullable": true
+                                                },
+                                                "City": {
+                                                    "type": "string",
+                                                    "example": "Casablanca"
+                                                },
+                                                "PostalCode": {
+                                                    "type": "string",
+                                                    "example": "20000",
+                                                    "nullable": true
+                                                },
+                                                "AddressLine1": {
+                                                    "type": "string",
+                                                    "example": "12 Rue Hassan II"
+                                                },
+                                                "AddressLine2": {
+                                                    "type": "string",
+                                                    "example": "Appt 4",
+                                                    "nullable": true
+                                                },
+                                                "Landmark": {
+                                                    "type": "string",
+                                                    "example": "Près de la pharmacie",
+                                                    "nullable": true
+                                                },
+                                                "Latitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 33.5731104,
+                                                    "nullable": true
+                                                },
+                                                "Longitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": -7.5898434,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "403": {
+                        "description": "Accès non autorisé"
+                    },
+                    "404": {
+                        "description": "Commande, profil vendeur ou adresse introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/admin/register": {
             "post": {
                 "tags": [
@@ -2183,6 +2680,77 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/cart/items/quantity": {
+            "patch": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Modifier la quantité d'un article du panier",
+                "operationId": "3c0be234b1d541252b673bf8b49bc647",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "CartItemID",
+                                    "Quantity"
+                                ],
+                                "properties": {
+                                    "CartItemID": {
+                                        "type": "integer",
+                                        "example": 42
+                                    },
+                                    "Quantity": {
+                                        "description": "Nouvelle quantité. Une valeur de 0 (ou négative) retire l'article du panier.",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quantité mise à jour (ou article retiré si Quantity <= 0)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Quantité mise à jour."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cet article n'appartient pas à votre panier"
+                    },
+                    "404": {
+                        "description": "Utilisateur, panier ou article introuvable"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
                     }
                 },
                 "security": [
@@ -5536,6 +6104,122 @@
                 ]
             }
         },
+        "/api/products/vendor/{vendorProfileID}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Lister les produits publics d'un vendeur",
+                "description": "Retourne la liste paginée des produits d'un vendeur. UserPublicID est déduit du token JWT si présent (route accessible aux invités). IsLiked et IsWishedList sont calculés si l'utilisateur est authentifié.",
+                "operationId": "edbad9f09f2dadb2a475839355ecb77a",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "description": "Identifiant du profil vendeur.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 10
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Produits du vendeur récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 48
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Vendeur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Vendeur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/models/create": {
             "post": {
                 "tags": [
@@ -8395,6 +9079,366 @@
                 }
             }
         },
+        "/api/vendors/{vendorProfileID}/ratings": {
+            "get": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Lister les avis d'une boutique",
+                "description": "Retourne la liste paginée des avis d'une boutique avec nom et avatar du commentateur. Note moyenne et total dans les métadonnées.",
+                "operationId": "74f8a34ca56348ea2599f700da91a003",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avis récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "RatingID": {
+                                                        "type": "integer",
+                                                        "example": 12
+                                                    },
+                                                    "Rating": {
+                                                        "type": "integer",
+                                                        "example": 5
+                                                    },
+                                                    "Comment": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "CommenterName": {
+                                                        "type": "string",
+                                                        "example": "Jean Dupont"
+                                                    },
+                                                    "CommenterAvatar": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 48
+                                                },
+                                                "average_rating": {
+                                                    "type": "number",
+                                                    "example": 4.3
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Mettre à jour son avis",
+                "description": "Met à jour la note et le commentaire de l'utilisateur authentifié pour une boutique vendeur.",
+                "operationId": "2786f6d05bb7a75129047e17ae14ef13",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "rating"
+                                ],
+                                "properties": {
+                                    "rating": {
+                                        "type": "integer",
+                                        "example": 5,
+                                        "maximum": 5,
+                                        "minimum": 1
+                                    },
+                                    "comment": {
+                                        "type": "string",
+                                        "example": "Finalement excellent !",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Avis mis à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis mis à jour avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun avis trouvé pour cette boutique",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Aucun avis trouvé pour cette boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Soumettre un avis sur une boutique",
+                "description": "Crée ou met à jour l'avis de l'utilisateur authentifié pour une boutique vendeur. Un utilisateur ne peut pas évaluer sa propre boutique.",
+                "operationId": "76c6ef0eba5ed86a2e19be1c5dfa1729",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "rating"
+                                ],
+                                "properties": {
+                                    "rating": {
+                                        "type": "integer",
+                                        "example": 4,
+                                        "maximum": 5,
+                                        "minimum": 1
+                                    },
+                                    "comment": {
+                                        "type": "string",
+                                        "example": "Très bon vendeur, livraison rapide.",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Avis soumis avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis soumis avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Vous ne pouvez pas évaluer votre propre boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "StoreRatings"
+                ],
+                "summary": "Supprimer son avis",
+                "description": "Supprime (soft delete) l'avis de l'utilisateur authentifié et recalcule la note moyenne.",
+                "operationId": "fe61424e27e11bc0541517c21a13bc45",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avis supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Avis supprimé avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun avis actif trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Aucun avis actif trouvé pour cette boutique."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tags/create": {
             "post": {
                 "tags": [
@@ -8986,6 +10030,162 @@
                 "responses": {
                     "200": {
                         "description": "Succès"
+                    }
+                }
+            }
+        },
+        "/api/vendors/{vendorProfileID}/public-profile": {
+            "get": {
+                "tags": [
+                    "Vendors"
+                ],
+                "summary": "Profil public d'un vendeur",
+                "description": "Retourne le profil public d'un vendeur : nom de boutique, logo, bannière, note/évaluations, statuts de vérification (identité, entreprise, banque), description, adresse, progression du profil, catégories de produits couvertes et statistiques (produits, ventes). Accessible aux invités.",
+                "operationId": "4c37acd5f8ece31d96c3f10ffbed89c9",
+                "parameters": [
+                    {
+                        "name": "vendorProfileID",
+                        "in": "path",
+                        "description": "Identifiant du profil vendeur.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 5
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profil vendeur récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "StoreName": {
+                                                    "type": "string",
+                                                    "example": "TechStore"
+                                                },
+                                                "LogoURL": {
+                                                    "type": "string",
+                                                    "example": "https://cdn.example.com/logos/techstore.png",
+                                                    "nullable": true
+                                                },
+                                                "BannerURL": {
+                                                    "type": "string",
+                                                    "example": "https://cdn.example.com/banners/techstore.png",
+                                                    "nullable": true
+                                                },
+                                                "Note": {
+                                                    "type": "string",
+                                                    "example": "Excellent vendeur"
+                                                },
+                                                "Rating": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 4.8
+                                                },
+                                                "ReviewCount": {
+                                                    "type": "integer",
+                                                    "example": 320
+                                                },
+                                                "IdentityVerified": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "BusinessVerified": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "BankVerified": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "Description": {
+                                                    "type": "string",
+                                                    "example": "Spécialiste en électronique depuis 2015.",
+                                                    "nullable": true
+                                                },
+                                                "ApprovedAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "ProfileProgress": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 85.5
+                                                },
+                                                "Address": {
+                                                    "type": "string",
+                                                    "example": "Casablanca, Maroc"
+                                                },
+                                                "HasProductsInCategories": {
+                                                    "type": "string",
+                                                    "example": "Électronique, Accessoires",
+                                                    "nullable": true
+                                                },
+                                                "TotalProducts": {
+                                                    "type": "integer",
+                                                    "example": 48
+                                                },
+                                                "TotalVentes": {
+                                                    "type": "integer",
+                                                    "example": 1200
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Profil vendeur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profil vendeur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -9597,6 +10797,9 @@
         }
     },
     "components": {
+        "schemas": {
+            "UserIDRequest": {}
+        },
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
@@ -9607,6 +10810,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Addresses",
+            "description": "Gestion des adresses utilisateur"
+        },
         {
             "name": "Administration",
             "description": "Actions réservées aux administrateurs système"
@@ -9664,12 +10871,20 @@
             "description": "Recherche et suggestions"
         },
         {
+            "name": "StoreRatings",
+            "description": "Avis et notes des boutiques vendeurs"
+        },
+        {
             "name": "Tags",
             "description": "Gestion des tags"
         },
         {
             "name": "Units",
             "description": "Gestion des unités de mesure"
+        },
+        {
+            "name": "Vendors",
+            "description": "Gestion des vendeurs"
         },
         {
             "name": "Wishlists",

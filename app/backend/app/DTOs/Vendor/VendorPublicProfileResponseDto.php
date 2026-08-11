@@ -2,68 +2,73 @@
 // App\DTOs\Vendor\VendorPublicProfileResponseDto
 namespace App\DTOs\Vendor;
 
+
 class VendorPublicProfileResponseDto
 {
     public function __construct(
-        public readonly string  $storeName,
+        public readonly string  $StoreName,
         public readonly ?string $logoURL,
         public readonly ?string $bannerURL,
-        public readonly string  $note,
-        public readonly float   $rating,
-        public readonly int     $reviewCount,
-        public readonly bool    $identityVerified,
-        public readonly bool    $businessVerified,
-        public readonly bool    $bankVerified,
-        public readonly ?string $description,
-        public readonly ?string $approvedAt,
-        public readonly float   $profileProgress,
-        public readonly string  $address,
-        public readonly ?string $hasProductsInCategories,
-        public readonly int     $totalProducts,
-        public readonly int     $totalVentes,
+        public readonly string  $Note,
+        public readonly float   $Rating,
+        public readonly int     $ReviewCount,
+        public readonly bool    $IdentityVerified,
+        public readonly bool    $BusinessVerified,
+        public readonly bool    $BankVerified,
+        public readonly ?string $Description,
+        public readonly ?string $ApprovedAt,
+        public readonly float   $ProfileProgress,
+        public readonly string  $Address,
+        public readonly ?string $HasProductsInCategories,
+        public readonly int     $TotalProducts,
+        public readonly int     $TotalVentes,
+        public readonly float $Progression, 
     ) {}
 
     public static function fromRow(object $row): self
     {
         return new self(
-            storeName:               $row->StoreName,
+            StoreName:               $row->StoreName,
             logoURL:                 $row->LogoURL                  ?? null,
+            Progression : $row->Progression,
             bannerURL:               $row->BannerURL                ?? null,
-            note:                    $row->Note,
-            rating:                  (float) $row->Rating,
-            reviewCount:             (int)   $row->ReviewCount,
-            identityVerified:        (bool)  $row->IdentityVerified,
-            businessVerified:        (bool)  $row->BusinessVerified,
-            bankVerified:            (bool)  $row->BankVerified,
-            description:             $row->Description              ?? null,
-            approvedAt:              $row->ApprovedAt               ?? null,
-            profileProgress:         (float) $row->ProfileProgress,
-            address:                 $row->Address,
-            hasProductsInCategories: $row->HasProductsInCategories  ?? null,
-            totalProducts:           (int)   $row->TotalProducts,
-            totalVentes:             (int)   $row->TotalVentes,
+            Note:                    $row->Note,
+            Rating:                  (float) $row->Rating,
+            ReviewCount:             (int)   $row->ReviewCount,
+            IdentityVerified:        (bool)  $row->IdentityVerified,
+            BusinessVerified:        (bool)  $row->BusinessVerified,
+            BankVerified:            (bool)  $row->BankVerified,
+            Description:             $row->Description              ?? null,
+            ApprovedAt:              $row->ApprovedAt               ?? null,
+            ProfileProgress:         (float) $row->ProfileProgress,
+            Address:                 $row->Address,
+            HasProductsInCategories: $row->HasProductsInCategories  ?? null,
+            TotalProducts:           (int)   $row->TotalProducts,
+            TotalVentes:             (int)   $row->TotalVentes,
         );
     }
 
     public function toArray(): array
     {
         return [
-            'StoreName'               => $this->storeName,
+            
+            'StoreName'               => $this->StoreName,
             'LogoURL'                 => $this->logoURL,
             'BannerURL'               => $this->bannerURL,
-            'Note'                    => $this->note,
-            'Rating'                  => $this->rating,
-            'ReviewCount'             => $this->reviewCount,
-            'IdentityVerified'        => $this->identityVerified,
-            'BusinessVerified'        => $this->businessVerified,
-            'BankVerified'            => $this->bankVerified,
-            'Description'             => $this->description,
-            'ApprovedAt'              => $this->approvedAt,
-            'ProfileProgress'         => $this->profileProgress,
-            'Address'                 => $this->address,
-            'HasProductsInCategories' => $this->hasProductsInCategories,
-            'TotalProducts'           => $this->totalProducts,
-            'TotalVentes'             => $this->totalVentes,
+            'Note'                    => $this->Note,
+            'Progression' => $this->Progression,
+            'Rating'                  => $this->Rating,
+            'ReviewCount'             => $this->ReviewCount,
+            'IdentityVerified'        => $this->IdentityVerified,
+            'BusinessVerified'        => $this->BusinessVerified,
+            'BankVerified'            => $this->BankVerified,
+            'Description'             => $this->Description,
+            'ApprovedAt'              => $this->ApprovedAt,
+            'ProfileProgress'         => $this->ProfileProgress,
+            'Address'                 => $this->Address,
+            'HasProductsInCategories' => $this->HasProductsInCategories,
+            'TotalProducts'           => $this->TotalProducts,
+            'TotalVentes'             => $this->TotalVentes,
         ];
     }
 }

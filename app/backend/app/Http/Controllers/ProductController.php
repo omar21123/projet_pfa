@@ -1602,4 +1602,102 @@ class ProductController extends Controller
             'data' => $result->toArray(),
         ], 200);
     }
+    #[OA\Get(
+        path: "/api/products/vendor/{vendorProfileID}",
+        tags: ["Products"],
+        summary: "Lister les produits publics d'un vendeur",
+        description: "Retourne la liste paginée des produits d'un vendeur. UserPublicID est déduit du token JWT si présent (route accessible aux invités). IsLiked et IsWishedList sont calculés si l'utilisateur est authentifié.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "vendorProfileID",
+        in: "path",
+        required: true,
+        description: "Identifiant du profil vendeur.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 5
+    )]
+    #[OA\Parameter(name: "category_id", in: "query", required: false, schema: new OA\Schema(type: "integer"), example: 10)]
+    #[OA\Parameter(name: "page",        in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page",    in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Produits du vendeur récupérés avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(type: "object")
+                ),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "total",       type: "integer", example: 48),
+                        new OA\Property(property: "page",        type: "integer", example: 1),
+                        new OA\Property(property: "page_size",   type: "integer", example: 20),
+                        new OA\Property(property: "last_page",   type: "integer", example: 3),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Vendeur introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Vendeur introuvable."),
+            ]
+        )
+    )]
+    public function getVendorPublicProducts(Request $request, int $vendorProfileID): JsonResponse
+    {
+        if ($vendorProfileID <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de profil vendeur invalide.',
+            ], 404);
+        }
+
+        $userPublicID = $request->attributes->get('user_id'); // null if guest
+        $categoryID   = $request->query('category_id') ? (int) $request->query('category_id') : null;
+        $pageNumber   = max(1, (int) $request->query('page', 1));
+        $pageSize     = min(100, max(1, (int) $request->query('per_page', 20)));
+
+        try {
+            $result = $this->productService->getVendorPublicProducts(
+                vendorProfileID: $vendorProfileID,
+                userPublicID: $userPublicID,
+                categoryID: $categoryID,
+                pageNumber: $pageNumber,
+                pageSize: $pageSize,
+            );
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'data' => array_map(
+                fn($item) => $item->toArray(),
+                $result['data']
+            ),
+            'meta' => [
+                'total'     => $result['total'],
+                'page'      => $result['page'],
+                'page_size' => $result['pageSize'],
+                'last_page' => $result['totalPages'],
+            ],
+        ], 200);
+    }
 }

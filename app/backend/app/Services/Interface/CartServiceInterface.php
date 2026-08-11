@@ -6,6 +6,7 @@ use App\DTOs\Cart\AddCartItemDto;
 use App\DTOs\Cart\CartItemResponseDto;
 use App\DTOs\Cart\GetCartDto;
 use App\DTOs\Cart\RemoveCartItemDto;
+use App\DTOs\Cart\UpdateCartItemQuantityDto;
 
 interface CartServiceInterface
 {
@@ -15,4 +16,6 @@ interface CartServiceInterface
      * @return CartItemResponseDto[]
      */
     public function getCart(GetCartDto $dto): array;
+    public function updateItemQuantity(UpdateCartItemQuantityDto $dto): string;
+
 }

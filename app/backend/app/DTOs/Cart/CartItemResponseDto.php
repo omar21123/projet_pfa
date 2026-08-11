@@ -8,7 +8,9 @@ class CartItemResponseDto
      *  @param string[] $defaultImages
      */
     public function __construct(
-         public readonly int $productId,
+        public readonly int $cartItemID,
+        public readonly int $productId,
+         
         public readonly int $combinationId,
         public readonly string $productName,
         public readonly ?string $productDescription,
@@ -27,6 +29,7 @@ class CartItemResponseDto
     public static function fromInfoDto(CartItemInfoDto $infoDto): self
     {
         return new self(
+            cartItemID : $infoDto->cartItemID,
             productId: $infoDto->productId,
             combinationId: $infoDto->combinationId,
             productName: $infoDto->productName,
@@ -47,6 +50,7 @@ class CartItemResponseDto
     public function toArray(): array
     {
         return [
+            'CartItemID' => $this->cartItemID,
             'ProductID'          => $this->productId,
             'CombinationID'      => $this->combinationId,
             'ProductName'        => $this->productName,

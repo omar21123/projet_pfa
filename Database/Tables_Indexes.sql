@@ -1012,18 +1012,21 @@ CREATE TABLE ProductLikes (
     INDEX IDX_ProductLikes_UserID (UserID),
     INDEX IDX_ProductLikes_ProductID (ProductID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE UserStoreRatings (
+    RatingID          INT      NOT NULL AUTO_INCREMENT,
+    VendorProfileID   INT      NOT NULL,
+    UserID            INT      NOT NULL,
+    Rating            TINYINT  NOT NULL COMMENT '1 to 5',
+    Comment           TEXT     NULL,
+    DeletedAt         DATETIME NULL,
 
+    PRIMARY KEY (RatingID),
+    UNIQUE KEY uq_user_vendor_rating (UserID, VendorProfileID),
+    CONSTRAINT fk_usr_vendorprofile FOREIGN KEY (VendorProfileID) REFERENCES VendorProfiles(VendorProfileID),
+    CONSTRAINT fk_usr_user          FOREIGN KEY (UserID)           REFERENCES Users(UserID),
+    CONSTRAINT chk_rating_range     CHECK (Rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE ProductSearchIndex
 ADD FULLTEXT INDEX FT_SearchText (SearchText);
 
 SET FOREIGN_KEY_CHECKS = 1;
-
--- =============================================================================
--- OPTIONAL: seed a couple of lookup rows so the app has something to boot
--- against. Comment out if you'll seed via your own migration/SP layer.
--- =============================================================================
--- INSERT INTO OrderStatus (Name, Code, DisplayOrder) VALUES
---   ('En attente', 'PENDING', 1), ('Confirmée', 'CONFIRMED', 2),
---   ('Expédiée', 'SHIPPED', 3), ('Livrée', 'DELIVERED', 4), ('Annulée', 'CANCELLED', 5);
--- INSERT INTO Roles (Name, Code, IsSystem) VALUES
---   ('Admin', 'ADMIN', 1), ('Vendor', 'VENDOR', 1), ('Customer', 'CUSTOMER', 1);

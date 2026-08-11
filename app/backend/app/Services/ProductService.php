@@ -192,4 +192,19 @@ class ProductService implements ProductServiceInterface
             similarInCategories: $similarinCategories
         );
     }
+    public function getVendorPublicProducts(
+    int     $vendorProfileID,
+    ?string $userPublicID,
+    ?int    $categoryID,
+    int     $pageNumber,
+    int     $pageSize
+): array {
+    return $this->vendor_repository->getVendorProducts(
+        vendorProfileID: $vendorProfileID,
+        userPublicID:    $userPublicID,
+        categoryID:      $categoryID,
+        pageNumber:      $pageNumber,
+        pageSize:        $pageSize,
+    );
+}
 }

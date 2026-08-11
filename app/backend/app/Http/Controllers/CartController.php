@@ -10,8 +10,9 @@ use App\Http\Requests\Cart\RemoveCartItemRequest;
 use App\Services\Interface\CartServiceInterface;
 use Illuminate\Http\JsonResponse;
 use App\DTOs\Cart\GetCartDto;
+use App\DTOs\Cart\UpdateCartItemQuantityDto;
 use App\Http\Requests\Cart\GetCartRequest;
-
+use App\Http\Requests\Cart\UpdateCartItemQuantityRequest;
 use OpenApi\Attributes as OA;
 
 class CartController extends Controller
@@ -159,6 +160,60 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $response,
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/cart/items/quantity",
+        tags: ["Cart"],
+        summary: "Modifier la quantité d'un article du panier",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["CartItemID", "Quantity"],
+            properties: [
+                new OA\Property(property: "CartItemID", type: "integer", example: 42),
+                new OA\Property(
+                    property: "Quantity",
+                    type: "number",
+                    format: "float",
+                    example: 3,
+                    description: "Nouvelle quantité. Une valeur de 0 (ou négative) retire l'article du panier."
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Quantité mise à jour (ou article retiré si Quantity <= 0)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Quantité mise à jour."),
+            ]
+        )
+    )]
+    #[OA\Response(response: 403, description: "Cet article n'appartient pas à votre panier")]
+    #[OA\Response(response: 404, description: "Utilisateur, panier ou article introuvable")]
+    #[OA\Response(response: 422, description: "Erreur de validation")]
+    public function updateItemQuantity(UpdateCartItemQuantityRequest $request): JsonResponse
+    {
+        $userPublicId = $request->attributes->get('user_id');
+        $dto = UpdateCartItemQuantityDto::fromArray($request->validated(), $userPublicId);
+
+        try {
+            $message = $this->cartService->updateItemQuantity($dto);
+        } catch (BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
         ], 200);
     }
 }

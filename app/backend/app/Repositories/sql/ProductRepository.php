@@ -466,7 +466,7 @@ class ProductRepository implements ProductRepositoryInterface
         }
 
         $items = array_map(fn($row) => VendorProductItemDto::fromRow($row), $rows);
-        
+
         return new PaginatedVendorProductResponseDto(
             items: $items,
             total: (int) $result->totalCount,
@@ -644,7 +644,7 @@ class ProductRepository implements ProductRepositoryInterface
 
         return (bool) $result->found;
     }
-    public function getSimilarProducts(int $productId,?string $UserPublicID ,int $limit = 10): array
+    public function getSimilarProducts(int $productId, ?string $UserPublicID, int $limit = 10): array
     {
         $rows = DB::select('CALL SP_GetSimilarProductsByName(?, ?,?, @success, @message)', [
             $productId,
@@ -707,5 +707,46 @@ class ProductRepository implements ProductRepositoryInterface
                 $rows
             )
         ));
+    }
+    public function getVendorProducts(
+        int     $vendorProfileID,
+        ?string $userPublicID,
+        ?int    $categoryID,
+        int     $pageNumber,
+        int     $pageSize
+    ): array {
+        DB::statement('SET @v_TotalCount = 0');
+        DB::statement('SET @v_Success    = FALSE');
+        DB::statement('SET @v_Message    = ""');
+
+        $results = DB::select(
+            'CALL SP_GetVendorProducts(?, ?, ?, ?, ?, @v_TotalCount, @v_Success, @v_Message)',
+            [$vendorProfileID, $userPublicID, $categoryID, $pageNumber, $pageSize]
+        );
+
+        $output = DB::selectOne(
+            'SELECT @v_Success AS Success, @v_Message AS Message, @v_TotalCount AS TotalCount'
+        );
+
+        if (!$output->Success) {
+            return [
+                'data'       => [],
+                'total'      => 0,
+                'page'       => $pageNumber,
+                'pageSize'   => $pageSize,
+                'totalPages' => 0,
+            ];
+        }
+
+        return [
+            'data'       => array_map(
+                fn($row) => ProductItemDto::fromRow($row),
+                $results
+            ),
+            'total'      => (int) $output->TotalCount,
+            'page'       => $pageNumber,
+            'pageSize'   => $pageSize,
+            'totalPages' => (int) ceil($output->TotalCount / $pageSize),
+        ];
     }
 }
