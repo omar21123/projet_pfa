@@ -5,11 +5,15 @@ namespace App\Services;
 
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
+use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use App\Services\Interface\DeliveryServiceInterface;
 
@@ -42,5 +46,19 @@ class DeliveryService implements DeliveryServiceInterface
     public function suspendDeliveryProfile(SuspendDeliveryProfileDto $dto): void
     {
         $this->deliveryRepository->suspendDeliveryProfile($dto);
+    }
+    // Interface + implementation — same pass-through pattern as before
+
+    public function getRecommendedDeliveries(GetRecommendedDeliveriesDto $dto): PaginatedRecommendedDeliveriesDto
+    {
+        return $this->deliveryRepository->getRecommendedDeliveries($dto);
+    }
+    public function getDeliveryProfileByUserId(int $userId): ?DeliveryProfileBasicDto
+    {
+        return $this->deliveryRepository->getDeliveryProfileByUserId($userId);
+    }
+    public function updateDeliveryLocation(UpdateDeliveryLocationDto $dto): void
+    {
+        $this->deliveryRepository->updateDeliveryLocation($dto);
     }
 }

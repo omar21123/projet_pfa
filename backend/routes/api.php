@@ -280,6 +280,10 @@ Route::middleware('jwt.custom')->group(function () {
     Route::patch('/deliveries/profiles/{deliveryProfile}/approve', [\App\Http\Controllers\DeliveryController::class, 'approve']);
     Route::patch('/deliveries/profiles/{deliveryProfile}/suspend', [\App\Http\Controllers\DeliveryController::class, 'suspend']);
 });
+  Route::middleware('role:LIVREUR')->group(function () {
+    Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
+    Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
 });
 
 
+});

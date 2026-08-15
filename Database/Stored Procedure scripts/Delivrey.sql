@@ -681,3 +681,65 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetDeliverySummary (
+    IN  p_DeliveryID   INT,
+    OUT v_Success       BOOLEAN,
+    OUT v_Message        VARCHAR(255)
+)
+BEGIN
+    DECLARE v_Exists     INT DEFAULT 0;
+    DECLARE v_ErrorMessage VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetDeliverySummary', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération de la livraison.';
+    END;
+
+    SELECT COUNT(*) INTO v_Exists FROM Deliveries WHERE DeliveryID = p_DeliveryID;
+
+    IF v_Exists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+    ELSE
+        SELECT
+            d.DeliveryID,
+            COUNT(di.DeliveryItemID) AS TotalItems,
+
+            af.AddressID    AS FromAddressID,
+            af.AddressLine1 AS FromAddressLine1,
+            af.AddressLine2 AS FromAddressLine2,
+            af.City         AS FromCity,
+            af.Region       AS FromRegion,
+            af.PostalCode   AS FromPostalCode,
+            af.Country      AS FromCountry,
+
+            at.AddressID    AS ToAddressID,
+            at.AddressLine1 AS ToAddressLine1,
+            at.AddressLine2 AS ToAddressLine2,
+            at.City         AS ToCity,
+            at.Region       AS ToRegion,
+            at.PostalCode   AS ToPostalCode,
+            at.Country      AS ToCountry
+
+        FROM Deliveries d
+        INNER JOIN DeliveryItems di ON di.DeliveryID = d.DeliveryID
+        INNER JOIN Addresses af     ON af.AddressID = d.AddressFromID
+        INNER JOIN Addresses at     ON at.AddressID = d.AddressToID
+        WHERE d.DeliveryID = p_DeliveryID
+        GROUP BY d.DeliveryID;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livraison récupérée avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;

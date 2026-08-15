@@ -6,12 +6,17 @@ namespace App\Repositories\sql;
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileListItemDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
+use App\DTOs\Delivery\RecommendedDeliveryItemDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
+use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -172,8 +177,6 @@ class DeliveryRepository implements DeliveryRepositoryInterface
             perPage: $dto->perPage,
         );
     }
-    // DeliveryRepository — add this method
-
     public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto
     {
         Log::info("========== GET DELIVERY PROFILE BY ID START ==========", [
@@ -249,5 +252,90 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         }
 
         Log::info("========== SUSPEND DELIVERY PROFILE SUCCESS ==========");
+    }
+    public function getRecommendedDeliveries(GetRecommendedDeliveriesDto $dto): PaginatedRecommendedDeliveriesDto
+    {
+        Log::info("========== GET RECOMMENDED DELIVERIES START ==========", (array) $dto);
+
+        $pdo = DB::connection()->getPdo();
+
+        $stmt = $pdo->prepare(
+            'CALL SP_GetRecommendedDeliveries(?, ?, ?, ?, @success, @message, @total)'
+        );
+
+        $stmt->execute([
+            $dto->deliveryProfileId,
+            $dto->maxDistanceKm,
+            $dto->page,
+            $dto->perPage,
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $stmt->closeCursor();
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message, @total AS total');
+
+        Log::info("GET RECOMMENDED DELIVERIES RESULT", [
+            'success' => $result->success ?? null,
+            'message' => $result->message ?? null,
+            'total' => $result->total ?? null,
+            'rows' => count($rows),
+        ]);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        return new PaginatedRecommendedDeliveriesDto(
+            data: array_map(fn($row) => RecommendedDeliveryItemDto::fromRow($row), $rows),
+            total: (int) ($result->total ?? 0),
+            page: $dto->page,
+            perPage: $dto->perPage,
+        );
+    }
+    public function getDeliveryProfileByUserId(int $userId): ?DeliveryProfileBasicDto
+    {
+        Log::info("========== GET DELIVERY PROFILE BY USER ID START ==========", ['userId' => $userId]);
+
+        $row = DB::selectOne(
+            'SELECT DeliveryProfileID, UserID, IsApproved, IsSuspended
+         FROM DeliveryProfiles
+         WHERE UserID = ?
+         LIMIT 1',
+            [$userId]
+        );
+
+        Log::info("GET DELIVERY PROFILE BY USER ID RESULT", ['found' => $row !== null]);
+
+        if (!$row) {
+            return null;
+        }
+
+        return DeliveryProfileBasicDto::fromRow($row);
+    }
+    // DeliveryRepository — add this method
+
+    public function updateDeliveryLocation(UpdateDeliveryLocationDto $dto): void
+    {
+        Log::info("========== UPDATE DELIVERY LOCATION START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_UpdateDeliveryLocation(?, ?, ?, @success, @message)',
+            [
+                $dto->deliveryProfileId,
+                $dto->latitude,
+                $dto->longitude,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("UPDATE DELIVERY LOCATION RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== UPDATE DELIVERY LOCATION SUCCESS ==========");
     }
 }
