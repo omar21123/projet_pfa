@@ -4081,6 +4081,230 @@
                 ]
             }
         },
+        "/api/orders/product": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Créer une commande pour un seul produit",
+                "description": "Crée une commande directement pour un produit unique (flux \"acheter maintenant\"). Résout le prix via la combinaison (variante) si fournie, applique une promotion éligible si fournie, vérifie le stock, puis calcule les totaux de la commande (Subtotal, ShippingFee = 10%, Total). UserPublicID est déduit du token JWT.",
+                "operationId": "8bf46f9bcd1b48f97c986d28a0f09155",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "AddressID",
+                                    "PaymentMethodID",
+                                    "ProductID",
+                                    "Quantity"
+                                ],
+                                "properties": {
+                                    "AddressID": {
+                                        "description": "Identifiant de l'adresse de l'utilisateur, utilisée comme adresse de facturation et de livraison.",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "PaymentMethodID": {
+                                        "description": "Identifiant du moyen de paiement.",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "ProductID": {
+                                        "description": "Identifiant du produit à commander.",
+                                        "type": "integer",
+                                        "example": 452
+                                    },
+                                    "Quantity": {
+                                        "description": "Quantité commandée.",
+                                        "type": "integer",
+                                        "example": 2,
+                                        "minimum": 1
+                                    },
+                                    "CombinationID": {
+                                        "description": "Identifiant de la variante (combinaison) du produit, si applicable.",
+                                        "type": "integer",
+                                        "example": 12,
+                                        "nullable": true
+                                    },
+                                    "PromotionID": {
+                                        "description": "Identifiant de la promotion à appliquer, si applicable.",
+                                        "type": "integer",
+                                        "example": 7,
+                                        "nullable": true
+                                    },
+                                    "Notes": {
+                                        "description": "Notes libres associées à la commande.",
+                                        "type": "string",
+                                        "example": "Livrer avant 18h si possible.",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Commande créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Commande créée avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "order_id": {
+                                                    "type": "integer",
+                                                    "example": 981
+                                                },
+                                                "order_number": {
+                                                    "type": "string",
+                                                    "example": "ORD-20260815-042"
+                                                },
+                                                "user_id": {
+                                                    "type": "integer",
+                                                    "example": 34
+                                                },
+                                                "billing_address_id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "shipping_address_id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "order_status_id": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "payment_method_id": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "subtotal": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 298
+                                                },
+                                                "shipping_fee": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 29.8
+                                                },
+                                                "discount": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 0
+                                                },
+                                                "tax": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 0
+                                                },
+                                                "total": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 327.8
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "example": "MAD"
+                                                },
+                                                "notes": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, produit, variante ou adresse introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée (stock insuffisant, promotion invalide/expirée, limite d'utilisation atteinte, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Stock insuffisant pour la quantité demandée."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/products": {
             "post": {
                 "tags": [
@@ -10845,6 +11069,10 @@
         {
             "name": "Auth - Google",
             "description": "Authentification via Google OAuth (web + mobile) et gestion de l'onboarding"
+        },
+        {
+            "name": "Orders",
+            "description": "Gestion des commandes"
         },
         {
             "name": "Products",

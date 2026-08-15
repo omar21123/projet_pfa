@@ -61,6 +61,17 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+                // Force the session's connection collation to match the schema's
+                // table collation (utf8mb4_unicode_ci). Without this, MySQL 8's
+                // server default (utf8mb4_0900_ai_ci) is used to type untyped
+                // string parameters sent to stored procedures/functions, causing
+                // "Illegal mix of collations" errors (1267) whenever a procedure
+                // parameter is compared against a table column such as
+                // Users.Email in GetLoginInfoByEmail. This is a session-level
+                // SET, so it does not require altering or recreating any of the
+                // 100+ existing stored procedures/functions.
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_INIT_COMMAND : PDO::MYSQL_ATTR_INIT_COMMAND) =>
+                    "SET collation_connection = " . env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             ]) : [],
         ],
 

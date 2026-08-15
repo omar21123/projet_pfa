@@ -106,3 +106,38 @@ CREATE INDEX IX_Promotions_DeletedAt ON Promotions (DeletedAt);
 
 ALTER TABLE Promotions
     MODIFY COLUMN VendorID INT NULL;
+
+
+    SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE PromotionUsages (
+    PromotionUsageID   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    PromotionID        INT UNSIGNED NOT NULL,
+    UserID              INT  NOT NULL,
+    OrderID             INT  NULL,
+    DiscountAmount      DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    UsedAt               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (PromotionUsageID),
+
+    CONSTRAINT FK_PromotionUsages_Promotion
+        FOREIGN KEY (PromotionID) REFERENCES Promotions(PromotionID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_PromotionUsages_User
+        FOREIGN KEY (UserID) REFERENCES Users(UserID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_PromotionUsages_Order
+        FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+        ON DELETE SET NULL,
+
+    -- prevents the same promo being applied twice to the same order
+    CONSTRAINT UQ_PromotionUsages_Promo_Order UNIQUE (PromotionID, OrderID),
+
+    INDEX IX_PromotionUsages_Promo_User (PromotionID, UserID),
+    INDEX IX_PromotionUsages_Order (OrderID)
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;

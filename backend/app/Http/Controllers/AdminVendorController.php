@@ -105,7 +105,6 @@ class AdminVendorController extends Controller
             verifiedBy: $currentUser->userId,
             verificationNotes: $request->input('verification_notes'),
         );
-
         $result = $this->adminVendorService->verifyIdentity($dto);
 
         return response()->json([

@@ -161,3 +161,43 @@ END main_block $$
 
 DELIMITER ;
 
+DELIMITER $$
+
+CREATE DEFINER=`root`@`%` PROCEDURE `SP_VerifyIdentity`(
+    IN p_VendorProfileID INT,
+    IN p_VerifiedBy INT,
+    IN p_VerificationNotes VARCHAR(500)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    UPDATE VendorProfiles
+    SET
+        IdentityVerified   = 1,
+        VerifiedBy         = p_VerifiedBy,
+        VerificationNotes  = p_VerificationNotes,
+        UpdatedAt          = UTC_TIMESTAMP()
+    WHERE VendorProfileID = p_VendorProfileID;
+
+    COMMIT;
+
+    SELECT
+        VendorProfileID,
+        IdentityVerified,
+        BusinessVerified,
+        BankVerified,
+        VerificationStatus,
+        VerifiedBy,
+        VerificationNotes,
+        UpdatedAt
+    FROM VendorProfiles
+    WHERE VendorProfileID = p_VendorProfileID;
+END$$
+
+DELIMITER ;

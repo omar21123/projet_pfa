@@ -18,6 +18,7 @@ use App\Http\Controllers\ConfigAttributeOptionController;
 use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductRecommendationController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\SearchController;
@@ -265,4 +266,7 @@ Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
     Route::put('/{address}',                 [AddressController::class, 'update']);
     Route::delete('/{address}',              [AddressController::class, 'destroy']);
     Route::patch('/{address}/default-shipping', [AddressController::class, 'setDefaultShipping']);
+});
+Route::middleware('jwt.custom')->prefix('orders')->group(function () {
+  Route::post('/product', [OrderController::class, 'createForProduct']);
 });
