@@ -276,6 +276,8 @@ Route::middleware('jwt.custom')->prefix('orders')->group(function () {
 Route::middleware('jwt.custom')->group(function () {
     Route::middleware('role:ADMIN')->group(function () {
     Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
+    Route::get('/deliveries/profiles/{deliveryProfile}', [\App\Http\Controllers\DeliveryController::class, 'show']);
+
 });
 });
 

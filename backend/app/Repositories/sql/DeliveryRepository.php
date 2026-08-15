@@ -5,6 +5,7 @@ namespace App\Repositories\sql;
 
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileListItemDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
@@ -136,7 +137,11 @@ class DeliveryRepository implements DeliveryRepositoryInterface
             ORDER BY dp.CreatedAt DESC
             LIMIT ? OFFSET ?',
             [
-                $dto->search, $dto->search, $dto->search, $dto->search, $dto->search,
+                $dto->search,
+                $dto->search,
+                $dto->search,
+                $dto->search,
+                $dto->search,
                 $dto->isAvailable === null ? null : (int) $dto->isAvailable,
                 $dto->isAvailable === null ? null : (int) $dto->isAvailable,
                 $dto->isApproved  === null ? null : (int) $dto->isApproved,
@@ -164,5 +169,34 @@ class DeliveryRepository implements DeliveryRepositoryInterface
             page: $dto->page,
             perPage: $dto->perPage,
         );
+    }
+    // DeliveryRepository — add this method
+
+    public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto
+    {
+        Log::info("========== GET DELIVERY PROFILE BY ID START ==========", [
+            'deliveryProfileId' => $deliveryProfileId,
+        ]);
+
+        $rows = DB::select(
+            'CALL SP_GetDeliveryProfileById(?, @success, @message)',
+            [$deliveryProfileId]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("GET DELIVERY PROFILE BY ID RESULT", ['success' => $result->success ?? null, 'rows' => count($rows)]);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        if (empty($rows)) {
+            throw new BusinessValidationException('Profil livreur introuvable.', 404);
+        }
+
+        Log::info("========== GET DELIVERY PROFILE BY ID SUCCESS ==========");
+
+        return DeliveryProfileDetailsDto::fromRow($rows[0]);
     }
 }

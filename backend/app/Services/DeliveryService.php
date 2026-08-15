@@ -4,6 +4,7 @@
 namespace App\Services;
 
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
@@ -14,8 +15,7 @@ class DeliveryService implements DeliveryServiceInterface
 {
     public function __construct(
         protected DeliveryRepositoryInterface $deliveryRepository
-    ) {
-    }
+    ) {}
 
     public function addOrderItemToDelivery(AddOrderItemToDeliveryDto $dto): DeliveryResultDto
     {
@@ -25,5 +25,10 @@ class DeliveryService implements DeliveryServiceInterface
     public function getAllDeliveryProfiles(GetAllDeliveryProfilesDto $dto): PaginatedDeliveryProfilesDto
     {
         return $this->deliveryRepository->getAllDeliveryProfiles($dto);
+    }
+
+    public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto
+    {
+        return $this->deliveryRepository->getDeliveryProfileById($deliveryProfileId);
     }
 }

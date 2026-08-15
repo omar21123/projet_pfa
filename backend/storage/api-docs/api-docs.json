@@ -3852,6 +3852,231 @@
                 ]
             }
         },
+        "/api/deliveries/profiles/{deliveryProfile}": {
+            "get": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Détails d'un livreur",
+                "description": "Retourne les informations complètes d'un livreur : profil utilisateur, statistiques de livraison, statut de disponibilité/approbation et solde du portefeuille.",
+                "operationId": "eed144c4bfbb7fae0225e71ac2a552c5",
+                "parameters": [
+                    {
+                        "name": "deliveryProfile",
+                        "in": "path",
+                        "description": "Identifiant du profil livreur.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 7
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livreur récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "delivery_profile_id": {
+                                                    "type": "integer",
+                                                    "example": 7
+                                                },
+                                                "user": {
+                                                    "properties": {
+                                                        "user_id": {
+                                                            "type": "integer",
+                                                            "example": 34
+                                                        },
+                                                        "public_id": {
+                                                            "type": "string",
+                                                            "example": "b3e1f7a2-..."
+                                                        },
+                                                        "first_name": {
+                                                            "type": "string",
+                                                            "example": "Youssef"
+                                                        },
+                                                        "last_name": {
+                                                            "type": "string",
+                                                            "example": "El Amrani"
+                                                        },
+                                                        "display_name": {
+                                                            "type": "string",
+                                                            "example": "Youssef El Amrani"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "youssef@example.com"
+                                                        },
+                                                        "phone_number": {
+                                                            "type": "string",
+                                                            "example": "+212600000000",
+                                                            "nullable": true
+                                                        },
+                                                        "avatar_url": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        },
+                                                        "email_verified": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "phone_verified": {
+                                                            "type": "boolean",
+                                                            "example": false
+                                                        },
+                                                        "is_active": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "last_login_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        },
+                                                        "created_at": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "vehicle_type": {
+                                                    "type": "string",
+                                                    "example": "moto",
+                                                    "nullable": true
+                                                },
+                                                "license_plate": {
+                                                    "type": "string",
+                                                    "example": "12345-A-6",
+                                                    "nullable": true
+                                                },
+                                                "rating": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 4.8
+                                                },
+                                                "delivery_count": {
+                                                    "type": "integer",
+                                                    "example": 132
+                                                },
+                                                "is_available": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "last_online_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "current_latitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "nullable": true
+                                                },
+                                                "current_longitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "nullable": true
+                                                },
+                                                "identity_verified": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "is_approved": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "is_suspended": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "wallet": {
+                                                    "properties": {
+                                                        "delivery_wallet_id": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        },
+                                                        "current_balance": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 1250.5
+                                                        },
+                                                        "withdrawable_balance": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 950
+                                                        },
+                                                        "pending_balance": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 300.5
+                                                        },
+                                                        "currency_code": {
+                                                            "type": "string",
+                                                            "example": "MAD"
+                                                        },
+                                                        "is_locked": {
+                                                            "type": "boolean",
+                                                            "example": false
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Profil livreur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profil livreur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [

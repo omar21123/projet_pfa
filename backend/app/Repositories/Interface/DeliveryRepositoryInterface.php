@@ -5,6 +5,7 @@ namespace App\Repositories\Interface;
 
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
@@ -22,4 +23,7 @@ interface DeliveryRepositoryInterface
     ): object;
 
     public function getAllDeliveryProfiles(GetAllDeliveryProfilesDto $dto): PaginatedDeliveryProfilesDto;
+    // Interface — add to DeliveryRepositoryInterface
+
+    public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto;
 }

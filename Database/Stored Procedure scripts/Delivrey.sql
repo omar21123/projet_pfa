@@ -463,3 +463,170 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetDeliveryProfileById (
+    IN  p_DeliveryProfileID   INT,
+    OUT v_Success              BOOLEAN,
+    OUT v_Message               VARCHAR(255)
+)
+BEGIN
+    DECLARE v_ProfileExists   INT DEFAULT 0;
+    DECLARE v_ErrorMessage    VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetDeliveryProfileById', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération du livreur.';
+    END;
+
+    SELECT COUNT(*) INTO v_ProfileExists
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+    IF v_ProfileExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+    ELSE
+        SELECT
+            dp.DeliveryProfileID,
+            dp.UserID,
+            u.PublicID,
+            u.FirstName,
+            u.LastName,
+            u.DisplayName,
+            u.Email,
+            u.PhoneNumber,
+            u.AvatarURL,
+            u.EmailVerified,
+            u.PhoneVerified,
+            u.IsActive             AS UserIsActive,
+            u.LastLoginAt,
+            u.CreatedAt             AS UserCreatedAt,
+
+            dp.VehicleType,
+            dp.LicensePlate,
+            dp.Rating,
+            dp.DeliveryCount,
+            dp.IsAvailable,
+            dp.LastOnlineAt,
+            dp.CurrentLatitude,
+            dp.CurrentLongitude,
+            dp.IdentityVerified,
+            dp.IsApproved,
+            dp.IsSuspended,
+            dp.CreatedAt             AS ProfileCreatedAt,
+            dp.UpdatedAt             AS ProfileUpdatedAt,
+
+            dw.DeliveryWalletID,
+            dw.CurrentBalance,
+            dw.WithdrawableBalance,
+            dw.PendingBalance,
+            dw.CurrencyCode,
+            dw.IsLocked              AS WalletIsLocked
+
+        FROM DeliveryProfiles dp
+        INNER JOIN Users u          ON u.UserID = dp.UserID
+        LEFT JOIN DeliveryWallets dw ON dw.DeliveryProfileID = dp.DeliveryProfileID
+        WHERE dp.DeliveryProfileID = p_DeliveryProfileID
+        LIMIT 1;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livreur récupéré avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;
+DROP PROCEDURE IF EXISTS SP_ApproveDeliveryProfile;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_ApproveDeliveryProfile (
+    IN  p_DeliveryProfileID   INT,
+    IN  p_ApprovedBy           INT,
+    OUT v_Success              BOOLEAN,
+    OUT v_Message               VARCHAR(255),
+    OUT v_DeliveryWalletID      INT
+)
+BEGIN
+    DECLARE v_ProfileExists    INT DEFAULT 0;
+    DECLARE v_AlreadyApproved  TINYINT DEFAULT 0;
+    DECLARE v_ErrorMessage     VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_ApproveDeliveryProfile', v_ErrorMessage, NOW());
+
+        SET v_Success          = FALSE;
+        SET v_Message          = 'Une erreur est survenue lors de l''approbation du livreur.';
+        SET v_DeliveryWalletID = NULL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*), MAX(IsApproved)
+    INTO v_ProfileExists, v_AlreadyApproved
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID
+    FOR UPDATE;
+
+    IF v_ProfileExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+        SET v_DeliveryWalletID = NULL;
+        ROLLBACK;
+    ELSEIF v_AlreadyApproved = 1 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Ce livreur est déjà approuvé.';
+        SET v_DeliveryWalletID = NULL;
+        ROLLBACK;
+    ELSE
+        UPDATE DeliveryProfiles
+        SET IsApproved       = 1,
+            IdentityVerified = 1,
+            IsSuspended       = 0,
+            UpdatedAt          = NOW()
+        WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+        -- Wallet may already exist (created at registration) — only
+        -- create one if it's missing, don't duplicate it.
+        SELECT DeliveryWalletID INTO v_DeliveryWalletID
+        FROM DeliveryWallets
+        WHERE DeliveryProfileID = p_DeliveryProfileID
+        LIMIT 1;
+
+        IF v_DeliveryWalletID IS NULL THEN
+            INSERT INTO DeliveryWallets (
+                DeliveryProfileID,
+                CurrentBalance, WithdrawableBalance, PendingBalance,
+                CurrencyCode, IsLocked,
+                CreatedAt, UpdatedAt
+            )
+            VALUES (
+                p_DeliveryProfileID,
+                0.00, 0.00, 0.00,
+                'MAD', 0,
+                NOW(), NOW()
+            );
+
+            SET v_DeliveryWalletID = LAST_INSERT_ID();
+        END IF;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livreur approuvé avec succès.';
+
+        COMMIT;
+    END IF;
+END$$
+
+DELIMITER ;
