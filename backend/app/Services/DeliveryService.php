@@ -4,10 +4,12 @@
 namespace App\Services;
 
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use App\Services\Interface\DeliveryServiceInterface;
 
@@ -30,5 +32,15 @@ class DeliveryService implements DeliveryServiceInterface
     public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto
     {
         return $this->deliveryRepository->getDeliveryProfileById($deliveryProfileId);
+    }
+
+    public function approveDeliveryProfile(ApproveDeliveryProfileDto $dto): void
+    {
+        $this->deliveryRepository->approveDeliveryProfile($dto);
+    }
+
+    public function suspendDeliveryProfile(SuspendDeliveryProfileDto $dto): void
+    {
+        $this->deliveryRepository->suspendDeliveryProfile($dto);
     }
 }

@@ -3,9 +3,14 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\SuspendDeliveryProfileDto;
+use App\Http\Requests\Delivery\ApproveDeliveryProfileRequest;
 use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
+use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Services\Interface\DeliveryServiceInterface;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
@@ -17,6 +22,7 @@ class DeliveryController extends Controller
 {
     public function __construct(
         protected DeliveryServiceInterface $deliveryService,
+        protected UserService $userService
     ) {}
 
     #[OA\Get(
@@ -212,6 +218,173 @@ public function show(int $deliveryProfile): JsonResponse
     return response()->json([
         'success' => true,
         'data' => $result->toArray(),
+    ], 200);
+}
+#[OA\Patch(
+    path: "/api/deliveries/profiles/{deliveryProfile}/approve",
+    tags: ["Deliveries"],
+    summary: "Approuver un livreur",
+    description: "Approuve un profil livreur en attente : IsApproved et IdentityVerified passent à 1, IsSuspended repasse à 0.",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Parameter(
+    name: "deliveryProfile",
+    in: "path",
+    required: true,
+    description: "Identifiant du profil livreur à approuver.",
+    schema: new OA\Schema(type: "integer", minimum: 1),
+    example: 7
+)]
+#[OA\Response(
+    response: 200,
+    description: "Livreur approuvé avec succès",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "message", type: "string", example: "Livreur approuvé avec succès."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 404,
+    description: "Utilisateur introuvable",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Utilisateur introuvable."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 422,
+    description: "Profil introuvable ou déjà approuvé",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: false),
+            new OA\Property(property: "message", type: "string", example: "Ce livreur est déjà approuvé."),
+        ]
+    )
+)]
+public function approve(ApproveDeliveryProfileRequest $request, int $deliveryProfile): JsonResponse
+{
+    if ($deliveryProfile <= 0) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Identifiant de profil livreur invalide.',
+        ], 404);
+    }
+
+    $publicId = $request->attributes->get('user_id');
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+    if (!$userInfo) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Utilisateur introuvable.',
+        ], 404);
+    }
+
+    $dto = ApproveDeliveryProfileDto::fromArray([
+        'DeliveryProfileID' => $deliveryProfile,
+        'ApprovedBy'        => $userInfo->userId,
+    ]);
+
+    try {
+        $this->deliveryService->approveDeliveryProfile($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], $e->getCode() ?: 422);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Livreur approuvé avec succès.',
+    ], 200);
+}
+
+#[OA\Patch(
+    path: "/api/deliveries/profiles/{deliveryProfile}/suspend",
+    tags: ["Deliveries"],
+    summary: "Suspendre un livreur",
+    description: "Suspend un profil livreur : IsSuspended passe à 1 et IsAvailable est forcé à 0.",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Parameter(
+    name: "deliveryProfile",
+    in: "path",
+    required: true,
+    schema: new OA\Schema(type: "integer", minimum: 1),
+    example: 7
+)]
+#[OA\RequestBody(
+    required: false,
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "Reason", type: "string", nullable: true, maxLength: 500, example: "Plaintes clients répétées."),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 200,
+    description: "Livreur suspendu avec succès",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "message", type: "string", example: "Livreur suspendu avec succès."),
+        ]
+    )
+)]
+public function suspend(SuspendDeliveryProfileRequest $request, int $deliveryProfile): JsonResponse
+{
+    if ($deliveryProfile <= 0) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Identifiant de profil livreur invalide.',
+        ], 404);
+    }
+
+    $publicId = $request->attributes->get('user_id');
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+    if (!$userInfo) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Utilisateur introuvable.',
+        ], 404);
+    }
+
+    $validated = $request->validated();
+
+    $dto = SuspendDeliveryProfileDto::fromArray([
+        'DeliveryProfileID' => $deliveryProfile,
+        'SuspendedBy'       => $userInfo->userId,
+        'Reason'            => $validated['Reason'] ?? null,
+    ]);
+
+    try {
+        $this->deliveryService->suspendDeliveryProfile($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], $e->getCode() ?: 422);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Livreur suspendu avec succès.',
     ], 200);
 }
 }

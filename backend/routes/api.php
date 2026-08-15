@@ -277,7 +277,8 @@ Route::middleware('jwt.custom')->group(function () {
     Route::middleware('role:ADMIN')->group(function () {
     Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
     Route::get('/deliveries/profiles/{deliveryProfile}', [\App\Http\Controllers\DeliveryController::class, 'show']);
-
+    Route::patch('/deliveries/profiles/{deliveryProfile}/approve', [\App\Http\Controllers\DeliveryController::class, 'approve']);
+    Route::patch('/deliveries/profiles/{deliveryProfile}/suspend', [\App\Http\Controllers\DeliveryController::class, 'suspend']);
 });
 });
 

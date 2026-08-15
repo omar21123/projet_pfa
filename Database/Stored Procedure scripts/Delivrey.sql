@@ -630,3 +630,54 @@ BEGIN
 END$$
 
 DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_SuspendDeliveryProfile (
+    IN  p_DeliveryProfileID   INT,
+    IN  p_SuspendedBy          INT,
+    IN  p_Reason                 NVARCHAR(500),
+    OUT v_Success                 BOOLEAN,
+    OUT v_Message                  VARCHAR(255)
+)
+BEGIN
+    DECLARE v_ProfileExists    INT DEFAULT 0;
+    DECLARE v_ErrorMessage     VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_SuspendDeliveryProfile', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la suspension du livreur.';
+    END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*) INTO v_ProfileExists
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID
+    FOR UPDATE;
+
+    IF v_ProfileExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+        ROLLBACK;
+    ELSE
+        UPDATE DeliveryProfiles
+        SET IsSuspended  = 1,
+            IsAvailable  = 0,
+            UpdatedAt    = NOW()
+        WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livreur suspendu avec succès.';
+
+        COMMIT;
+    END IF;
+END$$
+
+DELIMITER ;

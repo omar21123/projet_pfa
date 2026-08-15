@@ -4077,6 +4077,163 @@
                 ]
             }
         },
+        "/api/deliveries/profiles/{deliveryProfile}/approve": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Approuver un livreur",
+                "description": "Approuve un profil livreur en attente : IsApproved et IdentityVerified passent à 1, IsSuspended repasse à 0.",
+                "operationId": "309da3ce45b9948c9824db77a639f7e0",
+                "parameters": [
+                    {
+                        "name": "deliveryProfile",
+                        "in": "path",
+                        "description": "Identifiant du profil livreur à approuver.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 7
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livreur approuvé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livreur approuvé avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Profil introuvable ou déjà approuvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ce livreur est déjà approuvé."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/deliveries/profiles/{deliveryProfile}/suspend": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Suspendre un livreur",
+                "description": "Suspend un profil livreur : IsSuspended passe à 1 et IsAvailable est forcé à 0.",
+                "operationId": "54e962ee8b1be6cb7c5a688b7f87b050",
+                "parameters": [
+                    {
+                        "name": "deliveryProfile",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 7
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "Reason": {
+                                        "type": "string",
+                                        "example": "Plaintes clients répétées.",
+                                        "nullable": true,
+                                        "maxLength": 500
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Livreur suspendu avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livreur suspendu avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [

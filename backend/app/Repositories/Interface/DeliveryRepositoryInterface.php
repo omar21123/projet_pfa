@@ -5,10 +5,12 @@ namespace App\Repositories\Interface;
 
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 
 interface DeliveryRepositoryInterface
 {
@@ -23,7 +25,9 @@ interface DeliveryRepositoryInterface
     ): object;
 
     public function getAllDeliveryProfiles(GetAllDeliveryProfilesDto $dto): PaginatedDeliveryProfilesDto;
-    // Interface — add to DeliveryRepositoryInterface
 
     public function getDeliveryProfileById(int $deliveryProfileId): DeliveryProfileDetailsDto;
+
+    public function approveDeliveryProfile(ApproveDeliveryProfileDto $dto): int;
+    public function suspendDeliveryProfile(SuspendDeliveryProfileDto $dto): void;
 }

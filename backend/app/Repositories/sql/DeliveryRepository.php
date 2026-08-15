@@ -5,11 +5,13 @@ namespace App\Repositories\sql;
 
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
+use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileListItemDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -198,5 +200,54 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         Log::info("========== GET DELIVERY PROFILE BY ID SUCCESS ==========");
 
         return DeliveryProfileDetailsDto::fromRow($rows[0]);
+    }
+    public function approveDeliveryProfile(ApproveDeliveryProfileDto $dto): int
+    {
+        Log::info("========== APPROVE DELIVERY PROFILE START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_ApproveDeliveryProfile(?, ?, @success, @message, @deliveryWalletId)',
+            [
+                $dto->deliveryProfileId,
+                $dto->approvedBy,
+            ]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @deliveryWalletId AS deliveryWalletId'
+        );
+
+        Log::info("APPROVE DELIVERY PROFILE RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== APPROVE DELIVERY PROFILE SUCCESS ==========");
+
+        return (int) $result->deliveryWalletId;
+    }
+    public function suspendDeliveryProfile(SuspendDeliveryProfileDto $dto): void
+    {
+        Log::info("========== SUSPEND DELIVERY PROFILE START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_SuspendDeliveryProfile(?, ?, ?, @success, @message)',
+            [
+                $dto->deliveryProfileId,
+                $dto->suspendedBy,
+                $dto->reason,
+            ]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("SUSPEND DELIVERY PROFILE RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== SUSPEND DELIVERY PROFILE SUCCESS ==========");
     }
 }
