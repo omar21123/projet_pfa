@@ -174,7 +174,6 @@ main_block: BEGIN
 END main_block $$
 
 DELIMITER ;
-
 DROP PROCEDURE IF EXISTS SP_RegisterDeliveryAccount;
 
 DELIMITER $$
@@ -188,9 +187,9 @@ CREATE PROCEDURE SP_RegisterDeliveryAccount (
     IN  p_VehicleType        NVARCHAR(50),
     IN  p_LicensePlate       NVARCHAR(20),
     IN  p_AssignedBy         INT,           -- who's creating this account (admin), NULL if self-registered
-    IN  p_RefreshTokenHash   VARCHAR(255),
+    IN  p_TokenHash          VARCHAR(255),
     IN  p_IPAddress          VARCHAR(45),
-    IN  p_RefreshTTLDays     INT,
+    IN  p_TTL                INT,
     OUT v_Success            BOOLEAN,
     OUT v_Message            VARCHAR(255),
     OUT v_UserID             INT,
@@ -325,7 +324,6 @@ main_block: BEGIN
     INSERT INTO DeliveryProfiles (
         UserID, VehicleType, LicensePlate,
         Rating, DeliveryCount,
-        TotalEarnings, WithdrawableBalance, PendingBalance,
         IsAvailable, LastOnlineAt,
         CurrentLatitude, CurrentLongitude,
         IdentityVerified, IsApproved, IsSuspended,
@@ -334,7 +332,6 @@ main_block: BEGIN
     VALUES (
         v_UserID, p_VehicleType, p_LicensePlate,
         0.00, 0,
-        0.00, 0.00, 0.00,
         0, NULL,
         NULL, NULL,
         0, 0, 0,
@@ -344,23 +341,125 @@ main_block: BEGIN
     SET v_DeliveryProfileID = LAST_INSERT_ID();
 
     -- ------------------------------------------------
-    -- 4) Issue the initial refresh token (same pattern used for
-    --    customer/vendor registration).
+    -- 4) Issue the initial refresh token
     -- ------------------------------------------------
-    IF p_RefreshTokenHash IS NOT NULL THEN
-        INSERT INTO RefreshTokens (
-            UserID, TokenHash, IPAddress, ExpiresAt, CreatedAt
-        )
-        VALUES (
-            v_UserID, p_RefreshTokenHash, p_IPAddress,
-            DATE_ADD(NOW(), INTERVAL p_RefreshTTLDays DAY), NOW()
-        );
-    END IF;
+    INSERT INTO UserRefreshTokens
+    (
+        UserID,
+        UserDeviceID,
+        TokenHash,
+        IPAddress,
+        ExpiresAt,
+        IsRevoked,
+        RevokedAt,
+        ReplacedByTokenHash
+    )
+    VALUES
+    (
+        v_UserID,
+        NULL,
+        p_TokenHash,
+        p_IPAddress,
+        DATE_ADD(UTC_TIMESTAMP(), INTERVAL p_TTL DAY),
+        0,
+        NULL,
+        NULL
+    );
 
     COMMIT;
 
     SET v_Success = TRUE;
     SET v_Message = 'Compte livreur créé avec succès. En attente de validation.';
 END main_block $$
+
+DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetAllDeliveryProfiles (
+    IN  p_Search        NVARCHAR(255),
+    IN  p_IsAvailable   TINYINT,   -- NULL = no filter
+    IN  p_IsApproved    TINYINT,   -- NULL = no filter
+    IN  p_IsSuspended   TINYINT,   -- NULL = no filter
+    IN  p_Page          INT,
+    IN  p_PerPage        INT,
+    OUT v_Success        BOOLEAN,
+    OUT v_Message         VARCHAR(255),
+    OUT v_TotalCount       INT
+)
+BEGIN
+    DECLARE v_Offset       INT DEFAULT 0;
+    DECLARE v_ErrorMessage VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetAllDeliveryProfiles', v_ErrorMessage, NOW());
+
+        SET v_Success    = FALSE;
+        SET v_Message    = 'Une erreur est survenue lors de la récupération des livreurs.';
+        SET v_TotalCount = 0;
+    END;
+
+    IF p_Page IS NULL OR p_Page < 1 THEN
+        SET p_Page = 1;
+    END IF;
+
+    IF p_PerPage IS NULL OR p_PerPage < 1 THEN
+        SET p_PerPage = 20;
+    END IF;
+
+    IF p_PerPage > 100 THEN
+        SET p_PerPage = 100;
+    END IF;
+
+    SET v_Offset = (p_Page - 1) * p_PerPage;
+
+    -- ------------------------------------------------
+    -- Total count (for pagination meta)
+    -- ------------------------------------------------
+    SELECT COUNT(*) INTO v_TotalCount
+    FROM DeliveryProfiles dp
+    INNER JOIN Users u ON u.UserID = dp.UserID
+    WHERE (p_Search IS NULL OR p_Search = ''
+           OR u.DisplayName LIKE CONCAT('%', p_Search, '%')
+           OR u.Email LIKE CONCAT('%', p_Search, '%')
+           OR dp.LicensePlate LIKE CONCAT('%', p_Search, '%'))
+      AND (p_IsAvailable IS NULL OR dp.IsAvailable = p_IsAvailable)
+      AND (p_IsApproved  IS NULL OR dp.IsApproved  = p_IsApproved)
+      AND (p_IsSuspended IS NULL OR dp.IsSuspended = p_IsSuspended);
+
+    -- ------------------------------------------------
+    -- Page of results
+    -- ------------------------------------------------
+    SELECT
+        dp.DeliveryProfileID,
+        u.AvatarURL,
+        u.DisplayName,
+        u.Email,
+        dp.VehicleType,
+        dp.LicensePlate,
+        dp.Rating,
+        dp.DeliveryCount,
+        dp.IdentityVerified,
+        u.LastLoginAt,
+        dp.IsAvailable,
+        dp.IsApproved
+    FROM DeliveryProfiles dp
+    INNER JOIN Users u ON u.UserID = dp.UserID
+    WHERE (p_Search IS NULL OR p_Search = ''
+           OR u.DisplayName LIKE CONCAT('%', p_Search, '%')
+           OR u.Email LIKE CONCAT('%', p_Search, '%')
+           OR dp.LicensePlate LIKE CONCAT('%', p_Search, '%'))
+      AND (p_IsAvailable IS NULL OR dp.IsAvailable = p_IsAvailable)
+      AND (p_IsApproved  IS NULL OR dp.IsApproved  = p_IsApproved)
+      AND (p_IsSuspended IS NULL OR dp.IsSuspended = p_IsSuspended)
+    ORDER BY dp.CreatedAt DESC
+    LIMIT p_PerPage OFFSET v_Offset;
+
+    SET v_Success = TRUE;
+    SET v_Message = 'Livreurs récupérés avec succès.';
+END$$
 
 DELIMITER ;

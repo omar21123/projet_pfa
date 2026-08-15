@@ -64,6 +64,7 @@ use App\Repositories\sql\ProductsConfigAttributeRepository;
 use App\Services\Interface\ProductsConfigAttributeServiceInterface;
 use App\Services\ProductsConfigAttributeService;
 use App\Repositories\Interface\ConfigAttributeOptionRepositoryInterface;
+use App\Repositories\Interface\DeliveryRepositoryInterface;
 use App\Repositories\sql\ConfigAttributeOptionRepository;
 use App\Services\Interface\ConfigAttributeOptionServiceInterface;
 use App\Services\ConfigAttributeOptionService;
@@ -85,10 +86,13 @@ use App\Repositories\sql\UsergoogleRepository;
 // ==========================================================
 use App\Repositories\Interface\PromotionRepositoryInterface;
 use App\Repositories\sql\CartRepository;
+use App\Repositories\sql\DeliveryRepository;
 use App\Repositories\sql\ProductStatsRepository;
 use App\Repositories\sql\PromotionRepository;
 use App\Services\CartService;
+use App\Services\DeliveryService;
 use App\Services\Interface\CartServiceInterface;
+use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\Interface\ProductStatsServiceInterface;
 use App\Services\Interface\PromotionServiceInterface;
 use App\Services\ProductStatsService;
@@ -358,6 +362,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Services\Interface\PaymentServiceInterface::class, \App\Services\PaymentService::class);
         $this->app->bind(\App\Repositories\Interface\DeliveryRepositoryInterface::class, \App\Repositories\sql\DeliveryRepository::class);
         $this->app->bind(\App\Services\Interface\DeliveryServiceInterface::class, \App\Services\DeliveryService::class);
+        $this->app->bind(DeliveryRepositoryInterface::class, DeliveryRepository::class);
+        $this->app->bind(DeliveryServiceInterface::class, DeliveryService::class);
     }
 
     /**

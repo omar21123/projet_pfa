@@ -11,6 +11,7 @@ class AddOrderItemToDeliveryDto
         public readonly int $orderItemId,
         public readonly int $addressToId,
         public readonly ?string $notes = null,
+        public readonly ?string $userPublicId = null,
     ) {
     }
 
@@ -22,6 +23,7 @@ class AddOrderItemToDeliveryDto
             orderItemId: $data['OrderItemID'],
             addressToId: $data['AddressToID'],
             notes: $data['Notes'] ?? null,
+            userPublicId: $data['userPublicId'] ?? null,
         );
     }
 }

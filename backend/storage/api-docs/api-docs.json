@@ -3670,6 +3670,188 @@
                 }
             }
         },
+        "/api/deliveries/profiles": {
+            "get": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Lister les profils livreurs (admin)",
+                "description": "Retourne la liste paginée des livreurs avec leurs informations utilisateur, statistiques et statut de disponibilité/approbation. Filtrable par recherche (nom, email, plaque), disponibilité, approbation et suspension.",
+                "operationId": "b6543e44d12ab977e39c8af90987fc26",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "Youssef"
+                    },
+                    {
+                        "name": "is_available",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "is_approved",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "is_suspended",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des livreurs récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "delivery_profile_id": {
+                                                        "type": "integer",
+                                                        "example": 7
+                                                    },
+                                                    "avatar_url": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "display_name": {
+                                                        "type": "string",
+                                                        "example": "Youssef El Amrani"
+                                                    },
+                                                    "email": {
+                                                        "type": "string",
+                                                        "example": "youssef@example.com"
+                                                    },
+                                                    "vehicle_type": {
+                                                        "type": "string",
+                                                        "example": "moto",
+                                                        "nullable": true
+                                                    },
+                                                    "license_plate": {
+                                                        "type": "string",
+                                                        "example": "12345-A-6",
+                                                        "nullable": true
+                                                    },
+                                                    "rating": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 4.8
+                                                    },
+                                                    "delivery_count": {
+                                                        "type": "integer",
+                                                        "example": 132
+                                                    },
+                                                    "identity_verified": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "last_login_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "nullable": true
+                                                    },
+                                                    "is_available": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "is_approved": {
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 48
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Règle métier violée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [
@@ -11291,6 +11473,10 @@
         {
             "name": "ConfigAttributeOptions",
             "description": "Gestion des options des attributs de configuration produit"
+        },
+        {
+            "name": "Deliveries",
+            "description": "Gestion des livreurs et des livraisons"
         },
         {
             "name": "Favorites",

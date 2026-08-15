@@ -90,6 +90,7 @@ class OrderService implements OrderServiceInterface
                 orderItemId: $itemDto->orderItemId,
                 addressToId: $dto->addressId,
                 notes: $dto->notes,
+                userPublicId: $dto->userPublicId,
             );
 
             $this->delivery_service->addOrderItemToDelivery($deliveryItemDto);
@@ -137,6 +138,7 @@ class OrderService implements OrderServiceInterface
             orderItemId: $itemDto->orderItemId,
             addressToId: $dto->addressId,
             notes: $dto->notes,
+            userPublicId: $dto->userPublicId,
         );
 
         $this->delivery_service->addOrderItemToDelivery($deliveryItemDto);

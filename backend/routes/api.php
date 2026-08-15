@@ -272,3 +272,11 @@ Route::middleware('jwt.custom')->prefix('orders')->group(function () {
   Route::post('/product', [OrderController::class, 'createForProduct']);
   Route::post('/cart', [OrderController::class, 'createFromCart']);
 });
+// routes/api.php
+Route::middleware('jwt.custom')->group(function () {
+    Route::middleware('role:ADMIN')->group(function () {
+    Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
+});
+});
+
+
