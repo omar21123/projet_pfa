@@ -17,5 +17,6 @@ interface CartServiceInterface
      */
     public function getCart(GetCartDto $dto): array;
     public function updateItemQuantity(UpdateCartItemQuantityDto $dto): string;
+    public function clearCart(string $userPublicId): void;
 
 }

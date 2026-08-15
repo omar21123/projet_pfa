@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\Order\CreateOrderForProductDto;
+use App\DTOs\Order\CreateOrderFromCartDto;
 use App\Http\Requests\Order\CreateOrderForProductRequest;
+use App\Http\Requests\Order\CreateOrderFromCartRequest;
 use App\Services\Interface\OrderServiceInterface;
 use App\Services\Interface\UserServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -171,6 +173,99 @@ class OrderController extends Controller
 
         try {
             $order = $this->orderService->createOrderForProduct($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande créée avec succès.',
+            'data' => $order->toArray(),
+        ], 201);
+    }
+    // app/Http/Controllers/OrderController.php — add to the class
+
+    #[OA\Post(
+        path: "/api/orders/cart",
+        tags: ["Orders"],
+        summary: "Créer une commande à partir du panier",
+        description: "Crée une commande à partir de l'intégralité du panier de l'utilisateur connecté. Chaque article du panier est ajouté à la commande via SP_CreateOrderItem (résolution du prix, stock, promotion), puis les totaux de la commande sont recalculés. Le panier est vidé une fois la commande créée. UserPublicID est déduit du token JWT.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["AddressID", "PaymentMethodID"],
+            properties: [
+                new OA\Property(property: "AddressID", type: "integer", example: 12),
+                new OA\Property(property: "PaymentMethodID", type: "integer", example: 2),
+                new OA\Property(property: "Notes", type: "string", nullable: true, maxLength: 255, example: "Livrer avant 18h si possible."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 201,
+        description: "Commande créée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Commande créée avec succès."),
+                new OA\Property(property: "data", type: "object"),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, produit, variante ou adresse introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Utilisateur introuvable."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Panier vide ou règle métier violée (stock insuffisant, promotion invalide, etc.)",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Votre panier est vide."),
+            ]
+        )
+    )]
+    public function createFromCart(CreateOrderFromCartRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        $dto = CreateOrderFromCartDto::fromArray([
+            'UserPublicID'    => $publicId,
+            'AddressID'       => $validated['AddressID'],
+            'PaymentMethodID' => $validated['PaymentMethodID'],
+            'Notes'           => $validated['Notes'] ?? null,
+        ]);
+
+        try {
+            $order = $this->orderService->createOrderFromCart($dto);
         } catch (\App\Exceptions\BusinessValidationException $e) {
             return response()->json([
                 'success' => false,

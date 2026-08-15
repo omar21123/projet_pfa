@@ -162,4 +162,20 @@ class CartRepository implements CartRepositoryInterface
 
         return $result->message;
     }
+    public function clearCart(string $userPublicId): void
+    {
+        Log::info("CLEAR CART", ['userPublicId' => $userPublicId]);
+
+        DB::select('CALL SP_ClearCart(?, @success, @message)', [
+            $userPublicId,
+        ]);
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("CLEAR CART RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+    }
 }

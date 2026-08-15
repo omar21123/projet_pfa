@@ -1029,4 +1029,20 @@ CREATE TABLE UserStoreRatings (
 ALTER TABLE ProductSearchIndex
 ADD FULLTEXT INDEX FT_SearchText (SearchText);
 
+
+CREATE TABLE IF NOT EXISTS BankAccountHolds (
+    HoldID        INT AUTO_INCREMENT PRIMARY KEY,
+    BankAccountID INT NOT NULL,
+    OrderID       INT NOT NULL,
+    PaymentID     INT NOT NULL,
+    Amount        DECIMAL(12,2) NOT NULL,
+    ReleaseAt     DATETIME NOT NULL,
+    Status        TINYINT NOT NULL DEFAULT 0,  -- 0 = pending, 1 = released
+    CreatedAt     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_bankaccount (BankAccountID),
+    KEY idx_status_release (Status, ReleaseAt)
+);
+ALTER TABLE BankAccountHolds
+    ADD COLUMN ReleasedAt DATETIME NULL AFTER Status;
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -108,4 +108,16 @@ class CartService implements CartServiceInterface
     {
         return $this->cartRepository->updateItemQuantity($dto);
     }
+    public function clearCart(string $userPublicId): void
+    {
+        Log::info("========== CLEAR CART START ==========", [
+            'userPublicId' => $userPublicId,
+        ]);
+
+        $this->cartRepository->clearCart($userPublicId);
+
+        Log::info("========== CLEAR CART SUCCESS ==========", [
+            'userPublicId' => $userPublicId,
+        ]);
+    }
 }

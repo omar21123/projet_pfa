@@ -23,4 +23,5 @@ interface CartRepositoryInterface
 
     /** @return CombinationDetailInfoDto[] */
     public function getCombinationDetails(int $combinationId): array;
+    public function clearCart(string $userPublicId): void;
 }

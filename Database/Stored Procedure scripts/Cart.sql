@@ -395,3 +395,75 @@ END
 $$
 
 DELIMITER ;
+DROP PROCEDURE IF EXISTS SP_ClearCart;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_ClearCart (
+    IN  v_PublicID   VARCHAR(64),
+    OUT v_Success    BOOLEAN,
+    OUT v_Message    VARCHAR(255)
+)
+main_block: BEGIN
+    DECLARE v_UserID INT DEFAULT NULL;
+    DECLARE v_CartID INT DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_ClearCart',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT('PublicID', v_PublicID)
+        );
+
+        ROLLBACK;
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors du vidage du panier.';
+    END;
+
+    SET v_Success = FALSE;
+    SET v_Message = '';
+
+    -- 1) Resolve current user
+    SELECT UserID INTO v_UserID
+    FROM Users
+    WHERE PublicID = v_PublicID
+    LIMIT 1;
+
+    IF v_UserID IS NULL THEN
+        SET v_Message = 'Utilisateur introuvable.';
+        LEAVE main_block;
+    END IF;
+
+    -- 2) Resolve cart
+    SELECT CartID INTO v_CartID
+    FROM Carts
+    WHERE UserID = v_UserID
+    LIMIT 1;
+
+    IF v_CartID IS NULL THEN
+        SET v_Message = 'Panier introuvable pour cet utilisateur.';
+        LEAVE main_block;
+    END IF;
+
+    START TRANSACTION;
+
+    -- 3) Clear cart items
+    DELETE FROM CartItems
+    WHERE CartID = v_CartID;
+
+    COMMIT;
+
+    SET v_Success = TRUE;
+    SET v_Message = 'Panier vidé avec succès.';
+END main_block $$
+
+DELIMITER ;

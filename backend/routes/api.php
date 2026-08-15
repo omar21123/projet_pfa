@@ -269,4 +269,5 @@ Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
 });
 Route::middleware('jwt.custom')->prefix('orders')->group(function () {
   Route::post('/product', [OrderController::class, 'createForProduct']);
+  Route::post('/cart', [OrderController::class, 'createFromCart']);
 });

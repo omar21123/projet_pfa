@@ -5,7 +5,7 @@ namespace App\DTOs\Cart;
 class CartItemInfoDto
 {
     public function __construct(
-        public readonly int $cartItemID,
+        public readonly ?int $cartItemID,
         public readonly int $productId,
         public readonly int $combinationId,
         public readonly string $productName,
@@ -22,7 +22,7 @@ class CartItemInfoDto
     public static function fromRow(object $row): self
     {
         return new self(
-            cartItemID : (int) $row->CartItemID,
+            cartItemID: isset($row->CartItemID) ? (int) $row->CartItemID : null,
             productId: (int) $row->ProductID,
             combinationId: (int) $row->CombinationID,
             productName: $row->ProductName,

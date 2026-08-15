@@ -4305,6 +4305,116 @@
                 ]
             }
         },
+        "/api/orders/cart": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Créer une commande à partir du panier",
+                "description": "Crée une commande à partir de l'intégralité du panier de l'utilisateur connecté. Chaque article du panier est ajouté à la commande via SP_CreateOrderItem (résolution du prix, stock, promotion), puis les totaux de la commande sont recalculés. Le panier est vidé une fois la commande créée. UserPublicID est déduit du token JWT.",
+                "operationId": "ffc60e10a1b52904f0ba914ed4c74fd1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "AddressID",
+                                    "PaymentMethodID"
+                                ],
+                                "properties": {
+                                    "AddressID": {
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "PaymentMethodID": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "Notes": {
+                                        "type": "string",
+                                        "example": "Livrer avant 18h si possible.",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Commande créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Commande créée avec succès."
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, produit, variante ou adresse introuvable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Utilisateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Panier vide ou règle métier violée (stock insuffisant, promotion invalide, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Votre panier est vide."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/products": {
             "post": {
                 "tags": [

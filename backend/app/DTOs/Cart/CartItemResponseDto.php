@@ -8,7 +8,7 @@ class CartItemResponseDto
      *  @param string[] $defaultImages
      */
     public function __construct(
-        public readonly int $cartItemID,
+        public readonly ?int $cartItemID,
         public readonly int $productId,
          
         public readonly int $combinationId,

@@ -341,7 +341,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\AddressServiceInterface::class,
             \App\Services\AddressService::class,
         );
-           $this->app->bind(
+        $this->app->bind(
             \App\Repositories\Interface\OrderRepositoryInterface::class,
             \App\Repositories\sql\OrderRepository::class,
         );
@@ -350,7 +350,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Interface\OrderServiceInterface::class,
             \App\Services\OrderService::class,
         );
-        
+        $this->app->bind(
+            \App\Adapters\Payment\PaymentAdapterInterface::class,
+            \App\Adapters\Payment\StripePaymentAdapter::class,
+        );
+        $this->app->bind(\App\Repositories\Interface\PaymentRepositoryInterface::class, \App\Repositories\sql\PaymentRepository::class);
+        $this->app->bind(\App\Services\Interface\PaymentServiceInterface::class, \App\Services\PaymentService::class);
     }
 
     /**
