@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\VendorRegisterDto;
@@ -13,6 +14,7 @@ use App\Services\Interface\AuthServiceInterface;
 use App\Services\RefreshTokenService;
 use App\Services\UserService;
 use App\Http\Requests\Auth\CustomerRegisterRequest;
+use App\Http\Requests\Auth\DeliveryRegisterRequest;
 use App\Http\Requests\Auth\RefreshTokenRequest;
 use App\Http\Requests\Auth\VendorRegisterRequest;
 use App\Services\Interface\FileUploadServiceInterface;
@@ -934,6 +936,120 @@ public function VendorRegisterWeb(VendorRegisterRequest $request)
     return response()->json([
         'message' => 'Compte vendeur créé avec succès.',
         'role' => 'VENDOR',
+        'access_token' => $accessToken,
+        'unreadNotifications' => 0,
+        'displayName' => $dto->firstName . ' ' . $dto->lastName,
+        'verify_email' => false,
+        'verify_phone' => false,
+        'public_id' => $publicId,
+    ], 201)->withCookie($refreshCookie);
+}
+#[OA\Post(
+    path: "/api/auth/web/delivery/register",
+    tags: ["Auth"],
+    summary: "Créer un compte livreur (Web)",
+    description: "Création d'un compte livreur (rôle LIVREUR). Le compte est créé en attente de validation (IsApproved = 0). Le refresh token est stocké dans un cookie HttpOnly sécurisé et n'est pas retourné dans le corps de la réponse.",
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["first_name", "last_name", "email", "password"],
+            properties: [
+                new OA\Property(property: "first_name", type: "string", example: "Youssef"),
+                new OA\Property(property: "last_name", type: "string", example: "El Amrani"),
+                new OA\Property(property: "email", type: "string", format: "email", example: "livreur@example.com"),
+                new OA\Property(property: "password", type: "string", format: "password", example: "Password123!"),
+                new OA\Property(property: "phone_number", type: "string", nullable: true, example: "+212612345678"),
+                new OA\Property(property: "vehicle_type", type: "string", nullable: true, example: "Moto"),
+                new OA\Property(property: "license_plate", type: "string", nullable: true, example: "12345-A-6"),
+            ]
+        )
+    )
+)]
+#[OA\Response(
+    response: 201,
+    description: "Compte livreur créé avec succès (en attente de validation). Le refresh token est défini via un cookie HttpOnly.",
+    headers: [
+        new OA\Header(
+            header: "Set-Cookie",
+            description: "Cookie HttpOnly, Secure, SameSite=Strict contenant le refresh token.",
+            schema: new OA\Schema(type: "string", example: "refresh_token=c8f5a2d4ae9b12...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000")
+        )
+    ],
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Compte livreur créé avec succès. En attente de validation."),
+            new OA\Property(property: "access_token", type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."),
+            new OA\Property(property: "displayName", type: "string", example: "Youssef El Amrani"),
+            new OA\Property(property: "public_id", type: "string", example: "550e8400-e29b-41d4-a716-446655440000"),
+            new OA\Property(property: "role", type: "string", example: "LIVREUR"),
+        ]
+    )
+)]
+#[OA\Response(
+    response: 422,
+    description: "Erreur de validation ou règle métier violée (email déjà utilisé, rôle LIVREUR introuvable, etc.)",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "message", type: "string", example: "Un compte existe déjà avec cet email."),
+        ]
+    )
+)]
+public function DeliveryRegisterWeb(DeliveryRegisterRequest $request)
+{
+    $data = $request->validated();
+
+    if ($this->userService->emailExists($data['email'])) {
+        throw ValidationException::withMessages([
+            'email' => ['Cet email existe déjà.'],
+        ]);
+    }
+
+    if (
+        !empty($data['phone_number']) &&
+        $this->userService->phoneNumberExists($data['phone_number'])
+    ) {
+        throw ValidationException::withMessages([
+            'phone_number' => ['Ce numéro existe déjà.'],
+        ]);
+    }
+
+    $dto = DeliveryRegisterDto::fromArray($data);
+
+    $refreshToken = $this->refreshTokenService->generate();
+
+    $ttlSeconds = (int) env('JWT_REFRESH_TTL', 2592000);
+    $ttlDays = (int) ceil($ttlSeconds / 86400);
+
+    try {
+        $publicId = $this->authService->createDelivery(
+            $dto,
+            $refreshToken['token_hash'],
+            request()->ip(),
+            $ttlDays
+        );
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        throw ValidationException::withMessages([
+            'message' => [$e->getMessage()],
+        ]);
+    }
+
+    $accessToken = $this->accessTokenService->generate($publicId, 'LIVREUR');
+
+    $refreshCookie = cookie(
+        'refresh_token',
+        $refreshToken['token'],
+        (int) ($ttlSeconds / 60),
+        '/',
+        null,
+        true,
+        true,
+        false,
+        'Strict'
+    );
+
+    return response()->json([
+        'message' => 'Compte livreur créé avec succès. En attente de validation.',
+        'role' => 'LIVREUR',
         'access_token' => $accessToken,
         'unreadNotifications' => 0,
         'displayName' => $dto->firstName . ' ' . $dto->lastName,

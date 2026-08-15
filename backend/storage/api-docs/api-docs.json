@@ -2088,6 +2088,126 @@
                 }
             }
         },
+        "/api/auth/web/delivery/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Créer un compte livreur (Web)",
+                "description": "Création d'un compte livreur (rôle LIVREUR). Le compte est créé en attente de validation (IsApproved = 0). Le refresh token est stocké dans un cookie HttpOnly sécurisé et n'est pas retourné dans le corps de la réponse.",
+                "operationId": "1a9c177ba162b27213ed3aa537c8f6a3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "first_name",
+                                    "last_name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "first_name": {
+                                        "type": "string",
+                                        "example": "Youssef"
+                                    },
+                                    "last_name": {
+                                        "type": "string",
+                                        "example": "El Amrani"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "livreur@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Password123!"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "+212612345678",
+                                        "nullable": true
+                                    },
+                                    "vehicle_type": {
+                                        "type": "string",
+                                        "example": "Moto",
+                                        "nullable": true
+                                    },
+                                    "license_plate": {
+                                        "type": "string",
+                                        "example": "12345-A-6",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Compte livreur créé avec succès (en attente de validation). Le refresh token est défini via un cookie HttpOnly.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Cookie HttpOnly, Secure, SameSite=Strict contenant le refresh token.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "refresh_token=c8f5a2d4ae9b12...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte livreur créé avec succès. En attente de validation."
+                                        },
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                        },
+                                        "displayName": {
+                                            "type": "string",
+                                            "example": "Youssef El Amrani"
+                                        },
+                                        "public_id": {
+                                            "type": "string",
+                                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                                        },
+                                        "role": {
+                                            "type": "string",
+                                            "example": "LIVREUR"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation ou règle métier violée (email déjà utilisé, rôle LIVREUR introuvable, etc.)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Un compte existe déjà avec cet email."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/brands/create": {
             "post": {
                 "tags": [

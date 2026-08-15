@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\DTOs\Auth\CompleteGoogleProfileDto;
+use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Auth\GoogleUserDto;
 use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\VendorRegisterDto;
+use App\Repositories\Interface\DeliveryRepositoryInterface;
 use App\Repositories\Interface\UserRepositoryInterface;
 use App\Repositories\Interface\UsergoogleRepositoryInterface;
 use App\Services\Interface\AuthServiceInterface;
@@ -21,8 +23,26 @@ class AuthService implements AuthServiceInterface
         private UsergoogleRepositoryInterface $usergoogleRepository,
         private AccessTokenService $accessTokenService,
         private RefreshTokenService $refreshTokenService,
+        private DeliveryRepositoryInterface $delivery_repository
     ) {}
+    public function createDelivery(
+    DeliveryRegisterDto $dto,
+    string $refreshTokenHash,
+    string $ip,
+    int $refreshTtlDays
+): string {
+    $passwordHash = Hash::make($dto->password);
 
+    $result = $this->delivery_repository->registerDelivery(
+        $dto,
+        $passwordHash,
+        $refreshTokenHash,
+        $ip,
+        $refreshTtlDays
+    );
+
+    return $result->publicId;
+}
     public function createCustomer(
         RegisterDto $dto,
         string $tokenHash,

@@ -321,6 +321,15 @@ INSERT INTO ProductStatus (Code, Libelle) VALUES
 ('validated', 'Validé'),
 ('Refused', 'refusé'),
 ('blocked', 'Bloqué');
+-- ====================================================
+-- Make sure the 'Livreur' role exists (run once, idempotent)
+-- ====================================================
+
+INSERT INTO Roles (Name, Code, Description, IsSystem, CreatedAt)
+SELECT 'Livreur', 'LIVREUR', 'Compte livreur / chauffeur de livraison', 1, NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM Roles WHERE Code = 'LIVREUR'
+);
 -- Turn foreign key checks back on
 SET FOREIGN_KEY_CHECKS = 1;
 

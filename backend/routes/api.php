@@ -39,6 +39,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/mobile/logout', [AuthController::class, 'logout']);
     Route::post('/web/logout', [AuthController::class, 'webLogout']);
     Route::post('/web/vendor/register', [AuthController::class, 'VendorRegisterWeb']);
+    Route::post('/web/delivery/register', [AuthController::class, 'DeliveryRegisterWeb']);
     Route::post('/mobile/google', [GoogleAuthController::class, 'mobileGoogleLogin']);
     Route::post('/web/google', [GoogleAuthController::class, 'webGoogleLogin']);
     Route::middleware(['jwt.custom'])->group(function () {

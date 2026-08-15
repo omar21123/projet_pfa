@@ -174,3 +174,193 @@ main_block: BEGIN
 END main_block $$
 
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_RegisterDeliveryAccount;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_RegisterDeliveryAccount (
+    IN  p_FirstName         NVARCHAR(100),
+    IN  p_LastName          NVARCHAR(100),
+    IN  p_Email              NVARCHAR(255),
+    IN  p_PhoneNumber        NVARCHAR(30),
+    IN  p_PasswordHash       NVARCHAR(255),
+    IN  p_VehicleType        NVARCHAR(50),
+    IN  p_LicensePlate       NVARCHAR(20),
+    IN  p_AssignedBy         INT,           -- who's creating this account (admin), NULL if self-registered
+    IN  p_RefreshTokenHash   VARCHAR(255),
+    IN  p_IPAddress          VARCHAR(45),
+    IN  p_RefreshTTLDays     INT,
+    OUT v_Success            BOOLEAN,
+    OUT v_Message            VARCHAR(255),
+    OUT v_UserID             INT,
+    OUT v_PublicID           VARCHAR(64),
+    OUT v_DeliveryProfileID  INT
+)
+main_block: BEGIN
+    DECLARE v_EmailExists       INT DEFAULT 0;
+    DECLARE v_PhoneExists       INT DEFAULT 0;
+    DECLARE v_LivreurRoleID     INT DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            @p_sqlstate = RETURNED_SQLSTATE,
+            @p_errno    = MYSQL_ERRNO,
+            @p_message  = MESSAGE_TEXT;
+
+        -- Rollback FIRST so the log insert below runs outside the
+        -- failed transaction and actually survives / commits.
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorSQLState, ErrorNumber, ErrorMessage, ContextData)
+        VALUES (
+            'SP_RegisterDeliveryAccount',
+            @p_sqlstate,
+            @p_errno,
+            @p_message,
+            JSON_OBJECT(
+                'Email', p_Email,
+                'PhoneNumber', p_PhoneNumber,
+                'AssignedBy', p_AssignedBy
+            )
+        );
+
+        SET v_Success           = FALSE;
+        SET v_Message           = 'Une erreur est survenue lors de la création du compte livreur.';
+        SET v_UserID             = NULL;
+        SET v_PublicID           = NULL;
+        SET v_DeliveryProfileID  = NULL;
+    END;
+
+    SET v_Success           = FALSE;
+    SET v_Message           = '';
+    SET v_UserID             = NULL;
+    SET v_PublicID           = NULL;
+    SET v_DeliveryProfileID  = NULL;
+
+    -- ------------------------------------------------
+    -- Basic validation
+    -- ------------------------------------------------
+    IF p_Email IS NULL OR TRIM(p_Email) = '' THEN
+        SET v_Message = 'L''adresse email est obligatoire.';
+        LEAVE main_block;
+    END IF;
+
+    IF p_PasswordHash IS NULL OR TRIM(p_PasswordHash) = '' THEN
+        SET v_Message = 'Le mot de passe est obligatoire.';
+        LEAVE main_block;
+    END IF;
+
+    -- ------------------------------------------------
+    -- Uniqueness checks
+    -- ------------------------------------------------
+    SELECT COUNT(*) INTO v_EmailExists
+    FROM Users
+    WHERE Email = p_Email AND IsDeleted = 0;
+
+    IF v_EmailExists > 0 THEN
+        SET v_Message = 'Un compte existe déjà avec cet email.';
+        LEAVE main_block;
+    END IF;
+
+    IF p_PhoneNumber IS NOT NULL AND TRIM(p_PhoneNumber) <> '' THEN
+        SELECT COUNT(*) INTO v_PhoneExists
+        FROM Users
+        WHERE PhoneNumber = p_PhoneNumber AND IsDeleted = 0;
+
+        IF v_PhoneExists > 0 THEN
+            SET v_Message = 'Un compte existe déjà avec ce numéro de téléphone.';
+            LEAVE main_block;
+        END IF;
+    END IF;
+
+    -- ------------------------------------------------
+    -- Resolve 'Livreur' role
+    -- ------------------------------------------------
+    SELECT RoleID INTO v_LivreurRoleID
+    FROM Roles
+    WHERE Code = 'LIVREUR'
+    LIMIT 1;
+
+    IF v_LivreurRoleID IS NULL THEN
+        SET v_Message = 'Rôle "Livreur" introuvable. Veuillez le créer avant de continuer.';
+        LEAVE main_block;
+    END IF;
+
+    START TRANSACTION;
+
+    -- ------------------------------------------------
+    -- 1) Create Users row
+    -- ------------------------------------------------
+    SET v_PublicID = UUID();
+
+    INSERT INTO Users (
+        PublicID, FirstName, LastName, DisplayName,
+        Email, PhoneNumber, PasswordHash,
+        HasPassword, EmailVerified, PhoneVerified,
+        IsActive, IsDeleted,
+        CreatedAt, UpdatedAt
+    )
+    VALUES (
+        v_PublicID, p_FirstName, p_LastName,
+        CONCAT(p_FirstName, ' ', p_LastName),
+        p_Email, p_PhoneNumber, p_PasswordHash,
+        1, 0, 0,
+        1, 0,
+        NOW(), NOW()
+    );
+
+    SET v_UserID = LAST_INSERT_ID();
+
+    -- ------------------------------------------------
+    -- 2) Assign 'Livreur' role
+    -- ------------------------------------------------
+    INSERT INTO UserRoles (UserID, RoleID, AssignedAt, AssignedBy)
+    VALUES (v_UserID, v_LivreurRoleID, NOW(), p_AssignedBy);
+
+    -- ------------------------------------------------
+    -- 3) Create DeliveryProfiles row
+    -- ------------------------------------------------
+    INSERT INTO DeliveryProfiles (
+        UserID, VehicleType, LicensePlate,
+        Rating, DeliveryCount,
+        TotalEarnings, WithdrawableBalance, PendingBalance,
+        IsAvailable, LastOnlineAt,
+        CurrentLatitude, CurrentLongitude,
+        IdentityVerified, IsApproved, IsSuspended,
+        CreatedAt, UpdatedAt
+    )
+    VALUES (
+        v_UserID, p_VehicleType, p_LicensePlate,
+        0.00, 0,
+        0.00, 0.00, 0.00,
+        0, NULL,
+        NULL, NULL,
+        0, 0, 0,
+        NOW(), NOW()
+    );
+
+    SET v_DeliveryProfileID = LAST_INSERT_ID();
+
+    -- ------------------------------------------------
+    -- 4) Issue the initial refresh token (same pattern used for
+    --    customer/vendor registration).
+    -- ------------------------------------------------
+    IF p_RefreshTokenHash IS NOT NULL THEN
+        INSERT INTO RefreshTokens (
+            UserID, TokenHash, IPAddress, ExpiresAt, CreatedAt
+        )
+        VALUES (
+            v_UserID, p_RefreshTokenHash, p_IPAddress,
+            DATE_ADD(NOW(), INTERVAL p_RefreshTTLDays DAY), NOW()
+        );
+    END IF;
+
+    COMMIT;
+
+    SET v_Success = TRUE;
+    SET v_Message = 'Compte livreur créé avec succès. En attente de validation.';
+END main_block $$
+
+DELIMITER ;

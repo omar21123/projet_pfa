@@ -7,7 +7,8 @@ use App\DTOs\Auth\LoginDto;
 use App\DTOs\Auth\LoginInfoDto;
 use App\DTOs\Auth\RegisterDto;
 use App\DTOs\Auth\VendorRegisterDto;
-use App\DTOs\Auth\CompleteGoogleProfileDto; 
+use App\DTOs\Auth\CompleteGoogleProfileDto;
+use App\DTOs\Auth\DeliveryRegisterDto;
 
 interface AuthServiceInterface
 {
@@ -40,5 +41,12 @@ interface AuthServiceInterface
      */
     public function loginOrRegister(GoogleUserDto $dto, ?string $ipAddress, int $refreshTtlSeconds): array;
     public function completeGoogleProfile(string $publicId, CompleteGoogleProfileDto $dto): array;
+    // app/Services/Interface/AuthServiceInterface.php — add:
+    public function createDelivery(
+        DeliveryRegisterDto $dto,
+        string $refreshTokenHash,
+        string $ip,
+        int $refreshTtlDays
+    ): string; // returns publicId, same contract as createVendor/createCustomer
 
 }
