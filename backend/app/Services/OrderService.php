@@ -5,6 +5,7 @@ namespace App\Services;
 
 use App\Adapters\Payment\PaymentAdapterInterface;
 use App\DTOs\Cart\GetCartDto;
+use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Order\AddOrderItemDto;
 use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CreateOrderForProductDto;
@@ -12,8 +13,10 @@ use App\DTOs\Order\CreateOrderFromCartDto;
 use App\DTOs\Order\OrderDto;
 use App\DTOs\Payment\PayFromOrderDto;
 use App\Exceptions\BusinessValidationException;
+use App\Repositories\Interface\AddressRepositoryInterface;
 use App\Repositories\Interface\OrderRepositoryInterface;
 use App\Services\Interface\CartServiceInterface;
+use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\Interface\OrderServiceInterface;
 use App\Services\Interface\PaymentServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +27,9 @@ class OrderService implements OrderServiceInterface
         protected OrderRepositoryInterface $orderRepository,
         protected CartServiceInterface $cartService,
         protected PaymentAdapterInterface $paymentAdapter,
-        protected PaymentServiceInterface $payment_service
+        protected PaymentServiceInterface $payment_service,
+        protected AddressRepositoryInterface $address_repository,
+        protected DeliveryServiceInterface $delivery_service,
     ) {}
 
     public function createOrderFromCart(CreateOrderFromCartDto $dto): OrderDto
@@ -45,8 +50,6 @@ class OrderService implements OrderServiceInterface
         if (empty($cartItems)) {
             throw new BusinessValidationException('Votre panier est vide.', 422);
         }
-
-
         // 2) Create the order shell
         $orderResult = $this->orderRepository->create(new CreateOrderDto(
             userPublicId: $dto->userPublicId,
@@ -72,7 +75,7 @@ class OrderService implements OrderServiceInterface
                 'hasPromotion' => $item->hasPromotion,
             ]);
 
-            $this->orderRepository->addItem(new AddOrderItemDto(
+            $itemDto = $this->orderRepository->addItem(new AddOrderItemDto(
                 orderId: $orderResult->orderId,
                 productId: $item->productId,
                 quantity: (int) $item->quantity,
@@ -80,6 +83,16 @@ class OrderService implements OrderServiceInterface
                 promotionId: $item->hasPromotion ? ($item->promotion?->promotionId ?? null) : null,
                 userPublicId: $dto->userPublicId,
             ));
+
+            $deliveryItemDto = new AddOrderItemToDeliveryDto(
+                productId: $item->productId,
+                orderId: $orderResult->orderId,
+                orderItemId: $itemDto->orderItemId,
+                addressToId: $dto->addressId,
+                notes: $dto->notes,
+            );
+
+            $this->delivery_service->addOrderItemToDelivery($deliveryItemDto);
         }
 
         // 4) Recalculate totals from the items just inserted
@@ -95,6 +108,7 @@ class OrderService implements OrderServiceInterface
             'itemCount' => count($cartItems),
         ]);
 
+
         return $this->orderRepository->findById($orderResult->orderId);
     }
     public function createOrderForProduct(CreateOrderForProductDto $dto): OrderDto
@@ -108,7 +122,7 @@ class OrderService implements OrderServiceInterface
             notes: $dto->notes,
         ));
 
-        $this->orderRepository->addItem(new AddOrderItemDto(
+        $itemDto = $this->orderRepository->addItem(new AddOrderItemDto(
             orderId: $orderResult->orderId,
             productId: $dto->productId,
             quantity: $dto->quantity,
@@ -117,6 +131,15 @@ class OrderService implements OrderServiceInterface
             userPublicId: $dto->userPublicId,
         ));
 
+        $deliveryItemDto = new AddOrderItemToDeliveryDto(
+            productId: $dto->productId,
+            orderId: $orderResult->orderId,
+            orderItemId: $itemDto->orderItemId,
+            addressToId: $dto->addressId,
+            notes: $dto->notes,
+        );
+
+        $this->delivery_service->addOrderItemToDelivery($deliveryItemDto);
         $this->orderRepository->recalculateTotals($orderResult->orderId);
 
         $order = $this->orderRepository->findById($orderResult->orderId);

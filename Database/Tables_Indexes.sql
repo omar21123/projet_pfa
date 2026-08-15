@@ -1046,3 +1046,197 @@ ALTER TABLE BankAccountHolds
     ADD COLUMN ReleasedAt DATETIME NULL AFTER Status;
 
 SET FOREIGN_KEY_CHECKS = 1;
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- ====================================================
+-- DELIVERY PROFILES (Livreur account)
+-- ====================================================
+
+CREATE TABLE DeliveryProfiles (
+    DeliveryProfileID   INT AUTO_INCREMENT PRIMARY KEY,
+    UserID              INT NOT NULL,
+
+    VehicleType         VARCHAR(50)     NULL COMMENT 'moto, voiture, velo',
+    LicensePlate        VARCHAR(20)     NULL,
+
+    Rating              DECIMAL(3,2)    NOT NULL DEFAULT 0.00,
+    DeliveryCount       INT             NOT NULL DEFAULT 0,
+
+    IsAvailable         TINYINT(1)      NOT NULL DEFAULT 0,
+    LastOnlineAt        DATETIME        NULL,
+
+    CurrentLatitude     DECIMAL(10,7)   NULL,
+    CurrentLongitude    DECIMAL(10,7)   NULL,
+
+    IdentityVerified    TINYINT(1)      NOT NULL DEFAULT 0,
+    IsApproved          TINYINT(1)      NOT NULL DEFAULT 0,
+    IsSuspended         TINYINT(1)      NOT NULL DEFAULT 0,
+
+    CreatedAt           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                         ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT UQ_DeliveryProfiles_UserID UNIQUE (UserID),
+    CONSTRAINT FK_DeliveryProfiles_Users
+        FOREIGN KEY (UserID) REFERENCES Users(UserID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    INDEX IX_DeliveryProfiles_Availability (IsAvailable, LastOnlineAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ====================================================
+-- DELIVERY STATUSES (lookup)
+-- ====================================================
+
+CREATE TABLE DeliveryStatuses (
+    DeliveryStatusID    INT AUTO_INCREMENT PRIMARY KEY,
+    Name                VARCHAR(100)    NOT NULL,
+    Code                VARCHAR(50)     NOT NULL COMMENT 'pending,accepted,picked_up,in_transit,delivered,failed,cancelled',
+    DisplayOrder        INT             NOT NULL DEFAULT 0,
+
+    CONSTRAINT UQ_DeliveryStatuses_Code UNIQUE (Code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO DeliveryStatuses (Name, Code, DisplayOrder) VALUES
+    ('En attente',    'pending',     1),
+    ('Acceptée',      'accepted',    2),
+    ('Récupérée',     'picked_up',   3),
+    ('En transit',    'in_transit',  4),
+    ('Livrée',        'delivered',   5),
+    ('Échouée',       'failed',      6),
+    ('Annulée',       'cancelled',   7);
+
+
+-- ====================================================
+-- DELIVERIES
+-- ====================================================
+
+CREATE TABLE Deliveries (
+    DeliveryID          INT AUTO_INCREMENT PRIMARY KEY,
+    OrderID              INT NOT NULL,
+    DeliveryProfileID    INT NULL COMMENT 'Null until a livreur accepts',
+
+    AddressFromID        INT NOT NULL COMMENT 'pickup address (vendor/warehouse)',
+    AddressToID           INT NOT NULL COMMENT 'dropoff address (customer)',
+
+    DeliveryStatusID     INT NOT NULL,
+
+    DeliveryFee           DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+    Notes                 NVARCHAR(500)  NULL,
+
+    RequestedAt           DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    AcceptedAt             DATETIME      NULL,
+    PickedUpAt             DATETIME      NULL,
+    DeliveredAt             DATETIME    NULL,
+    CancelledAt             DATETIME    NULL,
+
+    CreatedAt              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                          ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT UQ_Deliveries_OrderID UNIQUE (OrderID),
+
+    CONSTRAINT FK_Deliveries_Orders
+        FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT FK_Deliveries_DeliveryProfiles
+        FOREIGN KEY (DeliveryProfileID) REFERENCES DeliveryProfiles(DeliveryProfileID)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    CONSTRAINT FK_Deliveries_AddressFrom
+        FOREIGN KEY (AddressFromID) REFERENCES Addresses(AddressID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    CONSTRAINT FK_Deliveries_AddressTo
+        FOREIGN KEY (AddressToID) REFERENCES Addresses(AddressID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    CONSTRAINT FK_Deliveries_DeliveryStatuses
+        FOREIGN KEY (DeliveryStatusID) REFERENCES DeliveryStatuses(DeliveryStatusID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    INDEX IX_Deliveries_DeliveryProfileID (DeliveryProfileID),
+    INDEX IX_Deliveries_Status (DeliveryStatusID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ====================================================
+-- DELIVERY STATUS HISTORY (tracking timeline)
+-- ====================================================
+
+CREATE TABLE DeliveryStatusHistory (
+    DeliveryStatusHistoryID  INT AUTO_INCREMENT PRIMARY KEY,
+    DeliveryID                INT NOT NULL,
+    DeliveryStatusID          INT NOT NULL,
+
+    Latitude                  DECIMAL(10,7)  NULL,
+    Longitude                 DECIMAL(10,7)  NULL,
+
+    ChangedAt                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT FK_DeliveryStatusHistory_Deliveries
+        FOREIGN KEY (DeliveryID) REFERENCES Deliveries(DeliveryID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT FK_DeliveryStatusHistory_DeliveryStatuses
+        FOREIGN KEY (DeliveryStatusID) REFERENCES DeliveryStatuses(DeliveryStatusID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    INDEX IX_DeliveryStatusHistory_DeliveryID (DeliveryID, ChangedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ====================================================
+-- DELIVERY WALLET (mirrors BankAccounts for vendors)
+-- ====================================================
+
+CREATE TABLE DeliveryWallets (
+    DeliveryWalletID     INT AUTO_INCREMENT PRIMARY KEY,
+    DeliveryProfileID     INT NOT NULL,
+
+    CurrentBalance         DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'total earned, all-time',
+    WithdrawableBalance    DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'released, ready to cash out',
+    PendingBalance          DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'earned, awaiting release',
+    CurrencyCode              CHAR(3)     NOT NULL DEFAULT 'MAD',
+    IsLocked                   TINYINT(1) NOT NULL DEFAULT 0,
+
+    CreatedAt                  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt                    DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                            ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT UQ_DeliveryWallets_DeliveryProfileID UNIQUE (DeliveryProfileID),
+    CONSTRAINT FK_DeliveryWallets_DeliveryProfiles
+        FOREIGN KEY (DeliveryProfileID) REFERENCES DeliveryProfiles(DeliveryProfileID)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ====================================================
+-- DELIVERY WITHDRAW HISTORY (mirrors WithdrawHistory)
+-- ====================================================
+
+CREATE TABLE DeliveryWithdrawHistory (
+    DeliveryWithdrawID    INT AUTO_INCREMENT PRIMARY KEY,
+    DeliveryWalletID       INT NOT NULL,
+    PaymentMethodID          INT NOT NULL,
+
+    Amount                    DECIMAL(10,2) NOT NULL,
+    ExternalReference           VARCHAR(100) NULL,
+    Status                       TINYINT NOT NULL DEFAULT 0,
+    Notes                         NVARCHAR(255) NULL,
+
+    RequestedAt                   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ProcessedAt                     DATETIME NULL,
+
+    CONSTRAINT FK_DeliveryWithdrawHistory_Wallets
+        FOREIGN KEY (DeliveryWalletID) REFERENCES DeliveryWallets(DeliveryWalletID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT FK_DeliveryWithdrawHistory_PaymentMethods
+        FOREIGN KEY (PaymentMethodID) REFERENCES PaymentMethods(PaymentMethodID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    INDEX IX_DeliveryWithdrawHistory_WalletID (DeliveryWalletID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

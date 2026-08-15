@@ -356,6 +356,8 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(\App\Repositories\Interface\PaymentRepositoryInterface::class, \App\Repositories\sql\PaymentRepository::class);
         $this->app->bind(\App\Services\Interface\PaymentServiceInterface::class, \App\Services\PaymentService::class);
+        $this->app->bind(\App\Repositories\Interface\DeliveryRepositoryInterface::class, \App\Repositories\sql\DeliveryRepository::class);
+        $this->app->bind(\App\Services\Interface\DeliveryServiceInterface::class, \App\Services\DeliveryService::class);
     }
 
     /**
