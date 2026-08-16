@@ -13,6 +13,7 @@ use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
+use App\DTOs\Delivery\MarkDeliveryDeliveredResultDto;
 use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
@@ -103,5 +104,14 @@ class DeliveryService implements DeliveryServiceInterface
     public function markDeliveryInTransit(int $deliveryId, int $deliveryProfileId): void
     {
         $this->deliveryRepository->markDeliveryInTransit($deliveryId, $deliveryProfileId);
+    }
+    // DeliveryService — add this method
+
+    public function markDeliveryDeliveredByLivreur(
+        int $deliveryId,
+        int $deliveryProfileId,
+        ?float $collectedAmount
+    ): MarkDeliveryDeliveredResultDto {
+        return $this->deliveryRepository->markDeliveryDeliveredByLivreur($deliveryId, $deliveryProfileId, $collectedAmount);
     }
 }

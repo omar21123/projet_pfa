@@ -16,6 +16,7 @@ use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
 use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
 use App\Http\Requests\Delivery\GetVendorDeliveriesRequest;
+use App\Http\Requests\Delivery\MarkDeliveryDeliveredByLivreurRequest;
 use App\Http\Requests\Delivery\MarkDeliveryInTransitRequest;
 use App\Http\Requests\Delivery\MarkDeliveryPickedUpRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
@@ -1086,6 +1087,109 @@ class DeliveryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Livraison marquée en transit avec succès.',
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/deliveries/{delivery}/deliver",
+        tags: ["Deliveries"],
+        summary: "Marquer une livraison comme livrée (livreur)",
+        description: "Le livreur assigné confirme avoir livré le colis. La livraison passe au statut 'delivered', ses gains sont crédités, le vendeur est payé (80%, 20% commission plateforme), et si la commande est en paiement à la livraison, l'encaissement est enregistré.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "delivery",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 14
+    )]
+    #[OA\RequestBody(
+        required: false,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "CollectedAmount",
+                    type: "number",
+                    format: "float",
+                    nullable: true,
+                    description: "Montant encaissé en espèces. Requis uniquement si la commande est en paiement à la livraison (COD).",
+                    example: 250.00
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Livraison marquée comme livrée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Livraison finalisée avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Utilisateur, profil livreur ou livraison introuvable")]
+    #[OA\Response(
+        response: 422,
+        description: "Livraison non assignée à ce livreur, ou statut invalide pour cette transition",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette livraison doit être en transit avant d'être marquée comme livrée."),
+            ]
+        )
+    )]
+    public function deliver(MarkDeliveryDeliveredByLivreurRequest $request, int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de livraison invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        try {
+            $result = $this->deliveryService->markDeliveryDeliveredByLivreur(
+                $delivery,
+                $deliveryProfile->deliveryProfileId,
+                isset($validated['CollectedAmount']) ? (float) $validated['CollectedAmount'] : null
+            );
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result->message,
         ], 200);
     }
 }

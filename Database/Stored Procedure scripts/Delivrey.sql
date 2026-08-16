@@ -1482,3 +1482,286 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_MarkCashCollected;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_MarkCashCollected (
+    IN  p_DeliveryID          INT,
+    IN  p_DeliveryProfileID   INT,
+    IN  p_CollectedAmount      DECIMAL(10,2),
+    OUT v_Success               BOOLEAN,
+    OUT v_Message                VARCHAR(255)
+)
+BEGIN
+    DECLARE v_DeliveryExists     INT DEFAULT 0;
+    DECLARE v_AssignedProfileID  INT DEFAULT NULL;
+    DECLARE v_RecordExists       INT DEFAULT 0;
+    DECLARE v_AlreadyCollected   TINYINT DEFAULT 0;
+    DECLARE v_AmountDue          DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_ErrorMessage       VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_MarkCashCollected', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de l''enregistrement de l''encaissement.';
+    END;
+
+    START TRANSACTION;
+
+    -- ------------------------------------------------
+    -- Delivery must exist and be assigned to this livreur
+    -- ------------------------------------------------
+    SELECT COUNT(*), MAX(DeliveryProfileID)
+    INTO v_DeliveryExists, v_AssignedProfileID
+    FROM Deliveries
+    WHERE DeliveryID = p_DeliveryID
+    FOR UPDATE;
+
+    IF v_DeliveryExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+        ROLLBACK;
+    ELSEIF v_AssignedProfileID IS NULL OR v_AssignedProfileID <> p_DeliveryProfileID THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Cette livraison n''est pas assignée à votre compte.';
+        ROLLBACK;
+    ELSE
+        -- ------------------------------------------------
+        -- Does a cash-collection record already exist?
+        -- ------------------------------------------------
+        SELECT COUNT(*), MAX(IsCollected)
+        INTO v_RecordExists, v_AlreadyCollected
+        FROM DeliveryCashCollections
+        WHERE DeliveryID = p_DeliveryID
+        FOR UPDATE;
+
+        IF v_RecordExists = 0 THEN
+            -- ------------------------------------------------
+            -- No record yet — create one first.
+            -- AmountDue = sum of this delivery's order items' Total
+            -- ------------------------------------------------
+            SELECT COALESCE(SUM(oi.Total), 0.00)
+            INTO v_AmountDue
+            FROM DeliveryItems di
+            INNER JOIN OrderItems oi ON oi.OrderItemID = di.OrderItemID
+            WHERE di.DeliveryID = p_DeliveryID;
+
+            INSERT INTO DeliveryCashCollections (
+                DeliveryID, DeliveryProfileID,
+                AmountDue, CurrencyCode,
+                IsCollected, CollectedAmount, CollectedAt,
+                IsRemitted,
+                CreatedAt, UpdatedAt
+            )
+            VALUES (
+                p_DeliveryID, p_DeliveryProfileID,
+                v_AmountDue, 'MAD',
+                1, p_CollectedAmount, NOW(),
+                0,
+                NOW(), NOW()
+            );
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Encaissement enregistré avec succès.';
+
+            COMMIT;
+        ELSEIF v_AlreadyCollected = 1 THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Ce montant a déjà été enregistré comme encaissé.';
+            ROLLBACK;
+        ELSE
+            -- Record exists but not yet collected — update it
+            UPDATE DeliveryCashCollections
+            SET IsCollected      = 1,
+                CollectedAmount  = p_CollectedAmount,
+                CollectedAt      = NOW(),
+                UpdatedAt        = NOW()
+            WHERE DeliveryID = p_DeliveryID;
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Encaissement enregistré avec succès.';
+
+            COMMIT;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_MarkDeliveryDeliveredByLivreur;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_MarkDeliveryDeliveredByLivreur (
+    IN  p_DeliveryID          INT,
+    IN  p_DeliveryProfileID   INT,
+    IN  p_CollectedAmount     DECIMAL(10,2),
+    OUT v_Success             BOOLEAN,
+    OUT v_Message             VARCHAR(255)
+)
+BEGIN
+    DECLARE v_DeliveryExists          INT DEFAULT 0;
+    DECLARE v_AssignedProfileID       INT DEFAULT NULL;
+    DECLARE v_CurrentStatusID         INT DEFAULT NULL;
+    DECLARE v_InTransitStatusID       INT DEFAULT NULL;
+    DECLARE v_DeliveredStatusID       INT DEFAULT NULL;
+    DECLARE v_DeliveryFee             DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_VendorProfileID         INT DEFAULT NULL;
+    DECLARE v_OrderID                 INT DEFAULT NULL;
+    DECLARE v_PaymentMethodID         INT DEFAULT NULL;
+
+    DECLARE v_ItemsTotal              DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_PlatformCommission      DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_VendorPayout            DECIMAL(10,2) DEFAULT 0.00;
+
+    DECLARE v_TotalDeliveries         INT DEFAULT 0;
+    DECLARE v_DeliveredDeliveries     INT DEFAULT 0;
+    DECLARE v_DeliveredOrderStatusID  INT DEFAULT NULL;
+
+    DECLARE v_CashSuccess             BOOLEAN DEFAULT NULL;
+    DECLARE v_CashMessage             VARCHAR(255) DEFAULT NULL;
+
+    DECLARE v_ErrorMessage            VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_MarkDeliveryDeliveredByLivreur', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la finalisation de la livraison.';
+    END;
+
+    START TRANSACTION;
+
+    -- 1) Verify delivery exists, lock it
+    SELECT COUNT(*), MAX(DeliveryProfileID), MAX(DeliveryStatusID),
+           MAX(DeliveryFee), MAX(VendorProfileID), MAX(OrderID)
+    INTO v_DeliveryExists, v_AssignedProfileID, v_CurrentStatusID,
+         v_DeliveryFee, v_VendorProfileID, v_OrderID
+    FROM Deliveries
+    WHERE DeliveryID = p_DeliveryID
+    FOR UPDATE;
+
+    IF v_DeliveryExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+        ROLLBACK;
+
+    ELSEIF v_AssignedProfileID IS NULL OR v_AssignedProfileID <> p_DeliveryProfileID THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Cette livraison n''est pas assignée à votre compte.';
+        ROLLBACK;
+
+    ELSE
+        SELECT DeliveryStatusID INTO v_InTransitStatusID
+        FROM DeliveryStatuses WHERE Code = 'in_transit' LIMIT 1;
+
+        SELECT DeliveryStatusID INTO v_DeliveredStatusID
+        FROM DeliveryStatuses WHERE Code = 'delivered' LIMIT 1;
+
+        IF v_CurrentStatusID <> v_InTransitStatusID THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Cette livraison doit être en transit avant d''être marquée comme livrée.';
+            ROLLBACK;
+        ELSE
+            -- 2) Mark delivery delivered
+            UPDATE Deliveries
+            SET DeliveryStatusID = v_DeliveredStatusID,
+                DeliveredAt      = NOW(),
+                UpdatedAt        = NOW()
+            WHERE DeliveryID = p_DeliveryID;
+
+            INSERT INTO DeliveryStatusHistory (
+                DeliveryID, DeliveryStatusID, Latitude, Longitude, ChangedAt
+            )
+            VALUES (p_DeliveryID, v_DeliveredStatusID, NULL, NULL, NOW());
+
+            -- 3) Credit livreur wallet
+            UPDATE DeliveryProfiles
+            SET DeliveryCount = DeliveryCount + 1
+            WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+            UPDATE DeliveryWallets
+            SET CurrentBalance      = CurrentBalance + v_DeliveryFee,
+                WithdrawableBalance = WithdrawableBalance + v_DeliveryFee,
+                UpdatedAt           = NOW()
+            WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+            -- 4) Credit vendor (80%), keep 20% platform commission
+            SELECT COALESCE(SUM(oi.Total), 0.00)
+            INTO v_ItemsTotal
+            FROM DeliveryItems di
+            INNER JOIN OrderItems oi ON oi.OrderItemID = di.OrderItemID
+            WHERE di.DeliveryID = p_DeliveryID;
+
+            SET v_PlatformCommission = ROUND(v_ItemsTotal * 0.20, 2);
+            SET v_VendorPayout       = v_ItemsTotal - v_PlatformCommission;
+
+            UPDATE BankAccounts
+            SET CurrentBalance = CurrentBalance + v_VendorPayout,
+                PendingBalance = PendingBalance + v_VendorPayout,
+                UpdatedAt      = NOW()
+            WHERE VendorProfileID = v_VendorProfileID;
+
+            -- 5) Check if ALL vendor deliveries for this order are now delivered
+            --    Note: we read after our UPDATE above so this delivery's
+            --    new status is already visible within the same transaction.
+            SELECT
+                COUNT(*),
+                SUM(CASE WHEN d.DeliveryStatusID = v_DeliveredStatusID THEN 1 ELSE 0 END)
+            INTO v_TotalDeliveries, v_DeliveredDeliveries
+            FROM Deliveries d
+            WHERE d.OrderID = v_OrderID;
+
+            IF v_TotalDeliveries > 0 AND v_TotalDeliveries = v_DeliveredDeliveries THEN
+                SELECT OrderStatusID INTO v_DeliveredOrderStatusID
+                FROM OrderStatuses
+                WHERE Code = 'delivered'
+                LIMIT 1;
+
+                UPDATE Orders
+                SET OrderStatusID = v_DeliveredOrderStatusID,
+                    UpdatedAt     = NOW()
+                WHERE OrderID = v_OrderID;
+            END IF;
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Livraison finalisée avec succès.';
+
+            COMMIT;
+
+            -- COD handling after commit (has its own transaction)
+            SELECT PaymentMethodID INTO v_PaymentMethodID
+            FROM Orders
+            WHERE OrderID = v_OrderID;
+
+            IF v_PaymentMethodID = 1 THEN
+                CALL SP_MarkCashCollected(
+                    p_DeliveryID,
+                    p_DeliveryProfileID,
+                    p_CollectedAmount,
+                    v_CashSuccess,
+                    v_CashMessage
+                );
+
+                IF v_CashSuccess = FALSE THEN
+                    SET v_Message = CONCAT(v_Message, ' (Encaissement: ', v_CashMessage, ')');
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

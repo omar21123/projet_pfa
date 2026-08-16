@@ -16,6 +16,7 @@ use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
+use App\DTOs\Delivery\MarkDeliveryDeliveredResultDto;
 use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
@@ -580,5 +581,35 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         }
 
         Log::info("========== MARK DELIVERY IN TRANSIT SUCCESS ==========");
+    }
+    // DeliveryRepository — add this method
+
+    public function markDeliveryDeliveredByLivreur(
+        int $deliveryId,
+        int $deliveryProfileId,
+        ?float $collectedAmount
+    ): MarkDeliveryDeliveredResultDto {
+        Log::info("========== MARK DELIVERY DELIVERED BY LIVREUR START ==========", [
+            'deliveryId' => $deliveryId,
+            'deliveryProfileId' => $deliveryProfileId,
+            'collectedAmount' => $collectedAmount,
+        ]);
+
+        DB::select(
+            'CALL SP_MarkDeliveryDeliveredByLivreur(?, ?, ?, @success, @message)',
+            [$deliveryId, $deliveryProfileId, $collectedAmount]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("MARK DELIVERY DELIVERED BY LIVREUR RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== MARK DELIVERY DELIVERED BY LIVREUR SUCCESS ==========");
+
+        return new MarkDeliveryDeliveredResultDto(message: $result->message);
     }
 }

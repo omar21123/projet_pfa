@@ -5038,6 +5038,97 @@
                 ]
             }
         },
+        "/api/deliveries/{delivery}/deliver": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Marquer une livraison comme livrée (livreur)",
+                "description": "Le livreur assigné confirme avoir livré le colis. La livraison passe au statut 'delivered', ses gains sont crédités, le vendeur est payé (80%, 20% commission plateforme), et si la commande est en paiement à la livraison, l'encaissement est enregistré.",
+                "operationId": "44e7f229da3561e314ee354794a9bfc9",
+                "parameters": [
+                    {
+                        "name": "delivery",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 14
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "CollectedAmount": {
+                                        "description": "Montant encaissé en espèces. Requis uniquement si la commande est en paiement à la livraison (COD).",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 250,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Livraison marquée comme livrée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livraison finalisée avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil livreur ou livraison introuvable"
+                    },
+                    "422": {
+                        "description": "Livraison non assignée à ce livreur, ou statut invalide pour cette transition",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cette livraison doit être en transit avant d'être marquée comme livrée."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [

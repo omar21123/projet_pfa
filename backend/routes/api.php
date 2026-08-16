@@ -295,5 +295,7 @@ Route::middleware('jwt.custom')->group(function () {
         Route::get('/deliveries/{delivery}', [\App\Http\Controllers\DeliveryController::class, 'showInfos']);
         Route::patch('/deliveries/{delivery}/pickup', [\App\Http\Controllers\DeliveryController::class, 'pickup']);
         Route::patch('/deliveries/{delivery}/in-transit', [\App\Http\Controllers\DeliveryController::class, 'inTransit']);
+        Route::patch('/deliveries/{delivery}/deliver', [\App\Http\Controllers\DeliveryController::class, 'deliver']);
+
     });
 });
