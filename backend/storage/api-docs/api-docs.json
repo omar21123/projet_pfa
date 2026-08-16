@@ -4475,6 +4475,229 @@
                 ]
             }
         },
+        "/api/deliveries/history": {
+            "get": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Historique des livraisons du livreur connecté",
+                "description": "Retourne la liste paginée de toutes les livraisons jamais assignées au livreur authentifié (tous statuts confondus), triées par date de demande décroissante. Filtrable par statut et plage de dates.",
+                "operationId": "74756112cf18708fb4572ee6e6f2deb7",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "delivered"
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Historique récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "delivery_id": {
+                                                        "type": "integer",
+                                                        "example": 14
+                                                    },
+                                                    "order_id": {
+                                                        "type": "integer",
+                                                        "example": 88
+                                                    },
+                                                    "vendor_profile_id": {
+                                                        "type": "integer",
+                                                        "example": 3
+                                                    },
+                                                    "store_name": {
+                                                        "type": "string",
+                                                        "example": "Boutique Amine"
+                                                    },
+                                                    "status_code": {
+                                                        "type": "string",
+                                                        "example": "delivered"
+                                                    },
+                                                    "status_name": {
+                                                        "type": "string",
+                                                        "example": "Livrée"
+                                                    },
+                                                    "delivery_fee": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 15
+                                                    },
+                                                    "total_items": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "requested_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "delivered_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Profil livreur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/deliveries/{delivery}/accept": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Accepter une livraison",
+                "description": "Le livreur connecté accepte une livraison en attente. La livraison passe au statut 'accepted' et lui est assignée. Échoue si déjà acceptée par un autre livreur ou si le compte n'est pas approuvé.",
+                "operationId": "e34db0b29d103dee7e2f43dfd30878cf",
+                "parameters": [
+                    {
+                        "name": "delivery",
+                        "in": "path",
+                        "description": "Identifiant de la livraison à accepter.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 14
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livraison acceptée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livraison acceptée avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil livreur ou livraison introuvable"
+                    },
+                    "422": {
+                        "description": "Livraison déjà acceptée, compte non approuvé, ou compte suspendu",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cette livraison a déjà été acceptée par un autre livreur."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [

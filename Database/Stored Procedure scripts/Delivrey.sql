@@ -743,3 +743,234 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetDeliveryHistoryByProfile (
+    IN  p_DeliveryProfileID   INT,
+    IN  p_StatusCode           VARCHAR(50),   -- NULL = all statuses
+    IN  p_DateFrom               DATE,          -- NULL = no lower bound
+    IN  p_DateTo                  DATE,          -- NULL = no upper bound
+    IN  p_Page                     INT,
+    IN  p_PerPage                   INT,
+    OUT v_Success                    BOOLEAN,
+    OUT v_Message                     VARCHAR(255),
+    OUT v_TotalCount                   INT
+)
+BEGIN
+    DECLARE v_ProfileExists    INT DEFAULT 0;
+    DECLARE v_Offset            INT DEFAULT 0;
+    DECLARE v_ErrorMessage      VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetDeliveryHistoryByProfile', v_ErrorMessage, NOW());
+
+        SET v_Success    = FALSE;
+        SET v_Message    = 'Une erreur est survenue lors de la récupération de l''historique.';
+        SET v_TotalCount = 0;
+    END;
+
+    SELECT COUNT(*) INTO v_ProfileExists
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+    IF v_ProfileExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+        SET v_TotalCount = 0;
+    ELSE
+        IF p_Page IS NULL OR p_Page < 1 THEN
+            SET p_Page = 1;
+        END IF;
+
+        IF p_PerPage IS NULL OR p_PerPage < 1 THEN
+            SET p_PerPage = 20;
+        END IF;
+
+        IF p_PerPage > 100 THEN
+            SET p_PerPage = 100;
+        END IF;
+
+        SET v_Offset = (p_Page - 1) * p_PerPage;
+
+        -- ------------------------------------------------
+        -- Total count
+        -- ------------------------------------------------
+        SELECT COUNT(*) INTO v_TotalCount
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+        WHERE d.DeliveryProfileID = p_DeliveryProfileID
+          AND (p_StatusCode IS NULL OR p_StatusCode = '' OR ds.Code = p_StatusCode)
+          AND (p_DateFrom IS NULL OR DATE(d.RequestedAt) >= p_DateFrom)
+          AND (p_DateTo   IS NULL OR DATE(d.RequestedAt) <= p_DateTo);
+
+        -- ------------------------------------------------
+        -- Page of results, newest first
+        -- ------------------------------------------------
+        SELECT
+            d.DeliveryID,
+            d.OrderID,
+            d.VendorProfileID,
+            vp.StoreName,
+
+            ds.Code   AS StatusCode,
+            ds.Name   AS StatusName,
+
+            d.DeliveryFee,
+            (SELECT COUNT(*) FROM DeliveryItems di WHERE di.DeliveryID = d.DeliveryID) AS TotalItems,
+
+            af.City   AS FromCity,
+            af.Region AS FromRegion,
+            af.Country AS FromCountry,
+
+            at.City   AS ToCity,
+            at.Region AS ToRegion,
+            at.Country AS ToCountry,
+
+            d.RequestedAt,
+            d.AcceptedAt,
+            d.PickedUpAt,
+            d.DeliveredAt,
+            d.CancelledAt
+
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+        INNER JOIN Addresses af        ON af.AddressID = d.AddressFromID
+        INNER JOIN Addresses at        ON at.AddressID = d.AddressToID
+        INNER JOIN VendorProfiles vp   ON vp.VendorProfileID = d.VendorProfileID
+        WHERE d.DeliveryProfileID = p_DeliveryProfileID
+          AND (p_StatusCode IS NULL OR p_StatusCode = '' OR ds.Code = p_StatusCode)
+          AND (p_DateFrom IS NULL OR DATE(d.RequestedAt) >= p_DateFrom)
+          AND (p_DateTo   IS NULL OR DATE(d.RequestedAt) <= p_DateTo)
+        ORDER BY d.RequestedAt DESC
+        LIMIT p_PerPage OFFSET v_Offset;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Historique récupéré avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+DROP PROCEDURE IF EXISTS SP_AcceptDeliveryByID;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_AcceptDeliveryByID (
+    IN  p_DeliveryID          INT,
+    IN  p_DeliveryProfileID   INT,
+    OUT v_Success              BOOLEAN,
+    OUT v_Message               VARCHAR(255)
+)
+BEGIN
+    DECLARE v_CurrentProfileID   INT DEFAULT NULL;
+    DECLARE v_CurrentStatusID    INT DEFAULT NULL;
+    DECLARE v_PendingStatusID    INT DEFAULT NULL;
+    DECLARE v_AcceptedStatusID   INT DEFAULT NULL;
+    DECLARE v_DeliveryExists     INT DEFAULT 0;
+    DECLARE v_ProfileApproved    TINYINT DEFAULT 0;
+    DECLARE v_ProfileSuspended   TINYINT DEFAULT 0;
+    DECLARE v_ErrorMessage       VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_AcceptDeliveryByID', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de l''acceptation de la livraison.';
+    END;
+
+    START TRANSACTION;
+
+    -- ------------------------------------------------
+    -- Validate the livreur first
+    -- ------------------------------------------------
+    SELECT IsApproved, IsSuspended
+    INTO v_ProfileApproved, v_ProfileSuspended
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+    IF v_ProfileApproved IS NULL THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+        ROLLBACK;
+    ELSEIF v_ProfileApproved = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Votre compte n''est pas encore approuvé.';
+        ROLLBACK;
+    ELSEIF v_ProfileSuspended = 1 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Votre compte est suspendu.';
+        ROLLBACK;
+    ELSE
+        -- ------------------------------------------------
+        -- Lock the delivery row to prevent two livreurs
+        -- accepting the same delivery simultaneously
+        -- ------------------------------------------------
+        SELECT COUNT(*), MAX(DeliveryProfileID), MAX(DeliveryStatusID)
+        INTO v_DeliveryExists, v_CurrentProfileID, v_CurrentStatusID
+        FROM Deliveries
+        WHERE DeliveryID = p_DeliveryID
+        FOR UPDATE;
+
+        IF v_DeliveryExists = 0 THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Livraison introuvable.';
+            ROLLBACK;
+        ELSEIF v_CurrentProfileID IS NOT NULL THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Cette livraison a déjà été acceptée par un autre livreur.';
+            ROLLBACK;
+        ELSE
+            SELECT DeliveryStatusID INTO v_PendingStatusID
+            FROM DeliveryStatuses WHERE Code = 'pending' LIMIT 1;
+
+            IF v_CurrentStatusID <> v_PendingStatusID THEN
+                SET v_Success = FALSE;
+                SET v_Message = 'Cette livraison n''est plus disponible pour acceptation.';
+                ROLLBACK;
+            ELSE
+                SELECT DeliveryStatusID INTO v_AcceptedStatusID
+                FROM DeliveryStatuses WHERE Code = 'accepted' LIMIT 1;
+
+                -- 1) Update Deliveries
+                UPDATE Deliveries
+                SET DeliveryProfileID = p_DeliveryProfileID,
+                    DeliveryStatusID  = v_AcceptedStatusID,
+                    AcceptedAt        = NOW(),
+                    UpdatedAt         = NOW()
+                WHERE DeliveryID = p_DeliveryID;
+
+                -- 2) Log the status change
+                INSERT INTO DeliveryStatusHistory (
+                    DeliveryID, DeliveryStatusID, Latitude, Longitude, ChangedAt
+                )
+                VALUES (
+                    p_DeliveryID, v_AcceptedStatusID, NULL, NULL, NOW()
+                );
+
+                -- 3) Bump the livreur's LastOnlineAt (they're actively engaging)
+                UPDATE DeliveryProfiles
+                SET LastOnlineAt = NOW()
+                WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+                SET v_Success = TRUE;
+                SET v_Message = 'Livraison acceptée avec succès.';
+
+                COMMIT;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

@@ -283,6 +283,10 @@ Route::middleware('jwt.custom')->group(function () {
   Route::middleware('role:LIVREUR')->group(function () {
     Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
     Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
+    Route::get('/deliveries/history', [\App\Http\Controllers\DeliveryController::class, 'history']);
+    Route::patch('/deliveries/{delivery}/accept', [\App\Http\Controllers\DeliveryController::class, 'accept']);
+
+
 });
 
 

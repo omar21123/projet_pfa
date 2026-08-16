@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
+use App\Http\Requests\Delivery\AcceptDeliveryRequest;
 use App\Http\Requests\Delivery\ApproveDeliveryProfileRequest;
 use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
+use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
@@ -498,54 +501,239 @@ class DeliveryController extends Controller
         return response()->json($result->toArray(), 200);
     }
     #[OA\Patch(
-    path: "/api/deliveries/location",
+        path: "/api/deliveries/location",
+        tags: ["Deliveries"],
+        summary: "Mettre à jour la position GPS du livreur connecté",
+        description: "Met à jour la latitude/longitude actuelles du livreur ainsi que LastOnlineAt. Destiné à être appelé périodiquement par l'application mobile pendant que le livreur est en ligne.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["Latitude", "Longitude"],
+            properties: [
+                new OA\Property(property: "Latitude", type: "number", format: "float", example: 33.5731),
+                new OA\Property(property: "Longitude", type: "number", format: "float", example: -7.5898),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Position mise à jour avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Position mise à jour avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur ou profil livreur introuvable",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Profil livreur introuvable pour cet utilisateur."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Coordonnées invalides",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Latitude invalide."),
+            ]
+        )
+    )]
+    public function updateLocation(UpdateDeliveryLocationRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+
+        $dto = UpdateDeliveryLocationDto::fromArray([
+            'DeliveryProfileID' => $deliveryProfile->deliveryProfileId,
+            'Latitude'          => $validated['Latitude'],
+            'Longitude'         => $validated['Longitude'],
+        ]);
+
+        try {
+            $this->deliveryService->updateDeliveryLocation($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Position mise à jour avec succès.',
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/deliveries/history",
+        tags: ["Deliveries"],
+        summary: "Historique des livraisons du livreur connecté",
+        description: "Retourne la liste paginée de toutes les livraisons jamais assignées au livreur authentifié (tous statuts confondus), triées par date de demande décroissante. Filtrable par statut et plage de dates.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "status", in: "query", required: false, schema: new OA\Schema(type: "string"), example: "delivered")]
+    #[OA\Parameter(name: "date_from", in: "query", required: false, schema: new OA\Schema(type: "string", format: "date"))]
+    #[OA\Parameter(name: "date_to", in: "query", required: false, schema: new OA\Schema(type: "string", format: "date"))]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Historique récupéré avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: "delivery_id", type: "integer", example: 14),
+                            new OA\Property(property: "order_id", type: "integer", example: 88),
+                            new OA\Property(property: "vendor_profile_id", type: "integer", example: 3),
+                            new OA\Property(property: "store_name", type: "string", example: "Boutique Amine"),
+                            new OA\Property(property: "status_code", type: "string", example: "delivered"),
+                            new OA\Property(property: "status_name", type: "string", example: "Livrée"),
+                            new OA\Property(property: "delivery_fee", type: "number", format: "float", example: 15.00),
+                            new OA\Property(property: "total_items", type: "integer", example: 2),
+                            new OA\Property(property: "requested_at", type: "string", format: "date-time"),
+                            new OA\Property(property: "delivered_at", type: "string", format: "date-time", nullable: true),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "total", type: "integer", example: 42),
+                        new OA\Property(property: "page", type: "integer", example: 1),
+                        new OA\Property(property: "page_size", type: "integer", example: 20),
+                        new OA\Property(property: "last_page", type: "integer", example: 3),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Profil livreur introuvable"
+    )]
+    public function history(GetDeliveryHistoryRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        $dto = GetDeliveryHistoryDto::fromRequest($request->validated(), $deliveryProfile->deliveryProfileId);
+
+        try {
+            $result = $this->deliveryService->getDeliveryHistory($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json($result->toArray(), 200);
+    }
+    #[OA\Patch(
+    path: "/api/deliveries/{delivery}/accept",
     tags: ["Deliveries"],
-    summary: "Mettre à jour la position GPS du livreur connecté",
-    description: "Met à jour la latitude/longitude actuelles du livreur ainsi que LastOnlineAt. Destiné à être appelé périodiquement par l'application mobile pendant que le livreur est en ligne.",
+    summary: "Accepter une livraison",
+    description: "Le livreur connecté accepte une livraison en attente. La livraison passe au statut 'accepted' et lui est assignée. Échoue si déjà acceptée par un autre livreur ou si le compte n'est pas approuvé.",
     security: [["bearerAuth" => []]]
 )]
-#[OA\RequestBody(
+#[OA\Parameter(
+    name: "delivery",
+    in: "path",
     required: true,
-    content: new OA\JsonContent(
-        required: ["Latitude", "Longitude"],
-        properties: [
-            new OA\Property(property: "Latitude", type: "number", format: "float", example: 33.5731),
-            new OA\Property(property: "Longitude", type: "number", format: "float", example: -7.5898),
-        ]
-    )
+    description: "Identifiant de la livraison à accepter.",
+    schema: new OA\Schema(type: "integer", minimum: 1),
+    example: 14
 )]
 #[OA\Response(
     response: 200,
-    description: "Position mise à jour avec succès",
+    description: "Livraison acceptée avec succès",
     content: new OA\JsonContent(
         properties: [
             new OA\Property(property: "success", type: "boolean", example: true),
-            new OA\Property(property: "message", type: "string", example: "Position mise à jour avec succès."),
+            new OA\Property(property: "message", type: "string", example: "Livraison acceptée avec succès."),
         ]
     )
 )]
 #[OA\Response(
     response: 404,
-    description: "Utilisateur ou profil livreur introuvable",
-    content: new OA\JsonContent(
-        properties: [
-            new OA\Property(property: "success", type: "boolean", example: false),
-            new OA\Property(property: "message", type: "string", example: "Profil livreur introuvable pour cet utilisateur."),
-        ]
-    )
+    description: "Utilisateur, profil livreur ou livraison introuvable"
 )]
 #[OA\Response(
     response: 422,
-    description: "Coordonnées invalides",
+    description: "Livraison déjà acceptée, compte non approuvé, ou compte suspendu",
     content: new OA\JsonContent(
         properties: [
             new OA\Property(property: "success", type: "boolean", example: false),
-            new OA\Property(property: "message", type: "string", example: "Latitude invalide."),
+            new OA\Property(property: "message", type: "string", example: "Cette livraison a déjà été acceptée par un autre livreur."),
         ]
     )
 )]
-public function updateLocation(UpdateDeliveryLocationRequest $request): JsonResponse
+public function accept(AcceptDeliveryRequest $request, int $delivery): JsonResponse
 {
+    if ($delivery <= 0) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Identifiant de livraison invalide.',
+        ], 404);
+    }
+
     $publicId = $request->attributes->get('user_id');
     $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
 
@@ -565,16 +753,8 @@ public function updateLocation(UpdateDeliveryLocationRequest $request): JsonResp
         ], 404);
     }
 
-    $validated = $request->validated();
-
-    $dto = UpdateDeliveryLocationDto::fromArray([
-        'DeliveryProfileID' => $deliveryProfile->deliveryProfileId,
-        'Latitude'          => $validated['Latitude'],
-        'Longitude'         => $validated['Longitude'],
-    ]);
-
     try {
-        $this->deliveryService->updateDeliveryLocation($dto);
+        $this->deliveryService->acceptDeliveryById($delivery, $deliveryProfile->deliveryProfileId);
     } catch (\App\Exceptions\BusinessValidationException $e) {
         return response()->json([
             'success' => false,
@@ -589,7 +769,7 @@ public function updateLocation(UpdateDeliveryLocationRequest $request): JsonResp
 
     return response()->json([
         'success' => true,
-        'message' => 'Position mise à jour avec succès.',
+        'message' => 'Livraison acceptée avec succès.',
     ], 200);
 }
 }

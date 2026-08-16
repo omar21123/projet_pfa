@@ -6,12 +6,15 @@ namespace App\Repositories\sql;
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\DeliveryHistoryItemDto;
 use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileListItemDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\RecommendedDeliveryItemDto;
@@ -337,5 +340,66 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         }
 
         Log::info("========== UPDATE DELIVERY LOCATION SUCCESS ==========");
+    }
+
+    public function getDeliveryHistory(GetDeliveryHistoryDto $dto): PaginatedDeliveryHistoryDto
+    {
+        Log::info("========== GET DELIVERY HISTORY START ==========", (array) $dto);
+
+        $rows = DB::select(
+            'CALL SP_GetDeliveryHistoryByProfile(?, ?, ?, ?, ?, ?, @success, @message, @total)',
+            [
+                $dto->deliveryProfileId,
+                $dto->statusCode,
+                $dto->dateFrom,
+                $dto->dateTo,
+                $dto->page,
+                $dto->perPage,
+            ]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @total AS total'
+        );
+
+        Log::info("GET DELIVERY HISTORY RESULT", [
+            'success' => $result->success ?? null,
+            'rows'    => count($rows),
+        ]);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        return new PaginatedDeliveryHistoryDto(
+            data: array_map(fn($row) => DeliveryHistoryItemDto::fromRow($row), $rows),
+            total: (int) $result->total,
+            page: $dto->page,
+            perPage: $dto->perPage,
+        );
+    }
+    // DeliveryRepository — add this method
+
+    public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void
+    {
+        Log::info("========== ACCEPT DELIVERY BY ID START ==========", [
+            'deliveryId' => $deliveryId,
+            'deliveryProfileId' => $deliveryProfileId,
+        ]);
+
+        DB::select(
+            'CALL SP_AcceptDeliveryByID(?, ?, @success, @message)',
+            [$deliveryId, $deliveryProfileId]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("ACCEPT DELIVERY BY ID RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== ACCEPT DELIVERY BY ID SUCCESS ==========");
     }
 }

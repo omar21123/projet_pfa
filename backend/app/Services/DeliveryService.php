@@ -9,7 +9,9 @@ use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
@@ -60,5 +62,17 @@ class DeliveryService implements DeliveryServiceInterface
     public function updateDeliveryLocation(UpdateDeliveryLocationDto $dto): void
     {
         $this->deliveryRepository->updateDeliveryLocation($dto);
+    }
+    // Interface + implementation — pass-through
+
+    public function getDeliveryHistory(GetDeliveryHistoryDto $dto): PaginatedDeliveryHistoryDto
+    {
+        return $this->deliveryRepository->getDeliveryHistory($dto);
+    }
+    // Interface + implementation
+
+    public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void
+    {
+        $this->deliveryRepository->acceptDeliveryById($deliveryId, $deliveryProfileId);
     }
 }

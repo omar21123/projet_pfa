@@ -9,7 +9,9 @@ use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
@@ -26,4 +28,8 @@ interface DeliveryServiceInterface
     public function getRecommendedDeliveries(GetRecommendedDeliveriesDto $dto): PaginatedRecommendedDeliveriesDto;
     public function getDeliveryProfileByUserId(int $userId): ?DeliveryProfileBasicDto;
     public function updateDeliveryLocation(UpdateDeliveryLocationDto $dto): void;
+    public function getDeliveryHistory(GetDeliveryHistoryDto $dto): PaginatedDeliveryHistoryDto;
+    // Interface + implementation
+
+    public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void;
 }

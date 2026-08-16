@@ -10,7 +10,9 @@ use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
+use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
@@ -38,4 +40,6 @@ public function getRecommendedDeliveries(GetRecommendedDeliveriesDto $dto): Pagi
     public function suspendDeliveryProfile(SuspendDeliveryProfileDto $dto): void;
     public function getDeliveryProfileByUserId(int $userId): ?DeliveryProfileBasicDto;
     public function updateDeliveryLocation(UpdateDeliveryLocationDto $dto): void;
+    public function getDeliveryHistory(GetDeliveryHistoryDto $dto): PaginatedDeliveryHistoryDto;
+    public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void;
 }
