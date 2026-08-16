@@ -974,3 +974,212 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetVendorDeliveries (
+    IN  p_VendorProfileID   INT,
+    IN  p_StatusCode         VARCHAR(50),   -- NULL = all statuses
+    IN  p_IsTaken             TINYINT,        -- NULL = both, 1 = has livreur, 0 = not yet taken
+    IN  p_Page                 INT,
+    IN  p_PerPage                INT,
+    OUT v_Success                 BOOLEAN,
+    OUT v_Message                  VARCHAR(255),
+    OUT v_TotalCount                INT
+)
+BEGIN
+    DECLARE v_VendorExists   INT DEFAULT 0;
+    DECLARE v_Offset          INT DEFAULT 0;
+    DECLARE v_ErrorMessage    VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetVendorDeliveries', v_ErrorMessage, NOW());
+
+        SET v_Success    = FALSE;
+        SET v_Message    = 'Une erreur est survenue lors de la récupération des livraisons.';
+        SET v_TotalCount = 0;
+    END;
+
+    SELECT COUNT(*) INTO v_VendorExists
+    FROM VendorProfiles
+    WHERE VendorProfileID = p_VendorProfileID;
+
+    IF v_VendorExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil vendeur introuvable.';
+        SET v_TotalCount = 0;
+    ELSE
+        IF p_Page IS NULL OR p_Page < 1 THEN
+            SET p_Page = 1;
+        END IF;
+
+        IF p_PerPage IS NULL OR p_PerPage < 1 THEN
+            SET p_PerPage = 20;
+        END IF;
+
+        IF p_PerPage > 100 THEN
+            SET p_PerPage = 100;
+        END IF;
+
+        SET v_Offset = (p_Page - 1) * p_PerPage;
+
+        -- ------------------------------------------------
+        -- Total count
+        -- ------------------------------------------------
+        SELECT COUNT(*) INTO v_TotalCount
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+        WHERE d.VendorProfileID = p_VendorProfileID
+          AND (p_StatusCode IS NULL OR p_StatusCode = '' OR ds.Code = p_StatusCode)
+          AND (
+              p_IsTaken IS NULL
+              OR (p_IsTaken = 1 AND d.DeliveryProfileID IS NOT NULL)
+              OR (p_IsTaken = 0 AND d.DeliveryProfileID IS NULL)
+          );
+
+        -- ------------------------------------------------
+        -- Page of results, newest first
+        -- ------------------------------------------------
+        SELECT
+            d.DeliveryID,
+            d.OrderID,
+
+            ds.Code AS StatusCode,
+            ds.Name AS StatusName,
+
+            (d.DeliveryProfileID IS NOT NULL) AS IsTaken,
+            d.DeliveryProfileID,
+            u.DisplayName  AS LivreurName,
+            u.PhoneNumber  AS LivreurPhone,
+
+            d.DeliveryFee,
+            (SELECT COUNT(*) FROM DeliveryItems di WHERE di.DeliveryID = d.DeliveryID) AS TotalItems,
+
+            at.City    AS ToCity,
+            at.Region  AS ToRegion,
+
+            d.RequestedAt,
+            d.AcceptedAt,
+            d.DeliveredAt
+
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds  ON ds.DeliveryStatusID = d.DeliveryStatusID
+        INNER JOIN Addresses at         ON at.AddressID = d.AddressToID
+        LEFT JOIN DeliveryProfiles dp   ON dp.DeliveryProfileID = d.DeliveryProfileID
+        LEFT JOIN Users u               ON u.UserID = dp.UserID
+        WHERE d.VendorProfileID = p_VendorProfileID
+          AND (p_StatusCode IS NULL OR p_StatusCode = '' OR ds.Code = p_StatusCode)
+          AND (
+              p_IsTaken IS NULL
+              OR (p_IsTaken = 1 AND d.DeliveryProfileID IS NOT NULL)
+              OR (p_IsTaken = 0 AND d.DeliveryProfileID IS NULL)
+          )
+        ORDER BY d.RequestedAt DESC
+        LIMIT p_PerPage OFFSET v_Offset;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livraisons récupérées avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetDeliveryDetails (
+    IN  p_DeliveryID   INT,
+    OUT v_Success        BOOLEAN,
+    OUT v_Message         VARCHAR(255)
+)
+BEGIN
+    DECLARE v_Exists       INT DEFAULT 0;
+    DECLARE v_ErrorMessage VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetDeliveryDetails', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la récupération de la livraison.';
+    END;
+
+    SELECT COUNT(*) INTO v_Exists FROM Deliveries WHERE DeliveryID = p_DeliveryID;
+
+    IF v_Exists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+    ELSE
+        SELECT
+            d.DeliveryID,
+            d.OrderID,
+            d.VendorProfileID,
+            vp.StoreName,
+
+            ds.Code AS StatusCode,
+            ds.Name AS StatusName,
+
+            d.DeliveryFee,
+            d.Notes,
+            (SELECT COUNT(*) FROM DeliveryItems di WHERE di.DeliveryID = d.DeliveryID) AS TotalItems,
+
+            -- Pickup address
+            af.AddressID    AS FromAddressID,
+            af.AddressLine1 AS FromAddressLine1,
+            af.AddressLine2 AS FromAddressLine2,
+            af.City         AS FromCity,
+            af.Region       AS FromRegion,
+            af.PostalCode   AS FromPostalCode,
+            af.Country      AS FromCountry,
+            af.Latitude     AS FromLatitude,
+            af.Longitude    AS FromLongitude,
+
+            -- Dropoff address
+            at.AddressID    AS ToAddressID,
+            at.AddressLine1 AS ToAddressLine1,
+            at.AddressLine2 AS ToAddressLine2,
+            at.City         AS ToCity,
+            at.Region       AS ToRegion,
+            at.PostalCode   AS ToPostalCode,
+            at.Country      AS ToCountry,
+            at.Latitude     AS ToLatitude,
+            at.Longitude    AS ToLongitude,
+
+            -- Assigned livreur (NULL if not accepted yet)
+            dp.DeliveryProfileID,
+            u.DisplayName    AS LivreurName,
+            u.PhoneNumber    AS LivreurPhone,
+            u.AvatarURL       AS LivreurAvatarURL,
+            dp.VehicleType,
+            dp.LicensePlate,
+            dp.Rating         AS LivreurRating,
+            dp.CurrentLatitude,
+            dp.CurrentLongitude,
+
+            d.RequestedAt,
+            d.AcceptedAt,
+            d.PickedUpAt,
+            d.DeliveredAt,
+            d.CancelledAt
+
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds  ON ds.DeliveryStatusID = d.DeliveryStatusID
+        INNER JOIN VendorProfiles vp    ON vp.VendorProfileID = d.VendorProfileID
+        INNER JOIN Addresses af         ON af.AddressID = d.AddressFromID
+        INNER JOIN Addresses at         ON at.AddressID = d.AddressToID
+        LEFT JOIN DeliveryProfiles dp   ON dp.DeliveryProfileID = d.DeliveryProfileID
+        LEFT JOIN Users u               ON u.UserID = dp.UserID
+        WHERE d.DeliveryID = p_DeliveryID
+        LIMIT 1;
+
+        SET v_Success = TRUE;
+        SET v_Message = 'Livraison récupérée avec succès.';
+    END IF;
+END$$
+
+DELIMITER ;

@@ -178,6 +178,7 @@ Route::prefix('products')->group(function () {
     });
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
         Route::get('/vendor/me', [ProductController::class, 'getVendorProducts']);
+        Route::get('/deliveries/vendor', [\App\Http\Controllers\DeliveryController::class, 'vendorDeliveries']);
     });
 
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -285,9 +286,5 @@ Route::middleware('jwt.custom')->group(function () {
     Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
     Route::get('/deliveries/history', [\App\Http\Controllers\DeliveryController::class, 'history']);
     Route::patch('/deliveries/{delivery}/accept', [\App\Http\Controllers\DeliveryController::class, 'accept']);
-
-
-});
-
-
-});
+        Route::get('/deliveries/{delivery}', [\App\Http\Controllers\DeliveryController::class, 'showInfos']);
+});});

@@ -6,6 +6,7 @@ namespace App\Repositories\sql;
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\DeliveryDetailsDto;
 use App\DTOs\Delivery\DeliveryHistoryItemDto;
 use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
@@ -14,12 +15,15 @@ use App\DTOs\Delivery\DeliveryResultDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\GetVendorDeliveriesDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
+use App\DTOs\Delivery\PaginatedVendorDeliveriesDto;
 use App\DTOs\Delivery\RecommendedDeliveryItemDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
+use App\DTOs\Delivery\VendorDeliveryListItemDto;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -401,5 +405,104 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         }
 
         Log::info("========== ACCEPT DELIVERY BY ID SUCCESS ==========");
+    }
+    // DeliveryRepository — add these methods
+
+    public function getVendorDeliveries(GetVendorDeliveriesDto $dto): PaginatedVendorDeliveriesDto
+    {
+        Log::info("========== GET VENDOR DELIVERIES START ==========", (array) $dto);
+
+        $vendorExists = DB::selectOne(
+            'SELECT COUNT(*) AS cnt FROM VendorProfiles WHERE VendorProfileID = ?',
+            [$dto->vendorProfileId]
+        )->cnt;
+
+        if (!$vendorExists) {
+            throw new BusinessValidationException('Profil vendeur introuvable.', 404);
+        }
+
+        $whereStatus = $dto->statusCode !== null ? 'AND ds.Code = ?' : '';
+        $whereTaken  = $dto->isTaken !== null
+            ? ($dto->isTaken ? 'AND d.DeliveryProfileID IS NOT NULL' : 'AND d.DeliveryProfileID IS NULL')
+            : '';
+
+        $filterParams = [$dto->vendorProfileId];
+        if ($dto->statusCode !== null) {
+            $filterParams[] = $dto->statusCode;
+        }
+
+        $total = DB::selectOne(
+            "SELECT COUNT(*) AS total
+         FROM Deliveries d
+         INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+         WHERE d.VendorProfileID = ?
+           {$whereStatus} {$whereTaken}",
+            $filterParams
+        )->total;
+
+        $offset = ($dto->page - 1) * $dto->perPage;
+        $rowParams = array_merge($filterParams, [$dto->perPage, $offset]);
+
+        $rows = DB::select(
+            "SELECT
+            d.DeliveryID,
+            d.OrderID,
+            ds.Code AS StatusCode,
+            ds.Name AS StatusName,
+            (d.DeliveryProfileID IS NOT NULL) AS IsTaken,
+            d.DeliveryProfileID,
+            u.DisplayName AS LivreurName,
+            u.PhoneNumber AS LivreurPhone,
+            d.DeliveryFee,
+            (SELECT COUNT(*) FROM DeliveryItems di WHERE di.DeliveryID = d.DeliveryID) AS TotalItems,
+            at.City AS ToCity,
+            at.Region AS ToRegion,
+            d.RequestedAt,
+            d.AcceptedAt,
+            d.DeliveredAt
+        FROM Deliveries d
+        INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+        INNER JOIN Addresses at        ON at.AddressID = d.AddressToID
+        LEFT JOIN DeliveryProfiles dp  ON dp.DeliveryProfileID = d.DeliveryProfileID
+        LEFT JOIN Users u              ON u.UserID = dp.UserID
+        WHERE d.VendorProfileID = ?
+          {$whereStatus} {$whereTaken}
+        ORDER BY d.RequestedAt DESC
+        LIMIT ? OFFSET ?",
+            $rowParams
+        );
+
+        Log::info("GET VENDOR DELIVERIES RESULT", ['total' => $total, 'count' => count($rows)]);
+
+        return new PaginatedVendorDeliveriesDto(
+            data: array_map(fn($row) => VendorDeliveryListItemDto::fromRow($row), $rows),
+            total: (int) $total,
+            page: $dto->page,
+            perPage: $dto->perPage,
+        );
+    }
+
+    public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto
+    {
+        Log::info("========== GET DELIVERY DETAILS START ==========", ['deliveryId' => $deliveryId]);
+
+        $rows = DB::select(
+            'CALL SP_GetDeliveryDetails(?, @success, @message)',
+            [$deliveryId]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("GET DELIVERY DETAILS RESULT", ['success' => $result->success ?? null, 'rows' => count($rows)]);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 404);
+        }
+
+        if (empty($rows)) {
+            throw new BusinessValidationException('Livraison introuvable.', 404);
+        }
+
+        return DeliveryDetailsDto::fromRow($rows[0]);
     }
 }

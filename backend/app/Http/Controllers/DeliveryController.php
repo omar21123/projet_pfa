@@ -7,6 +7,7 @@ use App\DTOs\Delivery\ApproveDeliveryProfileDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
+use App\DTOs\Delivery\GetVendorDeliveriesDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\Http\Requests\Delivery\AcceptDeliveryRequest;
@@ -14,6 +15,7 @@ use App\Http\Requests\Delivery\ApproveDeliveryProfileRequest;
 use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
 use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
+use App\Http\Requests\Delivery\GetVendorDeliveriesRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
 use App\Services\Interface\DeliveryServiceInterface;
@@ -687,89 +689,237 @@ class DeliveryController extends Controller
         return response()->json($result->toArray(), 200);
     }
     #[OA\Patch(
-    path: "/api/deliveries/{delivery}/accept",
-    tags: ["Deliveries"],
-    summary: "Accepter une livraison",
-    description: "Le livreur connecté accepte une livraison en attente. La livraison passe au statut 'accepted' et lui est assignée. Échoue si déjà acceptée par un autre livreur ou si le compte n'est pas approuvé.",
-    security: [["bearerAuth" => []]]
-)]
-#[OA\Parameter(
-    name: "delivery",
-    in: "path",
-    required: true,
-    description: "Identifiant de la livraison à accepter.",
-    schema: new OA\Schema(type: "integer", minimum: 1),
-    example: 14
-)]
-#[OA\Response(
-    response: 200,
-    description: "Livraison acceptée avec succès",
-    content: new OA\JsonContent(
-        properties: [
-            new OA\Property(property: "success", type: "boolean", example: true),
-            new OA\Property(property: "message", type: "string", example: "Livraison acceptée avec succès."),
-        ]
-    )
-)]
-#[OA\Response(
-    response: 404,
-    description: "Utilisateur, profil livreur ou livraison introuvable"
-)]
-#[OA\Response(
-    response: 422,
-    description: "Livraison déjà acceptée, compte non approuvé, ou compte suspendu",
-    content: new OA\JsonContent(
-        properties: [
-            new OA\Property(property: "success", type: "boolean", example: false),
-            new OA\Property(property: "message", type: "string", example: "Cette livraison a déjà été acceptée par un autre livreur."),
-        ]
-    )
-)]
-public function accept(AcceptDeliveryRequest $request, int $delivery): JsonResponse
-{
-    if ($delivery <= 0) {
+        path: "/api/deliveries/{delivery}/accept",
+        tags: ["Deliveries"],
+        summary: "Accepter une livraison",
+        description: "Le livreur connecté accepte une livraison en attente. La livraison passe au statut 'accepted' et lui est assignée. Échoue si déjà acceptée par un autre livreur ou si le compte n'est pas approuvé.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "delivery",
+        in: "path",
+        required: true,
+        description: "Identifiant de la livraison à accepter.",
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 14
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Livraison acceptée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Livraison acceptée avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: "Utilisateur, profil livreur ou livraison introuvable"
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Livraison déjà acceptée, compte non approuvé, ou compte suspendu",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette livraison a déjà été acceptée par un autre livreur."),
+            ]
+        )
+    )]
+    public function accept(AcceptDeliveryRequest $request, int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de livraison invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        try {
+            $this->deliveryService->acceptDeliveryById($delivery, $deliveryProfile->deliveryProfileId);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
         return response()->json([
-            'success' => false,
-            'message' => 'Identifiant de livraison invalide.',
-        ], 404);
+            'success' => true,
+            'message' => 'Livraison acceptée avec succès.',
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/deliveries/vendor",
+        tags: ["Deliveries"],
+        summary: "Lister les livraisons du vendeur connecté",
+        description: "Retourne la liste paginée des livraisons issues des commandes du vendeur, avec indication si un livreur a déjà pris en charge la livraison. Filtrable par statut et par prise en charge (is_taken).",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "status", in: "query", required: false, schema: new OA\Schema(type: "string"), example: "pending")]
+    #[OA\Parameter(name: "is_taken", in: "query", required: false, schema: new OA\Schema(type: "boolean"))]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Livraisons récupérées avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: "delivery_id", type: "integer", example: 14),
+                            new OA\Property(property: "order_id", type: "integer", example: 88),
+                            new OA\Property(property: "status_code", type: "string", example: "pending"),
+                            new OA\Property(property: "status_name", type: "string", example: "En attente"),
+                            new OA\Property(property: "is_taken", type: "boolean", example: false),
+                            new OA\Property(
+                                property: "livreur",
+                                type: "object",
+                                nullable: true,
+                                properties: [
+                                    new OA\Property(property: "name", type: "string", example: "Youssef El Amrani"),
+                                    new OA\Property(property: "phone", type: "string", example: "+212600000000"),
+                                ]
+                            ),
+                            new OA\Property(property: "delivery_fee", type: "number", format: "float", example: 15.00),
+                            new OA\Property(property: "total_items", type: "integer", example: 2),
+                            new OA\Property(property: "requested_at", type: "string", format: "date-time"),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "total", type: "integer", example: 12),
+                        new OA\Property(property: "page", type: "integer", example: 1),
+                        new OA\Property(property: "page_size", type: "integer", example: 20),
+                        new OA\Property(property: "last_page", type: "integer", example: 1),
+                    ]
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Profil vendeur introuvable")]
+    public function vendorDeliveries(GetVendorDeliveriesRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+        if (!$vendorProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil vendeur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        $dto = GetVendorDeliveriesDto::fromRequest($request->validated(), $vendorProfile->vendorProfileId);
+
+        try {
+            $result = $this->deliveryService->getVendorDeliveries($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json($result->toArray(), 200);
     }
 
-    $publicId = $request->attributes->get('user_id');
-    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+    #[OA\Get(
+        path: "/api/deliveries/{delivery}",
+        tags: ["Deliveries"],
+        summary: "Détails d'une livraison",
+        description: "Retourne les informations complètes d'une livraison : adresses de départ/arrivée, statut, et informations du livreur assigné le cas échéant.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "delivery",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 14
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Livraison récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "data", type: "object"),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Livraison introuvable")]
+    public function showInfos(int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de livraison invalide.',
+            ], 404);
+        }
 
-    if (!$userInfo) {
+        try {
+            $result = $this->deliveryService->getDeliveryDetails($delivery);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
         return response()->json([
-            'success' => false,
-            'message' => 'Utilisateur introuvable.',
-        ], 404);
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
     }
-
-    $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
-
-    if (!$deliveryProfile) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Profil livreur introuvable pour cet utilisateur.',
-        ], 404);
-    }
-
-    try {
-        $this->deliveryService->acceptDeliveryById($delivery, $deliveryProfile->deliveryProfileId);
-    } catch (\App\Exceptions\BusinessValidationException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-        ], $e->getCode() ?: 422);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Livraison acceptée avec succès.',
-    ], 200);
-}
 }

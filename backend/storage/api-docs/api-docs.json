@@ -4698,6 +4698,202 @@
                 ]
             }
         },
+        "/api/deliveries/vendor": {
+            "get": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Lister les livraisons du vendeur connecté",
+                "description": "Retourne la liste paginée des livraisons issues des commandes du vendeur, avec indication si un livreur a déjà pris en charge la livraison. Filtrable par statut et par prise en charge (is_taken).",
+                "operationId": "e4f1f34dd572746141e587d5d46fdbe7",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "pending"
+                    },
+                    {
+                        "name": "is_taken",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livraisons récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "delivery_id": {
+                                                        "type": "integer",
+                                                        "example": 14
+                                                    },
+                                                    "order_id": {
+                                                        "type": "integer",
+                                                        "example": 88
+                                                    },
+                                                    "status_code": {
+                                                        "type": "string",
+                                                        "example": "pending"
+                                                    },
+                                                    "status_name": {
+                                                        "type": "string",
+                                                        "example": "En attente"
+                                                    },
+                                                    "is_taken": {
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    },
+                                                    "livreur": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Youssef El Amrani"
+                                                            },
+                                                            "phone": {
+                                                                "type": "string",
+                                                                "example": "+212600000000"
+                                                            }
+                                                        },
+                                                        "type": "object",
+                                                        "nullable": true
+                                                    },
+                                                    "delivery_fee": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 15
+                                                    },
+                                                    "total_items": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "requested_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Profil vendeur introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/deliveries/{delivery}": {
+            "get": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Détails d'une livraison",
+                "description": "Retourne les informations complètes d'une livraison : adresses de départ/arrivée, statut, et informations du livreur assigné le cas échéant.",
+                "operationId": "32054b7b65cd215b7382298a0fdfa4c5",
+                "parameters": [
+                    {
+                        "name": "delivery",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 14
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livraison récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Livraison introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [
