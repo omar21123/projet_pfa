@@ -1594,8 +1594,6 @@ BEGIN
     END IF;
 END$$
 
-DELIMITER ;
-
 DROP PROCEDURE IF EXISTS SP_MarkDeliveryDeliveredByLivreur;
 
 DELIMITER $$
@@ -1617,10 +1615,14 @@ BEGIN
     DECLARE v_VendorProfileID         INT DEFAULT NULL;
     DECLARE v_OrderID                 INT DEFAULT NULL;
     DECLARE v_PaymentMethodID         INT DEFAULT NULL;
+    DECLARE v_PaymentID               INT DEFAULT NULL;
 
     DECLARE v_ItemsTotal              DECIMAL(10,2) DEFAULT 0.00;
     DECLARE v_PlatformCommission      DECIMAL(10,2) DEFAULT 0.00;
     DECLARE v_VendorPayout            DECIMAL(10,2) DEFAULT 0.00;
+
+    DECLARE v_BankAccountID           INT DEFAULT NULL;
+    DECLARE v_HoldReleaseAt           DATETIME DEFAULT NULL;
 
     DECLARE v_TotalDeliveries         INT DEFAULT 0;
     DECLARE v_DeliveredDeliveries     INT DEFAULT 0;
@@ -1665,102 +1667,517 @@ BEGIN
         ROLLBACK;
 
     ELSE
-        SELECT DeliveryStatusID INTO v_InTransitStatusID
-        FROM DeliveryStatuses WHERE Code = 'in_transit' LIMIT 1;
+        -- ------------------------------------------------
+        -- Resolve the payment for this order up front — a hold
+        -- row requires a PaymentID (NOT NULL FK), so fail fast
+        -- here rather than after status/wallet changes are made.
+        -- ------------------------------------------------
+        SELECT PaymentID INTO v_PaymentID
+        FROM Payments
+        WHERE OrderID = v_OrderID
+        ORDER BY PaymentID DESC
+        LIMIT 1;
 
-        SELECT DeliveryStatusID INTO v_DeliveredStatusID
-        FROM DeliveryStatuses WHERE Code = 'delivered' LIMIT 1;
+        -- Resolve vendor's BankAccountID up front too
+        SELECT BankAccountID INTO v_BankAccountID
+        FROM BankAccounts
+        WHERE VendorProfileID = v_VendorProfileID
+        LIMIT 1;
 
-        IF v_CurrentStatusID <> v_InTransitStatusID THEN
+        IF v_PaymentID IS NULL THEN
             SET v_Success = FALSE;
-            SET v_Message = 'Cette livraison doit être en transit avant d''être marquée comme livrée.';
+            SET v_Message = 'Aucun paiement trouvé pour cette commande.';
+            ROLLBACK;
+        ELSEIF v_BankAccountID IS NULL THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Compte bancaire introuvable pour ce vendeur.';
             ROLLBACK;
         ELSE
-            -- 2) Mark delivery delivered
+            SELECT DeliveryStatusID INTO v_InTransitStatusID
+            FROM DeliveryStatuses WHERE Code = 'in_transit' LIMIT 1;
+
+            SELECT DeliveryStatusID INTO v_DeliveredStatusID
+            FROM DeliveryStatuses WHERE Code = 'delivered' LIMIT 1;
+
+            IF v_CurrentStatusID <> v_InTransitStatusID THEN
+                SET v_Success = FALSE;
+                SET v_Message = 'Cette livraison doit être en transit avant d''être marquée comme livrée.';
+                ROLLBACK;
+            ELSE
+                -- 2) Mark delivery delivered
+                UPDATE Deliveries
+                SET DeliveryStatusID = v_DeliveredStatusID,
+                    DeliveredAt      = NOW(),
+                    UpdatedAt        = NOW()
+                WHERE DeliveryID = p_DeliveryID;
+
+                INSERT INTO DeliveryStatusHistory (
+                    DeliveryID, DeliveryStatusID, Latitude, Longitude, ChangedAt
+                )
+                VALUES (p_DeliveryID, v_DeliveredStatusID, NULL, NULL, NOW());
+
+                -- 3) Credit livreur wallet (unchanged — livreur's own
+                -- fee is released immediately, no hold on this side)
+                UPDATE DeliveryProfiles
+                SET DeliveryCount = DeliveryCount + 1
+                WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+                UPDATE DeliveryWallets
+                SET CurrentBalance      = CurrentBalance + v_DeliveryFee,
+                    WithdrawableBalance = WithdrawableBalance + v_DeliveryFee,
+                    UpdatedAt           = NOW()
+                WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+                -- ------------------------------------------------
+                -- 4) Vendor payout (80%) — now goes through a HOLD,
+                -- not a direct WithdrawableBalance credit.
+                -- ------------------------------------------------
+                SELECT COALESCE(SUM(oi.Total), 0.00)
+                INTO v_ItemsTotal
+                FROM DeliveryItems di
+                INNER JOIN OrderItems oi ON oi.OrderItemID = di.OrderItemID
+                WHERE di.DeliveryID = p_DeliveryID;
+
+                SET v_PlatformCommission = ROUND(v_ItemsTotal * 0.20, 2);
+                SET v_VendorPayout       = v_ItemsTotal - v_PlatformCommission;
+                SET v_HoldReleaseAt      = NOW() + INTERVAL 3 DAY; -- hold period, adjust as needed
+
+                UPDATE BankAccounts
+                SET CurrentBalance = CurrentBalance + v_VendorPayout,  -- lifetime total, counted now
+                    PendingBalance = PendingBalance + v_VendorPayout,  -- not withdrawable yet
+                    UpdatedAt      = NOW()
+                WHERE BankAccountID = v_BankAccountID;
+
+                INSERT INTO BankAccountHolds (
+                    BankAccountID, OrderID, PaymentID, Amount,
+                    ReleaseAt, Status, CreatedAt
+                )
+                VALUES (
+                    v_BankAccountID, v_OrderID, v_PaymentID, v_VendorPayout,
+                    v_HoldReleaseAt, 0, NOW()
+                );
+
+                -- ------------------------------------------------
+                -- 5) Check if ALL vendor deliveries for this order
+                -- are now delivered
+                -- ------------------------------------------------
+                SELECT
+                    COUNT(*),
+                    SUM(CASE WHEN d.DeliveryStatusID = v_DeliveredStatusID THEN 1 ELSE 0 END)
+                INTO v_TotalDeliveries, v_DeliveredDeliveries
+                FROM Deliveries d
+                WHERE d.OrderID = v_OrderID;
+
+                IF v_TotalDeliveries > 0 AND v_TotalDeliveries = v_DeliveredDeliveries THEN
+                    SELECT OrderStatusID INTO v_DeliveredOrderStatusID
+                    FROM OrderStatuses
+                    WHERE Code = 'delivered'
+                    LIMIT 1;
+
+                    UPDATE Orders
+                    SET OrderStatusID = v_DeliveredOrderStatusID,
+                        UpdatedAt     = NOW()
+                    WHERE OrderID = v_OrderID;
+                END IF;
+
+                SET v_Success = TRUE;
+                SET v_Message = 'Livraison finalisée avec succès.';
+
+                COMMIT;
+
+                -- COD handling after commit (has its own transaction)
+                SELECT PaymentMethodID INTO v_PaymentMethodID
+                FROM Orders
+                WHERE OrderID = v_OrderID;
+
+                IF v_PaymentMethodID = 1 THEN
+                    CALL SP_MarkCashCollected(
+                        p_DeliveryID,
+                        p_DeliveryProfileID,
+                        p_CollectedAmount,
+                        v_CashSuccess,
+                        v_CashMessage
+                    );
+
+                    IF v_CashSuccess = FALSE THEN
+                        SET v_Message = CONCAT(v_Message, ' (Encaissement: ', v_CashMessage, ')');
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+-- ====================================================
+-- 1) CANCEL A PENDING DELIVERY (admin only)
+-- ====================================================
+DELIMITER $$
+
+CREATE PROCEDURE SP_CancelDelivery (
+    IN  p_DeliveryID   INT,
+    IN  p_AdminUserID  INT,
+    IN  p_Reason       NVARCHAR(500),
+    OUT v_Success       BOOLEAN,
+    OUT v_Message        VARCHAR(255)
+)
+BEGIN
+    DECLARE v_DeliveryExists   INT DEFAULT 0;
+    DECLARE v_CurrentStatusID  INT DEFAULT NULL;
+    DECLARE v_PendingStatusID  INT DEFAULT NULL;
+    DECLARE v_CancelledStatusID INT DEFAULT NULL;
+    DECLARE v_ErrorMessage     VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_CancelDelivery', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de l''annulation de la livraison.';
+    END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*), MAX(DeliveryStatusID)
+    INTO v_DeliveryExists, v_CurrentStatusID
+    FROM Deliveries
+    WHERE DeliveryID = p_DeliveryID
+    FOR UPDATE;
+
+    IF v_DeliveryExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+        ROLLBACK;
+    ELSE
+        SELECT DeliveryStatusID INTO v_PendingStatusID
+        FROM DeliveryStatuses WHERE Code = 'pending' LIMIT 1;
+
+        SELECT DeliveryStatusID INTO v_CancelledStatusID
+        FROM DeliveryStatuses WHERE Code = 'cancelled' LIMIT 1;
+
+        IF v_CurrentStatusID <> v_PendingStatusID THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Seules les livraisons en attente peuvent être annulées de cette manière.';
+            ROLLBACK;
+        ELSE
             UPDATE Deliveries
-            SET DeliveryStatusID = v_DeliveredStatusID,
-                DeliveredAt      = NOW(),
+            SET DeliveryStatusID = v_CancelledStatusID,
+                CancelledAt      = NOW(),
+                Notes            = COALESCE(p_Reason, Notes),
                 UpdatedAt        = NOW()
             WHERE DeliveryID = p_DeliveryID;
 
             INSERT INTO DeliveryStatusHistory (
                 DeliveryID, DeliveryStatusID, Latitude, Longitude, ChangedAt
             )
-            VALUES (p_DeliveryID, v_DeliveredStatusID, NULL, NULL, NOW());
-
-            -- 3) Credit livreur wallet
-            UPDATE DeliveryProfiles
-            SET DeliveryCount = DeliveryCount + 1
-            WHERE DeliveryProfileID = p_DeliveryProfileID;
-
-            UPDATE DeliveryWallets
-            SET CurrentBalance      = CurrentBalance + v_DeliveryFee,
-                WithdrawableBalance = WithdrawableBalance + v_DeliveryFee,
-                UpdatedAt           = NOW()
-            WHERE DeliveryProfileID = p_DeliveryProfileID;
-
-            -- 4) Credit vendor (80%), keep 20% platform commission
-            SELECT COALESCE(SUM(oi.Total), 0.00)
-            INTO v_ItemsTotal
-            FROM DeliveryItems di
-            INNER JOIN OrderItems oi ON oi.OrderItemID = di.OrderItemID
-            WHERE di.DeliveryID = p_DeliveryID;
-
-            SET v_PlatformCommission = ROUND(v_ItemsTotal * 0.20, 2);
-            SET v_VendorPayout       = v_ItemsTotal - v_PlatformCommission;
-
-            UPDATE BankAccounts
-            SET CurrentBalance = CurrentBalance + v_VendorPayout,
-                PendingBalance = PendingBalance + v_VendorPayout,
-                UpdatedAt      = NOW()
-            WHERE VendorProfileID = v_VendorProfileID;
-
-            -- 5) Check if ALL vendor deliveries for this order are now delivered
-            --    Note: we read after our UPDATE above so this delivery's
-            --    new status is already visible within the same transaction.
-            SELECT
-                COUNT(*),
-                SUM(CASE WHEN d.DeliveryStatusID = v_DeliveredStatusID THEN 1 ELSE 0 END)
-            INTO v_TotalDeliveries, v_DeliveredDeliveries
-            FROM Deliveries d
-            WHERE d.OrderID = v_OrderID;
-
-            IF v_TotalDeliveries > 0 AND v_TotalDeliveries = v_DeliveredDeliveries THEN
-                SELECT OrderStatusID INTO v_DeliveredOrderStatusID
-                FROM OrderStatuses
-                WHERE Code = 'delivered'
-                LIMIT 1;
-
-                UPDATE Orders
-                SET OrderStatusID = v_DeliveredOrderStatusID,
-                    UpdatedAt     = NOW()
-                WHERE OrderID = v_OrderID;
-            END IF;
+            VALUES (
+                p_DeliveryID, v_CancelledStatusID, NULL, NULL, NOW()
+            );
 
             SET v_Success = TRUE;
-            SET v_Message = 'Livraison finalisée avec succès.';
+            SET v_Message = 'Livraison annulée avec succès.';
 
             COMMIT;
-
-            -- COD handling after commit (has its own transaction)
-            SELECT PaymentMethodID INTO v_PaymentMethodID
-            FROM Orders
-            WHERE OrderID = v_OrderID;
-
-            IF v_PaymentMethodID = 1 THEN
-                CALL SP_MarkCashCollected(
-                    p_DeliveryID,
-                    p_DeliveryProfileID,
-                    p_CollectedAmount,
-                    v_CashSuccess,
-                    v_CashMessage
-                );
-
-                IF v_CashSuccess = FALSE THEN
-                    SET v_Message = CONCAT(v_Message, ' (Encaissement: ', v_CashMessage, ')');
-                END IF;
-            END IF;
         END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+-- ====================================================
+-- 2) ADMIN REMITS/COLLECTS CASH FROM A LIVREUR
+--    (marks every outstanding CollectedAmount as remitted, in one shot)
+-- ====================================================
+DELIMITER $$
+
+CREATE PROCEDURE SP_RemitLivreurCash (
+    IN  p_DeliveryProfileID  INT,
+    IN  p_AdminUserID        INT,
+    IN  p_ExpectedAmount     DECIMAL(10,2),  -- NULL = skip the match check
+    OUT v_Success             BOOLEAN,
+    OUT v_Message              VARCHAR(255),
+    OUT v_TotalRemitted         DECIMAL(10,2)
+)
+BEGIN
+    DECLARE v_ProfileExists  INT DEFAULT 0;
+    DECLARE v_OutstandingSum DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_OutstandingCnt INT DEFAULT 0;
+    DECLARE v_ErrorMessage   VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_RemitLivreurCash', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la remise de l''encaissement.';
+        SET v_TotalRemitted = 0.00;
+    END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*) INTO v_ProfileExists
+    FROM DeliveryProfiles
+    WHERE DeliveryProfileID = p_DeliveryProfileID;
+
+    IF v_ProfileExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Profil livreur introuvable.';
+        SET v_TotalRemitted = 0.00;
+        ROLLBACK;
+    ELSE
+        -- lock every outstanding (collected, not yet remitted) row for this livreur
+        SELECT COUNT(*), COALESCE(SUM(CollectedAmount), 0.00)
+        INTO v_OutstandingCnt, v_OutstandingSum
+        FROM DeliveryCashCollections
+        WHERE DeliveryProfileID = p_DeliveryProfileID
+          AND IsCollected = 1
+          AND IsRemitted  = 0
+        FOR UPDATE;
+
+        IF v_OutstandingCnt = 0 THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Ce livreur n''a aucun encaissement en attente de remise.';
+            SET v_TotalRemitted = 0.00;
+            ROLLBACK;
+        ELSEIF p_ExpectedAmount IS NOT NULL AND p_ExpectedAmount <> v_OutstandingSum THEN
+            SET v_Success = FALSE;
+            SET v_Message = CONCAT(
+                'Le montant remis (', p_ExpectedAmount,
+                ') ne correspond pas au montant dû (', v_OutstandingSum, ').'
+            );
+            SET v_TotalRemitted = 0.00;
+            ROLLBACK;
+        ELSE
+            UPDATE DeliveryCashCollections
+            SET IsRemitted     = 1,
+                RemittedAmount = CollectedAmount,
+                RemittedAt     = NOW(),
+                RemittedTo     = p_AdminUserID,
+                UpdatedAt      = NOW()
+            WHERE DeliveryProfileID = p_DeliveryProfileID
+              AND IsCollected = 1
+              AND IsRemitted  = 0;
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Encaissement remis avec succès.';
+            SET v_TotalRemitted = v_OutstandingSum;
+
+            COMMIT;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+-- ====================================================
+-- 3) LIVREUR REQUESTS A WITHDRAWAL
+-- ====================================================
+DELIMITER $$
+
+CREATE PROCEDURE SP_RequestDeliveryWithdraw (
+    IN  p_DeliveryProfileID  INT,
+    IN  p_Amount             DECIMAL(10,2),
+    IN  p_PaymentMethodID    INT,
+    OUT v_Success             BOOLEAN,
+    OUT v_Message              VARCHAR(255),
+    OUT v_WithdrawID            INT
+)
+BEGIN
+    DECLARE v_WalletID       INT DEFAULT NULL;
+    DECLARE v_Withdrawable   DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_IsLocked       TINYINT DEFAULT 0;
+    DECLARE v_ErrorMessage   VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_RequestDeliveryWithdraw', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la demande de retrait.';
+        SET v_WithdrawID = NULL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT DeliveryWalletID, WithdrawableBalance, IsLocked
+    INTO v_WalletID, v_Withdrawable, v_IsLocked
+    FROM DeliveryWallets
+    WHERE DeliveryProfileID = p_DeliveryProfileID
+    FOR UPDATE;
+
+    IF v_WalletID IS NULL THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Portefeuille introuvable pour ce livreur.';
+        ROLLBACK;
+    ELSEIF v_IsLocked = 1 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Votre portefeuille est actuellement bloqué. Contactez le support.';
+        ROLLBACK;
+    ELSEIF p_Amount IS NULL OR p_Amount <= 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Le montant du retrait doit être supérieur à zéro.';
+        ROLLBACK;
+    ELSEIF p_Amount > v_Withdrawable THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Solde disponible insuffisant pour ce retrait.';
+        ROLLBACK;
+    ELSE
+        UPDATE DeliveryWallets
+        SET WithdrawableBalance = WithdrawableBalance - p_Amount,
+            UpdatedAt           = NOW()
+        WHERE DeliveryWalletID = v_WalletID;
+
+        INSERT INTO DeliveryWithdrawHistory (
+            DeliveryWalletID, PaymentMethodID, Amount, Status, RequestedAt
+        )
+        VALUES (
+            v_WalletID, p_PaymentMethodID, p_Amount, 0, NOW()
+        );
+
+        SET v_WithdrawID = LAST_INSERT_ID();
+        SET v_Success    = TRUE;
+        SET v_Message    = 'Demande de retrait envoyée avec succès.';
+
+        COMMIT;
+    END IF;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_ReleaseMaturedBankAccountHolds;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_ReleaseMaturedBankAccountHolds (
+    OUT v_Success        BOOLEAN,
+    OUT v_Message         VARCHAR(255),
+    OUT v_ReleasedCount    INT
+)
+BEGIN
+    DECLARE v_ErrorMessage VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_ReleaseMaturedBankAccountHolds', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la libération des fonds.';
+        SET v_ReleasedCount = 0;
+    END;
+
+    START TRANSACTION;
+
+    -- Move each matured hold's amount from Pending -> Withdrawable
+    UPDATE BankAccounts ba
+    INNER JOIN BankAccountHolds h ON h.BankAccountID = ba.BankAccountID
+    SET ba.PendingBalance      = ba.PendingBalance - h.Amount,
+        ba.WithdrawableBalance = ba.WithdrawableBalance + h.Amount,
+        ba.UpdatedAt           = NOW()
+    WHERE h.Status = 0
+      AND h.ReleaseAt <= NOW();
+
+    SELECT ROW_COUNT() INTO v_ReleasedCount;
+
+    UPDATE BankAccountHolds
+    SET Status     = 1,
+        ReleasedAt = NOW()
+    WHERE Status = 0
+      AND ReleaseAt <= NOW();
+
+    SET v_Success = TRUE;
+    SET v_Message = 'Fonds libérés avec succès.';
+
+    COMMIT;
+END$$
+
+DELIMITER ;
+DROP PROCEDURE IF EXISTS SP_RequestVendorWithdraw;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_RequestVendorWithdraw (
+    IN  p_VendorProfileID   INT,
+    IN  p_Amount            DECIMAL(14,2),
+    IN  p_PaymentMethodID   INT,
+    OUT v_Success            BOOLEAN,
+    OUT v_Message             VARCHAR(255),
+    OUT v_WithdrawID           INT
+)
+BEGIN
+    DECLARE v_BankAccountID  INT DEFAULT NULL;
+    DECLARE v_Withdrawable   DECIMAL(14,2) DEFAULT 0.00;
+    DECLARE v_IsLocked       TINYINT DEFAULT 0;
+    DECLARE v_ErrorMessage   VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_RequestVendorWithdraw', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la demande de retrait.';
+        SET v_WithdrawID = NULL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT BankAccountID, WithdrawableBalance, IsLocked
+    INTO v_BankAccountID, v_Withdrawable, v_IsLocked
+    FROM BankAccounts
+    WHERE VendorProfileID = p_VendorProfileID
+    FOR UPDATE;
+
+    IF v_BankAccountID IS NULL THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Compte bancaire introuvable pour ce vendeur.';
+        ROLLBACK;
+    ELSEIF v_IsLocked = 1 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Votre compte est actuellement bloqué. Contactez le support.';
+        ROLLBACK;
+    ELSEIF p_Amount IS NULL OR p_Amount <= 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Le montant du retrait doit être supérieur à zéro.';
+        ROLLBACK;
+    ELSEIF p_Amount > v_Withdrawable THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Solde disponible insuffisant pour ce retrait.';
+        ROLLBACK;
+    ELSE
+        UPDATE BankAccounts
+        SET WithdrawableBalance = WithdrawableBalance - p_Amount,
+            UpdatedAt           = NOW()
+        WHERE BankAccountID = v_BankAccountID;
+
+        INSERT INTO WithdrawHistory (
+            BankAccountID, PaymentMethodID, Amount, Status, RequestedAt
+        )
+        VALUES (
+            v_BankAccountID, p_PaymentMethodID, p_Amount, 0, NOW()
+        );
+
+        SET v_WithdrawID = LAST_INSERT_ID();
+        SET v_Success    = TRUE;
+        SET v_Message    = 'Demande de retrait envoyée avec succès.';
+
+        COMMIT;
     END IF;
 END$$
 

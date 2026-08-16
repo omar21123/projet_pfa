@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Vendor\RequestVendorWithdrawDto;
+use App\Http\Requests\Vendor\PaginationRequest;
+use App\Http\Requests\Vendor\RequestVendorWithdrawRequest;
 use App\Services\Interface\VendorServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Request;
 
 #[OA\Tag(
     name: "Vendors",
@@ -111,4 +115,141 @@ class VendorController extends Controller
             'data' => $result->toArray(),
         ], 200);
     }
+    #[OA\Get(
+    path: "/api/vendor/bank-account",
+    tags: ["Vendors"],
+    summary: "Voir mon compte bancaire (vendeur)",
+    description: "Retourne le solde total, disponible, en attente (bloqué par des holds), et le nombre/montant des holds actifs.",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Response(
+    response: 200,
+    description: "Compte récupéré avec succès",
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: "success", type: "boolean", example: true),
+            new OA\Property(property: "bank_account_id", type: "integer", example: 12),
+            new OA\Property(property: "vendor_profile_id", type: "integer", example: 5),
+            new OA\Property(property: "current_balance", type: "number", format: "float", example: 4200.00),
+            new OA\Property(property: "withdrawable_balance", type: "number", format: "float", example: 1800.00),
+            new OA\Property(property: "pending_balance", type: "number", format: "float", example: 2400.00),
+            new OA\Property(property: "currency_code", type: "string", example: "MAD"),
+            new OA\Property(property: "is_locked", type: "boolean", example: false),
+            new OA\Property(property: "total_held", type: "number", format: "float", example: 2400.00),
+            new OA\Property(property: "active_holds_count", type: "integer", example: 3),
+        ]
+    )
+)]
+#[OA\Response(response: 404, description: "Compte bancaire introuvable")]
+public function myBankAccount(Request $request): JsonResponse
+{
+    $publicId = $request->attributes->get('user_id');
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+    if (!$userInfo) {
+        return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+    }
+
+    $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+    if (!$vendorProfile) {
+        return response()->json(['success' => false, 'message' => 'Profil vendeur introuvable pour cet utilisateur.'], 404);
+    }
+
+    $account = $this->vendorService->getBankAccountByVendorProfileId($vendorProfile->vendorProfileId);
+
+    if (!$account) {
+        return response()->json(['success' => false, 'message' => 'Compte bancaire introuvable.'], 404);
+    }
+
+    return response()->json(array_merge(['success' => true], $account->toArray()), 200);
+}
+
+#[OA\Get(
+    path: "/api/vendor/withdrawals",
+    tags: ["Vendors"],
+    summary: "Historique de mes retraits (vendeur)",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+#[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+#[OA\Response(response: 200, description: "Historique récupéré avec succès")]
+public function myWithdrawHistory(PaginationRequest $request): JsonResponse
+{
+    $publicId = $request->attributes->get('user_id');
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+    if (!$userInfo) {
+        return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+    }
+
+    $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+    if (!$vendorProfile) {
+        return response()->json(['success' => false, 'message' => 'Profil vendeur introuvable pour cet utilisateur.'], 404);
+    }
+
+    $validated = $request->validated();
+    $page = (int) ($validated['page'] ?? 1);
+    $perPage = (int) ($validated['per_page'] ?? 20);
+
+    $result = $this->vendorService->getVendorWithdrawHistory($vendorProfile->vendorProfileId, $page, $perPage);
+
+    return response()->json($result->toArray(), 200);
+}
+
+#[OA\Post(
+    path: "/api/vendor/withdraw",
+    tags: ["Vendors"],
+    summary: "Demander un retrait (vendeur)",
+    security: [["bearerAuth" => []]]
+)]
+#[OA\RequestBody(
+    required: true,
+    content: new OA\JsonContent(
+        required: ["Amount", "PaymentMethodID"],
+        properties: [
+            new OA\Property(property: "Amount", type: "number", format: "float", example: 1500.00),
+            new OA\Property(property: "PaymentMethodID", type: "integer", example: 2),
+        ]
+    )
+)]
+#[OA\Response(response: 200, description: "Demande de retrait envoyée avec succès")]
+#[OA\Response(response: 422, description: "Solde insuffisant ou compte bloqué")]
+public function requestWithdraw(RequestVendorWithdrawRequest $request): JsonResponse
+{
+    $publicId = $request->attributes->get('user_id');
+    $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+    if (!$userInfo) {
+        return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+    }
+
+    $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+    if (!$vendorProfile) {
+        return response()->json(['success' => false, 'message' => 'Profil vendeur introuvable pour cet utilisateur.'], 404);
+    }
+
+    $validated = $request->validated();
+    $dto = new RequestVendorWithdrawDto(
+        vendorProfileId: $vendorProfile->vendorProfileId,
+        amount: (float) $validated['Amount'],
+        paymentMethodId: (int) $validated['PaymentMethodID'],
+    );
+
+    try {
+        $withdrawId = $this->vendorService->requestVendorWithdraw($dto);
+    } catch (\App\Exceptions\BusinessValidationException $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+    } catch (\Throwable $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+
+    return response()->json([
+        'success'     => true,
+        'message'     => 'Demande de retrait envoyée avec succès.',
+        'withdraw_id' => $withdrawId,
+    ], 200);
+}
 }

@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\DTOs\Vendor\PaginatedVendorWithdrawHistoryDto;
+use App\DTOs\Vendor\RequestVendorWithdrawDto;
+use App\DTOs\Vendor\VendorBankAccountDto;
 use App\DTOs\Vendor\VendorProfileDto;
 use App\DTOs\Vendor\VendorPublicProfileResponseDto;
 use App\Services\Interface\VendorServiceInterface;
@@ -11,8 +14,7 @@ class VendorService implements VendorServiceInterface
 {
     public function __construct(
         protected VendorRepositoryInterface $vendorRepository
-    ) {
-    }
+    ) {}
 
     public function getVendorProfileByUserId(int $userId): ?VendorProfileDto
     {
@@ -20,10 +22,24 @@ class VendorService implements VendorServiceInterface
 
         return $row ? VendorProfileDto::fromDbRow($row) : null;
     }
-       public function getPublicProfile(int $vendorProfileID): ?VendorPublicProfileResponseDto
+    public function getPublicProfile(int $vendorProfileID): ?VendorPublicProfileResponseDto
     {
         $row = $this->vendorRepository->getPublicProfile($vendorProfileID);
 
         return $row ? VendorPublicProfileResponseDto::fromRow($row) : null;
+    }
+    public function getBankAccountByVendorProfileId(int $vendorProfileId): ?VendorBankAccountDto
+    {
+        return $this->vendorRepository->getBankAccountByVendorProfileId($vendorProfileId);
+    }
+
+    public function getVendorWithdrawHistory(int $vendorProfileId, int $page, int $perPage): PaginatedVendorWithdrawHistoryDto
+    {
+        return $this->vendorRepository->getVendorWithdrawHistory($vendorProfileId, $page, $perPage);
+    }
+
+    public function requestVendorWithdraw(RequestVendorWithdrawDto $dto): int
+    {
+        return $this->vendorRepository->requestVendorWithdraw($dto);
     }
 }

@@ -6,10 +6,12 @@ namespace App\Repositories\Interface;
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\CancelDeliveryDto;
 use App\DTOs\Delivery\DeliveryDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
+use App\DTOs\Delivery\DeliveryWalletDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
@@ -18,8 +20,14 @@ use App\DTOs\Delivery\MarkDeliveryDeliveredResultDto;
 use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\PaginatedOutstandingCashDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\PaginatedVendorDeliveriesDto;
+use App\DTOs\Delivery\PaginatedWithdrawHistoryDto;
+use App\DTOs\Delivery\PendingCashSummaryDto;
+use App\DTOs\Delivery\RemitCashDto;
+use App\DTOs\Delivery\RemitCashResultDto;
+use App\DTOs\Delivery\RequestWithdrawDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 
@@ -59,4 +67,17 @@ interface DeliveryRepositoryInterface
         int $deliveryProfileId,
         ?float $collectedAmount
     ): MarkDeliveryDeliveredResultDto;
+    public function cancelDelivery(CancelDeliveryDto $dto): void;
+
+    public function getOutstandingCashByLivreur(int $page, int $perPage): PaginatedOutstandingCashDto;
+
+    public function remitLivreurCash(RemitCashDto $dto): RemitCashResultDto;
+
+    public function getWalletByProfileId(int $deliveryProfileId): ?DeliveryWalletDto;
+
+    public function getWithdrawHistory(int $deliveryProfileId, int $page, int $perPage): PaginatedWithdrawHistoryDto;
+
+    public function requestWithdraw(RequestWithdrawDto $dto): int;
+
+    public function getPendingCashForLivreur(int $deliveryProfileId): PendingCashSummaryDto;
 }

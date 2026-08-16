@@ -4,14 +4,18 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\CancelDeliveryDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
+use App\DTOs\Delivery\RemitCashDto;
+use App\DTOs\Delivery\RequestWithdrawDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\Http\Requests\Delivery\AcceptDeliveryRequest;
 use App\Http\Requests\Delivery\ApproveDeliveryProfileRequest;
+use App\Http\Requests\Delivery\CancelDeliveryRequest;
 use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
 use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
@@ -19,12 +23,16 @@ use App\Http\Requests\Delivery\GetVendorDeliveriesRequest;
 use App\Http\Requests\Delivery\MarkDeliveryDeliveredByLivreurRequest;
 use App\Http\Requests\Delivery\MarkDeliveryInTransitRequest;
 use App\Http\Requests\Delivery\MarkDeliveryPickedUpRequest;
+use App\Http\Requests\Delivery\PaginationRequest;
+use App\Http\Requests\Delivery\RemitCashRequest;
+use App\Http\Requests\Delivery\RequestWithdrawRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
 use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Request;
 
 #[OA\Tag(
     name: "Deliveries",
@@ -1191,5 +1199,266 @@ class DeliveryController extends Controller
             'success' => true,
             'message' => $result->message,
         ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/admin/deliveries/{delivery}/cancel",
+        tags: ["Deliveries"],
+        summary: "Annuler une livraison en attente (admin)",
+        description: "Annule une livraison, uniquement si elle est encore au statut 'pending' (aucun livreur assigné).",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "delivery", in: "path", required: true, schema: new OA\Schema(type: "integer", minimum: 1))]
+    #[OA\RequestBody(
+        required: false,
+        content: new OA\JsonContent(properties: [
+            new OA\Property(property: "Reason", type: "string", nullable: true, example: "Aucun livreur disponible dans la zone."),
+        ])
+    )]
+    #[OA\Response(response: 200, description: "Livraison annulée avec succès")]
+    #[OA\Response(response: 404, description: "Livraison introuvable")]
+    #[OA\Response(response: 422, description: "La livraison n'est plus au statut 'pending'")]
+    public function cancel(CancelDeliveryRequest $request, int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json(['success' => false, 'message' => 'Identifiant de livraison invalide.'], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $dto = CancelDeliveryDto::fromRequest($request->validated(), $delivery, $userInfo->userId);
+
+        try {
+            $this->deliveryService->cancelDelivery($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Livraison annulée avec succès.'], 200);
+    }
+
+    #[OA\Get(
+        path: "/api/admin/livreurs/cash-collections/outstanding",
+        tags: ["Deliveries"],
+        summary: "Voir l'argent COD détenu par les livreurs non remis (admin)",
+        description: "Liste, par livreur, le total encaissé en espèces (COD) qui n'a pas encore été remis à la plateforme.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(response: 200, description: "Liste récupérée avec succès")]
+    public function outstandingCash(PaginationRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $page = (int) ($validated['page'] ?? 1);
+        $perPage = (int) ($validated['per_page'] ?? 20);
+
+        try {
+            $result = $this->deliveryService->getOutstandingCashByLivreur($page, $perPage);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json($result->toArray(), 200);
+    }
+
+    #[OA\Patch(
+        path: "/api/admin/livreurs/{deliveryProfile}/remit-cash",
+        tags: ["Deliveries"],
+        summary: "Encaisser l'argent COD d'un livreur (admin)",
+        description: "Marque tout l'encaissement COD en attente d'un livreur comme remis à la plateforme, après vérification du montant physique compté.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "deliveryProfile", in: "path", required: true, schema: new OA\Schema(type: "integer", minimum: 1))]
+    #[OA\RequestBody(
+        required: false,
+        content: new OA\JsonContent(properties: [
+            new OA\Property(property: "ExpectedAmount", type: "number", format: "float", nullable: true, example: 850.00),
+        ])
+    )]
+    #[OA\Response(response: 200, description: "Encaissement remis avec succès")]
+    #[OA\Response(response: 422, description: "Aucun encaissement en attente, ou montant ne correspond pas")]
+    public function remitCash(RemitCashRequest $request, int $deliveryProfile): JsonResponse
+    {
+        if ($deliveryProfile <= 0) {
+            return response()->json(['success' => false, 'message' => 'Identifiant de profil livreur invalide.'], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $validated = $request->validated();
+        $dto = new RemitCashDto(
+            deliveryProfileId: $deliveryProfile,
+            adminUserId: $userInfo->userId,
+            expectedAmount: isset($validated['ExpectedAmount']) ? (float) $validated['ExpectedAmount'] : null,
+        );
+
+        try {
+            $result = $this->deliveryService->remitLivreurCash($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json(array_merge(['success' => true], $result->toArray()), 200);
+    }
+
+    #[OA\Get(
+        path: "/api/livreur/wallet",
+        tags: ["Deliveries"],
+        summary: "Voir mon portefeuille (livreur)",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Response(response: 200, description: "Portefeuille récupéré avec succès")]
+    #[OA\Response(response: 404, description: "Portefeuille introuvable")]
+    public function myWallet(Request $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json(['success' => false, 'message' => 'Profil livreur introuvable pour cet utilisateur.'], 404);
+        }
+
+        $wallet = $this->deliveryService->getWalletByProfileId($deliveryProfile->deliveryProfileId);
+
+        if (!$wallet) {
+            return response()->json(['success' => false, 'message' => 'Portefeuille introuvable.'], 404);
+        }
+
+        return response()->json(array_merge(['success' => true], $wallet->toArray()), 200);
+    }
+
+    #[OA\Get(
+        path: "/api/livreur/wallet/withdrawals",
+        tags: ["Deliveries"],
+        summary: "Historique de mes retraits (livreur)",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(response: 200, description: "Historique récupéré avec succès")]
+    public function myWithdrawHistory(PaginationRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json(['success' => false, 'message' => 'Profil livreur introuvable pour cet utilisateur.'], 404);
+        }
+
+        $validated = $request->validated();
+        $page = (int) ($validated['page'] ?? 1);
+        $perPage = (int) ($validated['per_page'] ?? 20);
+
+        $result = $this->deliveryService->getWithdrawHistory($deliveryProfile->deliveryProfileId, $page, $perPage);
+
+        return response()->json($result->toArray(), 200);
+    }
+
+    #[OA\Post(
+        path: "/api/livreur/wallet/withdraw",
+        tags: ["Deliveries"],
+        summary: "Demander un retrait (livreur)",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["Amount", "PaymentMethodID"],
+            properties: [
+                new OA\Property(property: "Amount", type: "number", format: "float", example: 300.00),
+                new OA\Property(property: "PaymentMethodID", type: "integer", example: 2),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: "Demande de retrait envoyée avec succès")]
+    #[OA\Response(response: 422, description: "Solde insuffisant ou portefeuille bloqué")]
+    public function requestWithdraw(RequestWithdrawRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json(['success' => false, 'message' => 'Profil livreur introuvable pour cet utilisateur.'], 404);
+        }
+
+        $validated = $request->validated();
+        $dto = new RequestWithdrawDto(
+            deliveryProfileId: $deliveryProfile->deliveryProfileId,
+            amount: (float) $validated['Amount'],
+            paymentMethodId: (int) $validated['PaymentMethodID'],
+        );
+
+        try {
+            $withdrawId = $this->deliveryService->requestWithdraw($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Demande de retrait envoyée avec succès.',
+            'delivery_withdraw_id' => $withdrawId,
+        ], 200);
+    }
+
+    #[OA\Get(
+        path: "/api/livreur/wallet/cash-collections/pending",
+        tags: ["Deliveries"],
+        summary: "Voir l'argent COD que je dois remettre à l'admin (livreur)",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Response(response: 200, description: "Liste récupérée avec succès")]
+    public function myPendingCash(Request $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json(['success' => false, 'message' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json(['success' => false, 'message' => 'Profil livreur introuvable pour cet utilisateur.'], 404);
+        }
+
+        $result = $this->deliveryService->getPendingCashForLivreur($deliveryProfile->deliveryProfileId);
+
+        return response()->json(array_merge(['success' => true], $result->toArray()), 200);
     }
 }

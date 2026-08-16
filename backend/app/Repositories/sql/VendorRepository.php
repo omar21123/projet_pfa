@@ -3,8 +3,13 @@
 namespace App\Repositories\sql;
 
 use App\DTOs\Product\ProductItemDto;
+use App\DTOs\Vendor\PaginatedVendorWithdrawHistoryDto;
+use App\DTOs\Vendor\RequestVendorWithdrawDto;
+use App\DTOs\Vendor\VendorBankAccountDto;
 use App\DTOs\Vendor\VendorProfileResponseDto;
 use App\DTOs\Vendor\VendorPublicProfileResponseDto;
+use App\DTOs\Vendor\VendorWithdrawItemDto;
+use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\VendorRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -94,5 +99,93 @@ class VendorRepository implements VendorRepositoryInterface
         }
 
         return VendorPublicProfileResponseDto::fromRow($results[0]);
+    }
+    public function getBankAccountByVendorProfileId(int $vendorProfileId): ?VendorBankAccountDto
+    {
+        Log::info("========== GET VENDOR BANK ACCOUNT START ==========", ['vendorProfileId' => $vendorProfileId]);
+
+        $row = DB::selectOne(
+            'SELECT
+            ba.BankAccountID, ba.VendorProfileID, ba.CurrentBalance,
+            ba.WithdrawableBalance, ba.PendingBalance, ba.CurrencyCode, ba.IsLocked,
+            COALESCE((
+                SELECT SUM(h.Amount) FROM BankAccountHolds h
+                WHERE h.BankAccountID = ba.BankAccountID AND h.Status = 0
+            ), 0) AS TotalHeld,
+            (
+                SELECT COUNT(*) FROM BankAccountHolds h
+                WHERE h.BankAccountID = ba.BankAccountID AND h.Status = 0
+            ) AS ActiveHoldsCount
+        FROM BankAccounts ba
+        WHERE ba.VendorProfileID = ?',
+            [$vendorProfileId]
+        );
+
+        Log::info("GET VENDOR BANK ACCOUNT RESULT", ['found' => (bool) $row]);
+
+        return $row ? VendorBankAccountDto::fromRow($row) : null;
+    }
+
+    public function getVendorWithdrawHistory(int $vendorProfileId, int $page, int $perPage): PaginatedVendorWithdrawHistoryDto
+    {
+        Log::info("========== GET VENDOR WITHDRAW HISTORY START ==========", [
+            'vendorProfileId' => $vendorProfileId,
+            'page' => $page,
+            'perPage' => $perPage,
+        ]);
+
+        $offset = ($page - 1) * $perPage;
+
+        $totalRow = DB::selectOne(
+            'SELECT COUNT(*) AS total
+         FROM WithdrawHistory wh
+         INNER JOIN BankAccounts ba ON ba.BankAccountID = wh.BankAccountID
+         WHERE ba.VendorProfileID = ?',
+            [$vendorProfileId]
+        );
+
+        $rows = DB::select(
+            'SELECT wh.WithdrawID, wh.Amount, wh.PaymentMethodID, wh.ExternalReference,
+                wh.Status, wh.Notes, wh.RequestedAt, wh.ProcessedAt
+         FROM WithdrawHistory wh
+         INNER JOIN BankAccounts ba ON ba.BankAccountID = wh.BankAccountID
+         WHERE ba.VendorProfileID = ?
+         ORDER BY wh.RequestedAt DESC
+         LIMIT ? OFFSET ?',
+            [$vendorProfileId, $perPage, $offset]
+        );
+
+        Log::info("GET VENDOR WITHDRAW HISTORY RESULT", ['total' => $totalRow->total, 'count' => count($rows)]);
+
+        return new PaginatedVendorWithdrawHistoryDto(
+            data: array_map(fn($row) => VendorWithdrawItemDto::fromRow($row), $rows),
+            total: (int) $totalRow->total,
+            page: $page,
+            perPage: $perPage,
+        );
+    }
+
+    public function requestVendorWithdraw(RequestVendorWithdrawDto $dto): int
+    {
+        Log::info("========== REQUEST VENDOR WITHDRAW START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_RequestVendorWithdraw(?, ?, ?, @success, @message, @withdrawId)',
+            [$dto->vendorProfileId, $dto->amount, $dto->paymentMethodId]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @withdrawId AS withdrawId'
+        );
+
+        Log::info("REQUEST VENDOR WITHDRAW RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== REQUEST VENDOR WITHDRAW SUCCESS ==========");
+
+        return (int) $result->withdrawId;
     }
 }

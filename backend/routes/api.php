@@ -249,6 +249,7 @@ Route::prefix('cart')->group(function () {
 });
 
 Route::get('/vendors/{vendorProfileID}/public-profile', [VendorController::class, 'publicProfile']);
+
 Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
     Route::get('/',    [StoreRatingController::class, 'index']);   // public
     Route::middleware(['jwt.custom'])->group(function () {
@@ -257,7 +258,11 @@ Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
         Route::delete('/', [StoreRatingController::class, 'destroy']); // auth
     });
 });
-
+Route::middleware(['jwt.custom' ,'role:VENDOR'])->group(function () {
+  Route::get('/vendor/bank-account', [\App\Http\Controllers\VendorController::class, 'myBankAccount']);
+    Route::get('/vendor/withdrawals', [\App\Http\Controllers\VendorController::class, 'myWithdrawHistory']);
+    Route::post('/vendor/withdraw', [\App\Http\Controllers\VendorController::class, 'requestWithdraw']);
+});
 Route::get('addresses/shipping/default',             [AddressController::class, 'getDefaultShippingAddress']);
 
 Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
@@ -286,6 +291,9 @@ Route::middleware('jwt.custom')->group(function () {
         Route::get('/deliveries/profiles/{deliveryProfile}', [\App\Http\Controllers\DeliveryController::class, 'show']);
         Route::patch('/deliveries/profiles/{deliveryProfile}/approve', [\App\Http\Controllers\DeliveryController::class, 'approve']);
         Route::patch('/deliveries/profiles/{deliveryProfile}/suspend', [\App\Http\Controllers\DeliveryController::class, 'suspend']);
+        Route::patch('/admin/deliveries/{delivery}/cancel', [\App\Http\Controllers\DeliveryController::class, 'cancel']);
+        Route::get('/admin/livreurs/cash-collections/outstanding', [\App\Http\Controllers\DeliveryController::class, 'outstandingCash']);
+        Route::patch('/admin/livreurs/{deliveryProfile}/remit-cash', [\App\Http\Controllers\DeliveryController::class, 'remitCash']);
     });
     Route::middleware('role:LIVREUR')->group(function () {
         Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
@@ -296,6 +304,9 @@ Route::middleware('jwt.custom')->group(function () {
         Route::patch('/deliveries/{delivery}/pickup', [\App\Http\Controllers\DeliveryController::class, 'pickup']);
         Route::patch('/deliveries/{delivery}/in-transit', [\App\Http\Controllers\DeliveryController::class, 'inTransit']);
         Route::patch('/deliveries/{delivery}/deliver', [\App\Http\Controllers\DeliveryController::class, 'deliver']);
-
+        Route::get('/livreur/wallet', [\App\Http\Controllers\DeliveryController::class, 'myWallet']);
+        Route::get('/livreur/wallet/withdrawals', [\App\Http\Controllers\DeliveryController::class, 'myWithdrawHistory']);
+        Route::post('/livreur/wallet/withdraw', [\App\Http\Controllers\DeliveryController::class, 'requestWithdraw']);
+        Route::get('/livreur/wallet/cash-collections/pending', [\App\Http\Controllers\DeliveryController::class, 'myPendingCash']);
     });
 });

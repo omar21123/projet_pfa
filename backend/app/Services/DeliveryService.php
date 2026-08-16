@@ -5,10 +5,12 @@ namespace App\Services;
 
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\CancelDeliveryDto;
 use App\DTOs\Delivery\DeliveryDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryResultDto;
+use App\DTOs\Delivery\DeliveryWalletDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
@@ -17,8 +19,14 @@ use App\DTOs\Delivery\MarkDeliveryDeliveredResultDto;
 use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\PaginatedOutstandingCashDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\PaginatedVendorDeliveriesDto;
+use App\DTOs\Delivery\PaginatedWithdrawHistoryDto;
+use App\DTOs\Delivery\PendingCashSummaryDto;
+use App\DTOs\Delivery\RemitCashDto;
+use App\DTOs\Delivery\RemitCashResultDto;
+use App\DTOs\Delivery\RequestWithdrawDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
@@ -114,4 +122,38 @@ class DeliveryService implements DeliveryServiceInterface
     ): MarkDeliveryDeliveredResultDto {
         return $this->deliveryRepository->markDeliveryDeliveredByLivreur($deliveryId, $deliveryProfileId, $collectedAmount);
     }
+    public function cancelDelivery(CancelDeliveryDto $dto): void
+{
+    $this->deliveryRepository->cancelDelivery($dto);
+}
+
+public function getOutstandingCashByLivreur(int $page, int $perPage): PaginatedOutstandingCashDto
+{
+    return $this->deliveryRepository->getOutstandingCashByLivreur($page, $perPage);
+}
+
+public function remitLivreurCash(RemitCashDto $dto): RemitCashResultDto
+{
+    return $this->deliveryRepository->remitLivreurCash($dto);
+}
+
+public function getWalletByProfileId(int $deliveryProfileId): ?DeliveryWalletDto
+{
+    return $this->deliveryRepository->getWalletByProfileId($deliveryProfileId);
+}
+
+public function getWithdrawHistory(int $deliveryProfileId, int $page, int $perPage): PaginatedWithdrawHistoryDto
+{
+    return $this->deliveryRepository->getWithdrawHistory($deliveryProfileId, $page, $perPage);
+}
+
+public function requestWithdraw(RequestWithdrawDto $dto): int
+{
+    return $this->deliveryRepository->requestWithdraw($dto);
+}
+
+public function getPendingCashForLivreur(int $deliveryProfileId): PendingCashSummaryDto
+{
+    return $this->deliveryRepository->getPendingCashForLivreur($deliveryProfileId);
+}
 }

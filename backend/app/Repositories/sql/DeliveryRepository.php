@@ -6,26 +6,37 @@ namespace App\Repositories\sql;
 use App\DTOs\Auth\DeliveryRegisterDto;
 use App\DTOs\Delivery\AddOrderItemToDeliveryDto;
 use App\DTOs\Delivery\ApproveDeliveryProfileDto;
+use App\DTOs\Delivery\CancelDeliveryDto;
 use App\DTOs\Delivery\DeliveryDetailsDto;
 use App\DTOs\Delivery\DeliveryHistoryItemDto;
 use App\DTOs\Delivery\DeliveryProfileBasicDto;
 use App\DTOs\Delivery\DeliveryProfileDetailsDto;
 use App\DTOs\Delivery\DeliveryProfileListItemDto;
 use App\DTOs\Delivery\DeliveryResultDto;
+use App\DTOs\Delivery\DeliveryWalletDto;
 use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
 use App\DTOs\Delivery\MarkDeliveryDeliveredResultDto;
 use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
+use App\DTOs\Delivery\OutstandingCashItemDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
+use App\DTOs\Delivery\PaginatedOutstandingCashDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
 use App\DTOs\Delivery\PaginatedVendorDeliveriesDto;
+use App\DTOs\Delivery\PaginatedWithdrawHistoryDto;
+use App\DTOs\Delivery\PendingCashItemDto;
+use App\DTOs\Delivery\PendingCashSummaryDto;
 use App\DTOs\Delivery\RecommendedDeliveryItemDto;
+use App\DTOs\Delivery\RemitCashDto;
+use App\DTOs\Delivery\RemitCashResultDto;
+use App\DTOs\Delivery\RequestWithdrawDto;
 use App\DTOs\Delivery\SuspendDeliveryProfileDto;
 use App\DTOs\Delivery\UpdateDeliveryLocationDto;
 use App\DTOs\Delivery\VendorDeliveryListItemDto;
+use App\DTOs\Delivery\WithdrawHistoryItemDto;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\DeliveryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -611,5 +622,193 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         Log::info("========== MARK DELIVERY DELIVERED BY LIVREUR SUCCESS ==========");
 
         return new MarkDeliveryDeliveredResultDto(message: $result->message);
+    }
+    public function cancelDelivery(CancelDeliveryDto $dto): void
+    {
+        Log::info("========== CANCEL DELIVERY START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_CancelDelivery(?, ?, ?, @success, @message)',
+            [$dto->deliveryId, $dto->adminUserId, $dto->reason]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("CANCEL DELIVERY RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== CANCEL DELIVERY SUCCESS ==========");
+    }
+
+    public function getOutstandingCashByLivreur(int $page, int $perPage): PaginatedOutstandingCashDto
+    {
+        Log::info("========== GET OUTSTANDING CASH START ==========", ['page' => $page, 'perPage' => $perPage]);
+
+        $offset = ($page - 1) * $perPage;
+
+        $totalRow = DB::selectOne(
+            'SELECT COUNT(DISTINCT DeliveryProfileID) AS total
+         FROM DeliveryCashCollections
+         WHERE IsCollected = 1 AND IsRemitted = 0'
+        );
+
+        $rows = DB::select(
+            'SELECT
+            dcc.DeliveryProfileID,
+            u.DisplayName,
+            u.Email,
+            u.PhoneNumber,
+            SUM(dcc.CollectedAmount)  AS OutstandingAmount,
+            COUNT(*)                  AS PendingDeliveriesCount,
+            MIN(dcc.CollectedAt)       AS OldestCollectedAt
+        FROM DeliveryCashCollections dcc
+        INNER JOIN DeliveryProfiles dp ON dp.DeliveryProfileID = dcc.DeliveryProfileID
+        INNER JOIN Users u             ON u.UserID = dp.UserID
+        WHERE dcc.IsCollected = 1 AND dcc.IsRemitted = 0
+        GROUP BY dcc.DeliveryProfileID, u.DisplayName, u.Email, u.PhoneNumber
+        ORDER BY OutstandingAmount DESC
+        LIMIT ? OFFSET ?',
+            [$perPage, $offset]
+        );
+
+        Log::info("GET OUTSTANDING CASH RESULT", ['total' => $totalRow->total, 'count' => count($rows)]);
+
+        return new PaginatedOutstandingCashDto(
+            data: array_map(fn($row) => OutstandingCashItemDto::fromRow($row), $rows),
+            total: (int) $totalRow->total,
+            page: $page,
+            perPage: $perPage,
+        );
+    }
+
+    public function remitLivreurCash(RemitCashDto $dto): RemitCashResultDto
+    {
+        Log::info("========== REMIT LIVREUR CASH START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_RemitLivreurCash(?, ?, ?, @success, @message, @totalRemitted)',
+            [$dto->deliveryProfileId, $dto->adminUserId, $dto->expectedAmount]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @totalRemitted AS totalRemitted'
+        );
+
+        Log::info("REMIT LIVREUR CASH RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== REMIT LIVREUR CASH SUCCESS ==========");
+
+        return new RemitCashResultDto(
+            message: $result->message,
+            totalRemitted: (float) $result->totalRemitted,
+        );
+    }
+
+    public function getWalletByProfileId(int $deliveryProfileId): ?DeliveryWalletDto
+    {
+        Log::info("========== GET DELIVERY WALLET START ==========", ['deliveryProfileId' => $deliveryProfileId]);
+
+        $row = DB::selectOne(
+            'SELECT DeliveryWalletID, DeliveryProfileID, CurrentBalance, WithdrawableBalance,
+                PendingBalance, CurrencyCode, IsLocked
+         FROM DeliveryWallets
+         WHERE DeliveryProfileID = ?',
+            [$deliveryProfileId]
+        );
+
+        Log::info("GET DELIVERY WALLET RESULT", ['found' => (bool) $row]);
+
+        return $row ? DeliveryWalletDto::fromRow($row) : null;
+    }
+
+    public function getWithdrawHistory(int $deliveryProfileId, int $page, int $perPage): PaginatedWithdrawHistoryDto
+    {
+        Log::info("========== GET WITHDRAW HISTORY START ==========", [
+            'deliveryProfileId' => $deliveryProfileId,
+            'page' => $page,
+            'perPage' => $perPage,
+        ]);
+
+        $offset = ($page - 1) * $perPage;
+
+        $totalRow = DB::selectOne(
+            'SELECT COUNT(*) AS total
+         FROM DeliveryWithdrawHistory dwh
+         INNER JOIN DeliveryWallets dw ON dw.DeliveryWalletID = dwh.DeliveryWalletID
+         WHERE dw.DeliveryProfileID = ?',
+            [$deliveryProfileId]
+        );
+
+        $rows = DB::select(
+            'SELECT dwh.DeliveryWithdrawID, dwh.Amount, dwh.PaymentMethodID,
+                dwh.ExternalReference, dwh.Status, dwh.RequestedAt, dwh.ProcessedAt
+         FROM DeliveryWithdrawHistory dwh
+         INNER JOIN DeliveryWallets dw ON dw.DeliveryWalletID = dwh.DeliveryWalletID
+         WHERE dw.DeliveryProfileID = ?
+         ORDER BY dwh.RequestedAt DESC
+         LIMIT ? OFFSET ?',
+            [$deliveryProfileId, $perPage, $offset]
+        );
+
+        Log::info("GET WITHDRAW HISTORY RESULT", ['total' => $totalRow->total, 'count' => count($rows)]);
+
+        return new PaginatedWithdrawHistoryDto(
+            data: array_map(fn($row) => WithdrawHistoryItemDto::fromRow($row), $rows),
+            total: (int) $totalRow->total,
+            page: $page,
+            perPage: $perPage,
+        );
+    }
+
+    public function requestWithdraw(RequestWithdrawDto $dto): int
+    {
+        Log::info("========== REQUEST WITHDRAW START ==========", (array) $dto);
+
+        DB::select(
+            'CALL SP_RequestDeliveryWithdraw(?, ?, ?, @success, @message, @withdrawId)',
+            [$dto->deliveryProfileId, $dto->amount, $dto->paymentMethodId]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @withdrawId AS withdrawId'
+        );
+
+        Log::info("REQUEST WITHDRAW RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== REQUEST WITHDRAW SUCCESS ==========");
+
+        return (int) $result->withdrawId;
+    }
+
+    public function getPendingCashForLivreur(int $deliveryProfileId): PendingCashSummaryDto
+    {
+        Log::info("========== GET PENDING CASH FOR LIVREUR START ==========", ['deliveryProfileId' => $deliveryProfileId]);
+
+        $rows = DB::select(
+            'SELECT dcc.DeliveryID, d.OrderID, dcc.CollectedAmount, dcc.CollectedAt
+         FROM DeliveryCashCollections dcc
+         INNER JOIN Deliveries d ON d.DeliveryID = dcc.DeliveryID
+         WHERE dcc.DeliveryProfileID = ? AND dcc.IsCollected = 1 AND dcc.IsRemitted = 0
+         ORDER BY dcc.CollectedAt ASC',
+            [$deliveryProfileId]
+        );
+
+        $items = array_map(fn($row) => PendingCashItemDto::fromRow($row), $rows);
+        $totalDue = array_reduce($items, fn($carry, $i) => $carry + $i->collectedAmount, 0.0);
+
+        Log::info("GET PENDING CASH FOR LIVREUR RESULT", ['count' => count($items), 'totalDue' => $totalDue]);
+
+        return new PendingCashSummaryDto(items: $items, totalDue: $totalDue);
     }
 }
