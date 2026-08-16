@@ -268,32 +268,32 @@ Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
     Route::put('/{address}',                 [AddressController::class, 'update']);
     Route::delete('/{address}',              [AddressController::class, 'destroy']);
     Route::patch('/{address}/default-shipping', [AddressController::class, 'setDefaultShipping']);
-    
 });
 Route::middleware('jwt.custom')->prefix('orders')->group(function () {
-  Route::post('/product', [OrderController::class, 'createForProduct']);
-  Route::post('/cart', [OrderController::class, 'createFromCart']);
-  Route::get('/{order}/details', [\App\Http\Controllers\OrderController::class, 'customerOrderDetails']);
+    Route::post('/product', [OrderController::class, 'createForProduct']);
+    Route::post('/cart', [OrderController::class, 'createFromCart']);
+    Route::get('/{order}/details', [\App\Http\Controllers\OrderController::class, 'customerOrderDetails']);
+    Route::get('/', [\App\Http\Controllers\OrderController::class, 'index']);
 
-  Route::middleware('role:VENDOR')->group(function(){
-    Route::patch('/{order}/ship', [\App\Http\Controllers\OrderController::class, 'shipOrder']);
-  });
-  
+    Route::middleware('role:VENDOR')->group(function () {
+        Route::patch('/{order}/ship', [\App\Http\Controllers\OrderController::class, 'shipOrder']);
+    });
 });
 // routes/api.php
 Route::middleware('jwt.custom')->group(function () {
     Route::middleware('role:ADMIN')->group(function () {
-    Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
-    Route::get('/deliveries/profiles/{deliveryProfile}', [\App\Http\Controllers\DeliveryController::class, 'show']);
-    Route::patch('/deliveries/profiles/{deliveryProfile}/approve', [\App\Http\Controllers\DeliveryController::class, 'approve']);
-    Route::patch('/deliveries/profiles/{deliveryProfile}/suspend', [\App\Http\Controllers\DeliveryController::class, 'suspend']);
+        Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
+        Route::get('/deliveries/profiles/{deliveryProfile}', [\App\Http\Controllers\DeliveryController::class, 'show']);
+        Route::patch('/deliveries/profiles/{deliveryProfile}/approve', [\App\Http\Controllers\DeliveryController::class, 'approve']);
+        Route::patch('/deliveries/profiles/{deliveryProfile}/suspend', [\App\Http\Controllers\DeliveryController::class, 'suspend']);
+    });
+    Route::middleware('role:LIVREUR')->group(function () {
+        Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
+        Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
+        Route::get('/deliveries/history', [\App\Http\Controllers\DeliveryController::class, 'history']);
+        Route::patch('/deliveries/{delivery}/accept', [\App\Http\Controllers\DeliveryController::class, 'accept']);
+        Route::get('/deliveries/{delivery}', [\App\Http\Controllers\DeliveryController::class, 'showInfos']);
+        Route::patch('/deliveries/{delivery}/pickup', [\App\Http\Controllers\DeliveryController::class, 'pickup']);
+        Route::patch('/deliveries/{delivery}/in-transit', [\App\Http\Controllers\DeliveryController::class, 'inTransit']);
+    });
 });
-  Route::middleware('role:LIVREUR')->group(function () {
-    Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
-    Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
-    Route::get('/deliveries/history', [\App\Http\Controllers\DeliveryController::class, 'history']);
-    Route::patch('/deliveries/{delivery}/accept', [\App\Http\Controllers\DeliveryController::class, 'accept']);
-    Route::get('/deliveries/{delivery}', [\App\Http\Controllers\DeliveryController::class, 'showInfos']);
-    Route::patch('/deliveries/{delivery}/pickup', [\App\Http\Controllers\DeliveryController::class, 'pickup']);
-
-});});

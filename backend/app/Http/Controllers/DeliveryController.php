@@ -16,6 +16,7 @@ use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
 use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
 use App\Http\Requests\Delivery\GetVendorDeliveriesRequest;
+use App\Http\Requests\Delivery\MarkDeliveryInTransitRequest;
 use App\Http\Requests\Delivery\MarkDeliveryPickedUpRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
@@ -1005,5 +1006,86 @@ class DeliveryController extends Controller
             'message' => 'Livraison marquée comme récupérée avec succès.',
         ], 200);
     }
-    
+    #[OA\Patch(
+        path: "/api/deliveries/{delivery}/in-transit",
+        tags: ["Deliveries"],
+        summary: "Marquer une livraison en transit",
+        description: "Le livreur assigné confirme qu'il est en route vers l'adresse de livraison. La livraison passe du statut 'picked_up' à 'in_transit'.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "delivery",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 14
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Livraison marquée en transit avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Livraison marquée en transit avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Utilisateur, profil livreur ou livraison introuvable")]
+    #[OA\Response(
+        response: 422,
+        description: "Livraison non assignée à ce livreur ou statut invalide pour cette transition",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette livraison doit être au statut \"récupérée\" avant de passer en transit."),
+            ]
+        )
+    )]
+    public function inTransit(MarkDeliveryInTransitRequest $request, int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de livraison invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        try {
+            $this->deliveryService->markDeliveryInTransit($delivery, $deliveryProfile->deliveryProfileId);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Livraison marquée en transit avec succès.',
+        ], 200);
+    }
 }

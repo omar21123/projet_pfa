@@ -11,7 +11,9 @@ use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CreateOrderForProductDto;
 use App\DTOs\Order\CreateOrderFromCartDto;
 use App\DTOs\Order\CustomerOrderDetailsDto;
+use App\DTOs\Order\GetCustomerOrdersDto;
 use App\DTOs\Order\OrderDto;
+use App\DTOs\Order\PaginatedCustomerOrdersDto;
 use App\DTOs\Payment\PayFromOrderDto;
 use App\Exceptions\BusinessValidationException;
 use App\Repositories\Interface\AddressRepositoryInterface;
@@ -166,5 +168,9 @@ class OrderService implements OrderServiceInterface
     public function getCustomerOrderDetails(int $orderId, int $userId): CustomerOrderDetailsDto
     {
         return $this->orderRepository->getCustomerOrderDetails($orderId, $userId);
+    }
+    public function getCustomerOrders(GetCustomerOrdersDto $dto): PaginatedCustomerOrdersDto
+    {
+        return $this->orderRepository->getCustomerOrders($dto);
     }
 }

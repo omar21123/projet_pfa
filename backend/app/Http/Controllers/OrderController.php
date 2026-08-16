@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DTOs\Order\CreateOrderForProductDto;
 use App\DTOs\Order\CreateOrderFromCartDto;
+use App\DTOs\Order\GetCustomerOrdersDto;
 use App\Http\Requests\Order\CreateOrderForProductRequest;
 use App\Http\Requests\Order\CreateOrderFromCartRequest;
+use App\Http\Requests\Order\GetCustomerOrdersRequest;
 use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\Interface\OrderServiceInterface;
 use App\Services\Interface\UserServiceInterface;
@@ -434,5 +436,80 @@ class OrderController extends Controller
             'success' => true,
             'data' => $result->toArray(),
         ], 200);
+    }
+    #[OA\Get(
+        path: "/api/orders",
+        tags: ["Orders"],
+        summary: "Lister les commandes du client connecté",
+        description: "Retourne la liste paginée de toutes les commandes du client authentifié, avec leur statut, totaux, et nombre d'articles/vendeurs. Filtrable par statut.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(name: "status", in: "query", required: false, schema: new OA\Schema(type: "string"), example: "SHIPPED")]
+    #[OA\Parameter(name: "page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 1))]
+    #[OA\Parameter(name: "per_page", in: "query", required: false, schema: new OA\Schema(type: "integer", default: 20))]
+    #[OA\Response(
+        response: 200,
+        description: "Commandes récupérées avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(
+                    property: "data",
+                    type: "array",
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: "order_id", type: "integer", example: 88),
+                            new OA\Property(property: "order_number", type: "string", example: "ORD-2026-000088"),
+                            new OA\Property(property: "status_code", type: "string", example: "SHIPPED"),
+                            new OA\Property(property: "status_name", type: "string", example: "Expédiée"),
+                            new OA\Property(property: "total", type: "number", format: "float", example: 349.99),
+                            new OA\Property(property: "currency", type: "string", example: "MAD"),
+                            new OA\Property(property: "total_items", type: "integer", example: 3),
+                            new OA\Property(property: "total_vendors", type: "integer", example: 2),
+                            new OA\Property(property: "ordered_at", type: "string", format: "date-time"),
+                        ]
+                    )
+                ),
+                new OA\Property(
+                    property: "meta",
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "total", type: "integer", example: 14),
+                        new OA\Property(property: "page", type: "integer", example: 1),
+                        new OA\Property(property: "page_size", type: "integer", example: 20),
+                        new OA\Property(property: "last_page", type: "integer", example: 1),
+                    ]
+                ),
+            ]
+        )
+    )]
+    public function index(GetCustomerOrdersRequest $request): JsonResponse
+    {
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $dto = GetCustomerOrdersDto::fromRequest($request->validated(), $userInfo->userId);
+
+        try {
+            $result = $this->orderService->getCustomerOrders($dto);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json($result->toArray(), 200);
     }
 }

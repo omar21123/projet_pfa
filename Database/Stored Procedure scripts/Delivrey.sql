@@ -1401,3 +1401,84 @@ BEGIN
 END$$
 
 DELIMITER ;
+DELIMITER $$
+
+CREATE PROCEDURE SP_MarkDeliveryInTransit (
+    IN  p_DeliveryID          INT,
+    IN  p_DeliveryProfileID   INT,
+    OUT v_Success              BOOLEAN,
+    OUT v_Message               VARCHAR(255)
+)
+BEGIN
+    DECLARE v_DeliveryExists    INT DEFAULT 0;
+    DECLARE v_AssignedProfileID INT DEFAULT NULL;
+    DECLARE v_CurrentStatusID   INT DEFAULT NULL;
+    DECLARE v_PickedUpStatusID  INT DEFAULT NULL;
+    DECLARE v_InTransitStatusID INT DEFAULT NULL;
+    DECLARE v_ErrorMessage      VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_MarkDeliveryInTransit', v_ErrorMessage, NOW());
+
+        SET v_Success = FALSE;
+        SET v_Message = 'Une erreur est survenue lors de la mise à jour de la livraison.';
+    END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*), MAX(DeliveryProfileID), MAX(DeliveryStatusID)
+    INTO v_DeliveryExists, v_AssignedProfileID, v_CurrentStatusID
+    FROM Deliveries
+    WHERE DeliveryID = p_DeliveryID
+    FOR UPDATE;
+
+    IF v_DeliveryExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Livraison introuvable.';
+        ROLLBACK;
+    ELSEIF v_AssignedProfileID IS NULL THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Cette livraison n''a pas encore été acceptée par un livreur.';
+        ROLLBACK;
+    ELSEIF v_AssignedProfileID <> p_DeliveryProfileID THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Cette livraison est assignée à un autre livreur.';
+        ROLLBACK;
+    ELSE
+        SELECT DeliveryStatusID INTO v_PickedUpStatusID
+        FROM DeliveryStatuses WHERE Code = 'picked_up' LIMIT 1;
+
+        SELECT DeliveryStatusID INTO v_InTransitStatusID
+        FROM DeliveryStatuses WHERE Code = 'in_transit' LIMIT 1;
+
+        IF v_CurrentStatusID <> v_PickedUpStatusID THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Cette livraison doit être au statut "récupérée" avant de passer en transit.';
+            ROLLBACK;
+        ELSE
+            UPDATE Deliveries
+            SET DeliveryStatusID = v_InTransitStatusID,
+                UpdatedAt        = NOW()
+            WHERE DeliveryID = p_DeliveryID;
+
+            INSERT INTO DeliveryStatusHistory (
+                DeliveryID, DeliveryStatusID, Latitude, Longitude, ChangedAt
+            )
+            VALUES (
+                p_DeliveryID, v_InTransitStatusID, NULL, NULL, NOW()
+            );
+
+            SET v_Success = TRUE;
+            SET v_Message = 'Livraison marquée en transit avec succès.';
+
+            COMMIT;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

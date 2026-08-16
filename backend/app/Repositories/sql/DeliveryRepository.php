@@ -559,4 +559,26 @@ class DeliveryRepository implements DeliveryRepositoryInterface
             message: $result->message,
         );
     }
+    public function markDeliveryInTransit(int $deliveryId, int $deliveryProfileId): void
+    {
+        Log::info("========== MARK DELIVERY IN TRANSIT START ==========", [
+            'deliveryId' => $deliveryId,
+            'deliveryProfileId' => $deliveryProfileId,
+        ]);
+
+        DB::select(
+            'CALL SP_MarkDeliveryInTransit(?, ?, @success, @message)',
+            [$deliveryId, $deliveryProfileId]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("MARK DELIVERY IN TRANSIT RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== MARK DELIVERY IN TRANSIT SUCCESS ==========");
+    }
 }

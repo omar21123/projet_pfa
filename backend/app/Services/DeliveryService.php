@@ -100,4 +100,8 @@ class DeliveryService implements DeliveryServiceInterface
     {
         return $this->deliveryRepository->markOrderAsShipped($orderId, $vendorProfileId);
     }
+    public function markDeliveryInTransit(int $deliveryId, int $deliveryProfileId): void
+    {
+        $this->deliveryRepository->markDeliveryInTransit($deliveryId, $deliveryProfileId);
+    }
 }

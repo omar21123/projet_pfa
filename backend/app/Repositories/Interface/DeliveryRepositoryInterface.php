@@ -50,4 +50,5 @@ interface DeliveryRepositoryInterface
     public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto;
     public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void;
     public function markOrderAsShipped(int $orderId, int $vendorProfileId): MarkOrderAsShippedResultDto;
+    public function markDeliveryInTransit(int $deliveryId, int $deliveryProfileId): void;
 }

@@ -6,9 +6,11 @@ namespace App\Repositories\Interface;
 use App\DTOs\Order\AddOrderItemDto;
 use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CustomerOrderDetailsDto;
+use App\DTOs\Order\GetCustomerOrdersDto;
 use App\DTOs\Order\OrderDto;
 use App\DTOs\Order\OrderItemResultDto;
 use App\DTOs\Order\OrderResultDto;
+use App\DTOs\Order\PaginatedCustomerOrdersDto;
 
 interface OrderRepositoryInterface
 {
@@ -17,4 +19,5 @@ interface OrderRepositoryInterface
     public function recalculateTotals(int $orderId): void;
     public function findById(int $orderId): OrderDto;
     public function getCustomerOrderDetails(int $orderId, int $userId): CustomerOrderDetailsDto;
+    public function getCustomerOrders(GetCustomerOrdersDto $dto): PaginatedCustomerOrdersDto;
 }

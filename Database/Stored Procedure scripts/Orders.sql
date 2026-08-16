@@ -680,3 +680,89 @@ main_block: BEGIN
 END main_block $$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_GetCustomerOrders (
+    IN  p_UserID          INT,
+    IN  p_StatusCode        VARCHAR(50),   -- NULL = all statuses
+    IN  p_Page                INT,
+    IN  p_PerPage               INT,
+    OUT v_Success                BOOLEAN,
+    OUT v_Message                 VARCHAR(255),
+    OUT v_TotalCount                INT
+)
+BEGIN
+    DECLARE v_Offset       INT DEFAULT 0;
+    DECLARE v_ErrorMessage VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_GetCustomerOrders', v_ErrorMessage, NOW());
+
+        SET v_Success    = FALSE;
+        SET v_Message    = 'Une erreur est survenue lors de la récupération des commandes.';
+        SET v_TotalCount = 0;
+    END;
+
+    IF p_Page IS NULL OR p_Page < 1 THEN
+        SET p_Page = 1;
+    END IF;
+
+    IF p_PerPage IS NULL OR p_PerPage < 1 THEN
+        SET p_PerPage = 20;
+    END IF;
+
+    IF p_PerPage > 100 THEN
+        SET p_PerPage = 100;
+    END IF;
+
+    SET v_Offset = (p_Page - 1) * p_PerPage;
+
+    -- ------------------------------------------------
+    -- Total count
+    -- ------------------------------------------------
+    SELECT COUNT(*) INTO v_TotalCount
+    FROM Orders o
+    INNER JOIN OrderStatus os ON os.OrderStatusID = o.OrderStatusID
+    WHERE o.UserID = p_UserID
+      AND (p_StatusCode IS NULL OR p_StatusCode = '' OR os.Code = p_StatusCode);
+
+    -- ------------------------------------------------
+    -- Page of results, newest first
+    -- ------------------------------------------------
+    SELECT
+        o.OrderID,
+        o.OrderNumber,
+        os.Code AS StatusCode,
+        os.Name AS StatusName,
+
+        o.Subtotal,
+        o.ShippingFee,
+        o.Discount,
+        o.Tax,
+        o.Total,
+        o.Currency,
+
+        (SELECT COUNT(*) FROM OrderItems oi WHERE oi.OrderID = o.OrderID) AS TotalItems,
+        (SELECT COUNT(DISTINCT oi.VendorProfileID) FROM OrderItems oi WHERE oi.OrderID = o.OrderID) AS TotalVendors,
+
+        o.OrderedAt,
+        o.UpdatedAt
+
+    FROM Orders o
+    INNER JOIN OrderStatus os ON os.OrderStatusID = o.OrderStatusID
+    WHERE o.UserID = p_UserID
+      AND (p_StatusCode IS NULL OR p_StatusCode = '' OR os.Code = p_StatusCode)
+    ORDER BY o.OrderedAt DESC
+    LIMIT p_PerPage OFFSET v_Offset;
+
+    SET v_Success = TRUE;
+    SET v_Message = 'Commandes récupérées avec succès.';
+END$$
+
+DELIMITER ;

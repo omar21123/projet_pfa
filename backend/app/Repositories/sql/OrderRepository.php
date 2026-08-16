@@ -8,7 +8,9 @@ use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CustomerOrderDeliveryDto;
 use App\DTOs\Order\CustomerOrderDetailsDto;
 use App\DTOs\Order\CustomerOrderItemDto;
+use App\DTOs\Order\CustomerOrderListItemDto;
 use App\DTOs\Order\DeliveryStatusHistoryItemDto;
+use App\DTOs\Order\GetCustomerOrdersDto;
 use App\DTOs\Order\OrderItemResultDto;
 use App\DTOs\Order\OrderResultDto;
 use App\Repositories\Interface\OrderRepositoryInterface;
@@ -16,6 +18,7 @@ use App\Exceptions\BusinessValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\DTOs\Order\OrderDto;
+use App\DTOs\Order\PaginatedCustomerOrdersDto;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -238,5 +241,66 @@ class OrderRepository implements OrderRepositoryInterface
         ]);
 
         return $orderDetails;
+    }
+    public function getCustomerOrders(GetCustomerOrdersDto $dto): PaginatedCustomerOrdersDto
+    {
+        Log::info("========== GET CUSTOMER ORDERS START ==========", (array) $dto);
+
+        $whereStatus = $dto->statusCode !== null ? 'AND os.Code = ?' : '';
+
+        $filterParams = [$dto->userId];
+        if ($dto->statusCode !== null) {
+            $filterParams[] = $dto->statusCode;
+        }
+
+        $total = DB::selectOne(
+            "SELECT COUNT(*) AS total
+         FROM Orders o
+         INNER JOIN OrderStatus os ON os.OrderStatusID = o.OrderStatusID
+         WHERE o.UserID = ?
+           {$whereStatus}",
+            $filterParams
+        )->total;
+
+        $offset = ($dto->page - 1) * $dto->perPage;
+        $rowParams = array_merge($filterParams, [$dto->perPage, $offset]);
+
+        $rows = DB::select(
+            "SELECT
+            o.OrderID,
+            o.OrderNumber,
+            os.Code AS StatusCode,
+            os.Name AS StatusName,
+
+            o.Subtotal,
+            o.ShippingFee,
+            o.Discount,
+            o.Tax,
+            o.Total,
+            o.Currency,
+
+            (SELECT COUNT(*) FROM OrderItems oi WHERE oi.OrderID = o.OrderID) AS TotalItems,
+            (SELECT COUNT(DISTINCT oi.VendorProfileID) FROM OrderItems oi WHERE oi.OrderID = o.OrderID) AS TotalVendors,
+
+            o.OrderedAt,
+            o.UpdatedAt
+
+        FROM Orders o
+        INNER JOIN OrderStatus os ON os.OrderStatusID = o.OrderStatusID
+        WHERE o.UserID = ?
+          {$whereStatus}
+        ORDER BY o.OrderedAt DESC
+        LIMIT ? OFFSET ?",
+            $rowParams
+        );
+
+        Log::info("GET CUSTOMER ORDERS RESULT", ['total' => $total, 'count' => count($rows)]);
+
+        return new PaginatedCustomerOrdersDto(
+            data: array_map(fn($row) => CustomerOrderListItemDto::fromRow($row), $rows),
+            total: (int) $total,
+            page: $dto->page,
+            perPage: $dto->perPage,
+        );
     }
 }

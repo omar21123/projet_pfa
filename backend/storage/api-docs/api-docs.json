@@ -4966,6 +4966,78 @@
                 ]
             }
         },
+        "/api/deliveries/{delivery}/in-transit": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Marquer une livraison en transit",
+                "description": "Le livreur assigné confirme qu'il est en route vers l'adresse de livraison. La livraison passe du statut 'picked_up' à 'in_transit'.",
+                "operationId": "dd8484aa34d4b5af9ed3b85c429590e4",
+                "parameters": [
+                    {
+                        "name": "delivery",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 14
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livraison marquée en transit avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livraison marquée en transit avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil livreur ou livraison introuvable"
+                    },
+                    "422": {
+                        "description": "Livraison non assignée à ce livreur ou statut invalide pour cette transition",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cette livraison doit être au statut \"récupérée\" avant de passer en transit."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [
@@ -5946,6 +6018,130 @@
                     },
                     "404": {
                         "description": "Commande introuvable ou n'appartenant pas à cet utilisateur"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/orders": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Lister les commandes du client connecté",
+                "description": "Retourne la liste paginée de toutes les commandes du client authentifié, avec leur statut, totaux, et nombre d'articles/vendeurs. Filtrable par statut.",
+                "operationId": "2cd7e03021e72d9d799c12dfe179c865",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "SHIPPED"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Commandes récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "order_id": {
+                                                        "type": "integer",
+                                                        "example": 88
+                                                    },
+                                                    "order_number": {
+                                                        "type": "string",
+                                                        "example": "ORD-2026-000088"
+                                                    },
+                                                    "status_code": {
+                                                        "type": "string",
+                                                        "example": "SHIPPED"
+                                                    },
+                                                    "status_name": {
+                                                        "type": "string",
+                                                        "example": "Expédiée"
+                                                    },
+                                                    "total": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 349.99
+                                                    },
+                                                    "currency": {
+                                                        "type": "string",
+                                                        "example": "MAD"
+                                                    },
+                                                    "total_items": {
+                                                        "type": "integer",
+                                                        "example": 3
+                                                    },
+                                                    "total_vendors": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "ordered_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 14
+                                                },
+                                                "page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "page_size": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
