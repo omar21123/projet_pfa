@@ -6,8 +6,10 @@ use App\DTOs\Order\CreateOrderForProductDto;
 use App\DTOs\Order\CreateOrderFromCartDto;
 use App\Http\Requests\Order\CreateOrderForProductRequest;
 use App\Http\Requests\Order\CreateOrderFromCartRequest;
+use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\Interface\OrderServiceInterface;
 use App\Services\Interface\UserServiceInterface;
+use App\Services\Interface\VendorServiceInterface;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
@@ -20,6 +22,9 @@ class OrderController extends Controller
     public function __construct(
         protected OrderServiceInterface $orderService,
         private UserServiceInterface $userService,
+        protected VendorServiceInterface $vendorService,
+        protected DeliveryServiceInterface $delivery_service
+
     ) {}
 
     #[OA\Post(
@@ -283,5 +288,151 @@ class OrderController extends Controller
             'message' => 'Commande créée avec succès.',
             'data' => $order->toArray(),
         ], 201);
+    }
+    #[OA\Patch(
+        path: "/api/orders/{order}/ship",
+        tags: ["Deliveries"],
+        summary: "Marquer sa partie de commande comme expédiée",
+        description: "Le vendeur connecté confirme que ses articles de la commande sont prêts à être expédiés. Nécessite que sa livraison associée soit au statut 'picked_up' ou supérieur. La commande passe au statut 'Shipped' uniquement lorsque tous les vendeurs concernés ont confirmé.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "order",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 88
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Statut mis à jour",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Commande marquée comme expédiée avec succès."),
+                new OA\Property(property: "order_fully_shipped", type: "boolean", example: true),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: "Livraison non récupérée, vendeur sans articles dans la commande, ou commande non confirmée",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Votre livraison doit être récupérée par le livreur avant de marquer la commande comme expédiée."),
+            ]
+        )
+    )]
+    public function shipOrder(int $order): JsonResponse
+    {
+        if ($order <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de commande invalide.',
+            ], 404);
+        }
+
+        $publicId = request()->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $vendorProfile = $this->vendorService->getVendorProfileByUserId($userInfo->userId);
+
+        if (!$vendorProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil vendeur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        try {
+            $result = $this->delivery_service->markOrderAsShipped($order, $vendorProfile->vendorProfileId);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result->message,
+            'order_fully_shipped' => $result->orderFullyShipped,
+        ], 200);
+    }
+    #[OA\Get(
+        path: "/api/orders/{order}/details",
+        tags: ["Orders"],
+        summary: "Détails complets d'une commande (client)",
+        description: "Retourne toutes les informations d'une commande du client connecté : articles (avec produit, image, vendeur et email), livraisons par vendeur avec adresses géolocalisées, livreur assigné, et historique complet des statuts de livraison.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "order",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 88
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Commande récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "data", type: "object"),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Commande introuvable ou n'appartenant pas à cet utilisateur")]
+    public function customerOrderDetails(int $order): JsonResponse
+    {
+        if ($order <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de commande invalide.',
+            ], 404);
+        }
+
+        $publicId = request()->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        try {
+            $result = $this->orderService->getCustomerOrderDetails($order, $userInfo->userId);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], 200);
     }
 }

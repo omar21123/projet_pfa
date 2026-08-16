@@ -10,6 +10,7 @@ use App\DTOs\Order\AddOrderItemDto;
 use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CreateOrderForProductDto;
 use App\DTOs\Order\CreateOrderFromCartDto;
+use App\DTOs\Order\CustomerOrderDetailsDto;
 use App\DTOs\Order\OrderDto;
 use App\DTOs\Payment\PayFromOrderDto;
 use App\Exceptions\BusinessValidationException;
@@ -161,5 +162,9 @@ class OrderService implements OrderServiceInterface
             providerReference: $authorizedPayment->provider,
         );
         $this->payment_service->payFromOrder($paymentDto);
+    }
+    public function getCustomerOrderDetails(int $orderId, int $userId): CustomerOrderDetailsDto
+    {
+        return $this->orderRepository->getCustomerOrderDetails($orderId, $userId);
     }
 }

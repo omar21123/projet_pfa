@@ -5831,6 +5831,130 @@
                 ]
             }
         },
+        "/api/orders/{order}/ship": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Marquer sa partie de commande comme expédiée",
+                "description": "Le vendeur connecté confirme que ses articles de la commande sont prêts à être expédiés. Nécessite que sa livraison associée soit au statut 'picked_up' ou supérieur. La commande passe au statut 'Shipped' uniquement lorsque tous les vendeurs concernés ont confirmé.",
+                "operationId": "f6664661c61dc02f873dcc5d66a490da",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 88
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statut mis à jour",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Commande marquée comme expédiée avec succès."
+                                        },
+                                        "order_fully_shipped": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Livraison non récupérée, vendeur sans articles dans la commande, ou commande non confirmée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Votre livraison doit être récupérée par le livreur avant de marquer la commande comme expédiée."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{order}/details": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Détails complets d'une commande (client)",
+                "description": "Retourne toutes les informations d'une commande du client connecté : articles (avec produit, image, vendeur et email), livraisons par vendeur avec adresses géolocalisées, livreur assigné, et historique complet des statuts de livraison.",
+                "operationId": "b946dd7788bf570ae2adab686a29157d",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 88
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Commande récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Commande introuvable ou n'appartenant pas à cet utilisateur"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/products": {
             "post": {
                 "tags": [

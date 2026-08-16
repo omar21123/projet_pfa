@@ -1005,4 +1005,5 @@ class DeliveryController extends Controller
             'message' => 'Livraison marquée comme récupérée avec succès.',
         ], 200);
     }
+    
 }

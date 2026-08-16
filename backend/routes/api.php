@@ -268,10 +268,17 @@ Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
     Route::put('/{address}',                 [AddressController::class, 'update']);
     Route::delete('/{address}',              [AddressController::class, 'destroy']);
     Route::patch('/{address}/default-shipping', [AddressController::class, 'setDefaultShipping']);
+    
 });
 Route::middleware('jwt.custom')->prefix('orders')->group(function () {
   Route::post('/product', [OrderController::class, 'createForProduct']);
   Route::post('/cart', [OrderController::class, 'createFromCart']);
+  Route::get('/{order}/details', [\App\Http\Controllers\OrderController::class, 'customerOrderDetails']);
+
+  Route::middleware('role:VENDOR')->group(function(){
+    Route::patch('/{order}/ship', [\App\Http\Controllers\OrderController::class, 'shipOrder']);
+  });
+  
 });
 // routes/api.php
 Route::middleware('jwt.custom')->group(function () {

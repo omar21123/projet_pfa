@@ -1266,3 +1266,138 @@ BEGIN
 END$$
 
 DELIMITER ;
+DROP PROCEDURE IF EXISTS SP_MarkOrderAsShipped;
+
+DELIMITER $$
+
+CREATE PROCEDURE SP_MarkOrderAsShipped (
+    IN  p_OrderID           INT,
+    IN  p_VendorProfileID    INT,
+    OUT v_Success             BOOLEAN,
+    OUT v_Message              VARCHAR(255),
+    OUT v_OrderFullyShipped     BOOLEAN
+)
+BEGIN
+    DECLARE v_OrderExists         INT DEFAULT 0;
+    DECLARE v_VendorHasItems      INT DEFAULT 0;
+    DECLARE v_DeliveryID          INT DEFAULT NULL;
+    DECLARE v_DeliveryStatusCode  VARCHAR(50) DEFAULT NULL;
+    DECLARE v_CurrentOrderStatus  INT DEFAULT NULL;
+    DECLARE v_ConfirmedStatusID   INT DEFAULT NULL;
+    DECLARE v_ShippedStatusID     INT DEFAULT NULL;
+    DECLARE v_OtherVendorsNotReady INT DEFAULT 0;
+    DECLARE v_ErrorMessage        VARCHAR(500);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1 v_ErrorMessage = MESSAGE_TEXT;
+        ROLLBACK;
+
+        INSERT INTO SPErrorLogs (ProcedureName, ErrorMessage, CreatedAt)
+        VALUES ('SP_MarkOrderAsShipped', v_ErrorMessage, NOW());
+
+        SET v_Success            = FALSE;
+        SET v_Message            = 'Une erreur est survenue lors de la mise à jour de la commande.';
+        SET v_OrderFullyShipped  = FALSE;
+    END;
+
+    START TRANSACTION;
+
+    -- ------------------------------------------------
+    -- Order must exist
+    -- ------------------------------------------------
+    SELECT COUNT(*), MAX(OrderStatusID)
+    INTO v_OrderExists, v_CurrentOrderStatus
+    FROM Orders
+    WHERE OrderID = p_OrderID
+    FOR UPDATE;
+
+    IF v_OrderExists = 0 THEN
+        SET v_Success = FALSE;
+        SET v_Message = 'Commande introuvable.';
+        SET v_OrderFullyShipped = FALSE;
+        ROLLBACK;
+    ELSE
+        -- ------------------------------------------------
+        -- This vendor must actually have items in this order
+        -- ------------------------------------------------
+        SELECT COUNT(*) INTO v_VendorHasItems
+        FROM OrderItems
+        WHERE OrderID = p_OrderID
+          AND VendorProfileID = p_VendorProfileID;
+
+        IF v_VendorHasItems = 0 THEN
+            SET v_Success = FALSE;
+            SET v_Message = 'Vous n''avez aucun article dans cette commande.';
+            SET v_OrderFullyShipped = FALSE;
+            ROLLBACK;
+        ELSE
+            -- ------------------------------------------------
+            -- This vendor's delivery must exist and be picked_up (or beyond)
+            -- ------------------------------------------------
+            SELECT d.DeliveryID, ds.Code
+            INTO v_DeliveryID, v_DeliveryStatusCode
+            FROM Deliveries d
+            INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+            WHERE d.OrderID = p_OrderID
+              AND d.VendorProfileID = p_VendorProfileID
+            LIMIT 1;
+
+            IF v_DeliveryID IS NULL THEN
+                SET v_Success = FALSE;
+                SET v_Message = 'Aucune livraison n''a été créée pour vos articles de cette commande.';
+                SET v_OrderFullyShipped = FALSE;
+                ROLLBACK;
+            ELSEIF v_DeliveryStatusCode NOT IN ('picked_up', 'in_transit', 'delivered') THEN
+                SET v_Success = FALSE;
+                SET v_Message = 'Votre livraison doit être récupérée par le livreur avant de marquer la commande comme expédiée.';
+                SET v_OrderFullyShipped = FALSE;
+                ROLLBACK;
+            ELSE
+                SELECT OrderStatusID INTO v_ConfirmedStatusID
+                FROM OrderStatus WHERE Code = 'CONFIRMED' LIMIT 1;
+
+                SELECT OrderStatusID INTO v_ShippedStatusID
+                FROM OrderStatus WHERE Code = 'SHIPPED' LIMIT 1;
+
+                -- Order-level status must be Confirmed before it can ship
+                IF v_CurrentOrderStatus <> v_ConfirmedStatusID THEN
+                    SET v_Success = FALSE;
+                    SET v_Message = 'Cette commande n''est pas dans un état permettant l''expédition.';
+                    SET v_OrderFullyShipped = FALSE;
+                    ROLLBACK;
+                ELSE
+                    -- ------------------------------------------------
+                    -- Check whether EVERY vendor on this order has
+                    -- their delivery picked_up or beyond, before
+                    -- flipping the order-level status
+                    -- ------------------------------------------------
+                    SELECT COUNT(*) INTO v_OtherVendorsNotReady
+                    FROM Deliveries d
+                    INNER JOIN DeliveryStatuses ds ON ds.DeliveryStatusID = d.DeliveryStatusID
+                    WHERE d.OrderID = p_OrderID
+                      AND ds.Code NOT IN ('picked_up', 'in_transit', 'delivered');
+
+                    IF v_OtherVendorsNotReady = 0 THEN
+                        UPDATE Orders
+                        SET OrderStatusID = v_ShippedStatusID,
+                            UpdatedAt     = NOW()
+                        WHERE OrderID = p_OrderID;
+
+                        SET v_OrderFullyShipped = TRUE;
+                        SET v_Message = 'Commande marquée comme expédiée avec succès.';
+                    ELSE
+                        SET v_OrderFullyShipped = FALSE;
+                        SET v_Message = 'Votre partie de la commande est prête. En attente des autres vendeurs avant expédition complète.';
+                    END IF;
+
+                    SET v_Success = TRUE;
+
+                    COMMIT;
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

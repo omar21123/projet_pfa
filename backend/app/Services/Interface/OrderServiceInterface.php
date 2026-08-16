@@ -6,13 +6,13 @@ namespace App\Services\Interface;
 use App\DTOs\Order\CreateOrderDto;
 use App\DTOs\Order\CreateOrderForProductDto;
 use App\DTOs\Order\CreateOrderFromCartDto;
+use App\DTOs\Order\CustomerOrderDetailsDto;
 use App\DTOs\Order\OrderDto;
 use App\DTOs\Order\OrderResultDto;
 
 interface OrderServiceInterface
 {
-        public function createOrderFromCart(CreateOrderFromCartDto $dto) : OrderDto;
+        public function createOrderFromCart(CreateOrderFromCartDto $dto): OrderDto;
         public function createOrderForProduct(CreateOrderForProductDto $dto): OrderDto;
-
-
+        public function getCustomerOrderDetails(int $orderId, int $userId): CustomerOrderDetailsDto;
 }

@@ -16,6 +16,7 @@ use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
+use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
@@ -528,5 +529,34 @@ class DeliveryRepository implements DeliveryRepositoryInterface
         }
 
         Log::info("========== MARK DELIVERY PICKED UP SUCCESS ==========");
+    }
+    public function markOrderAsShipped(int $orderId, int $vendorProfileId): MarkOrderAsShippedResultDto
+    {
+        Log::info("========== MARK ORDER AS SHIPPED START ==========", [
+            'orderId' => $orderId,
+            'vendorProfileId' => $vendorProfileId,
+        ]);
+
+        DB::select(
+            'CALL SP_MarkOrderAsShipped(?, ?, @success, @message, @orderFullyShipped)',
+            [$orderId, $vendorProfileId]
+        );
+
+        $result = DB::selectOne(
+            'SELECT @success AS success, @message AS message, @orderFullyShipped AS orderFullyShipped'
+        );
+
+        Log::info("MARK ORDER AS SHIPPED RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== MARK ORDER AS SHIPPED SUCCESS ==========");
+
+        return new MarkOrderAsShippedResultDto(
+            orderFullyShipped: (bool) $result->orderFullyShipped,
+            message: $result->message,
+        );
     }
 }

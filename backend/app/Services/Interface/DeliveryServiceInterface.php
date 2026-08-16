@@ -13,6 +13,7 @@ use App\DTOs\Delivery\GetAllDeliveryProfilesDto;
 use App\DTOs\Delivery\GetDeliveryHistoryDto;
 use App\DTOs\Delivery\GetRecommendedDeliveriesDto;
 use App\DTOs\Delivery\GetVendorDeliveriesDto;
+use App\DTOs\Delivery\MarkOrderAsShippedResultDto;
 use App\DTOs\Delivery\PaginatedDeliveryHistoryDto;
 use App\DTOs\Delivery\PaginatedDeliveryProfilesDto;
 use App\DTOs\Delivery\PaginatedRecommendedDeliveriesDto;
@@ -38,4 +39,5 @@ interface DeliveryServiceInterface
     public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto;
     public function getVendorDeliveries(GetVendorDeliveriesDto $dto): PaginatedVendorDeliveriesDto;
     public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void;
+     public function markOrderAsShipped(int $orderId, int $vendorProfileId): MarkOrderAsShippedResultDto;
 }
