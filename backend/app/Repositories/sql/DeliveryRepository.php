@@ -505,4 +505,28 @@ class DeliveryRepository implements DeliveryRepositoryInterface
 
         return DeliveryDetailsDto::fromRow($rows[0]);
     }
+    // DeliveryRepository — add this method
+
+    public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void
+    {
+        Log::info("========== MARK DELIVERY PICKED UP START ==========", [
+            'deliveryId' => $deliveryId,
+            'deliveryProfileId' => $deliveryProfileId,
+        ]);
+
+        DB::select(
+            'CALL SP_MarkDeliveryPickedUp(?, ?, @success, @message)',
+            [$deliveryId, $deliveryProfileId]
+        );
+
+        $result = DB::selectOne('SELECT @success AS success, @message AS message');
+
+        Log::info("MARK DELIVERY PICKED UP RESULT", (array) $result);
+
+        if (!$result->success) {
+            throw new BusinessValidationException($result->message, 422);
+        }
+
+        Log::info("========== MARK DELIVERY PICKED UP SUCCESS ==========");
+    }
 }

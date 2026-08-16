@@ -89,4 +89,10 @@ class DeliveryService implements DeliveryServiceInterface
     {
         return $this->deliveryRepository->getDeliveryDetails($deliveryId);
     }
+    // Interface + implementation
+
+    public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void
+    {
+        $this->deliveryRepository->markDeliveryPickedUp($deliveryId, $deliveryProfileId);
+    }
 }

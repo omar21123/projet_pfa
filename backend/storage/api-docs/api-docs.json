@@ -4894,6 +4894,78 @@
                 ]
             }
         },
+        "/api/deliveries/{delivery}/pickup": {
+            "patch": {
+                "tags": [
+                    "Deliveries"
+                ],
+                "summary": "Marquer une livraison comme récupérée",
+                "description": "Le livreur assigné confirme avoir récupéré le(s) colis chez le vendeur. La livraison passe du statut 'accepted' à 'picked_up'.",
+                "operationId": "ca0d27bf81e2066ff4eb596b9b1ce511",
+                "parameters": [
+                    {
+                        "name": "delivery",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "example": 14
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Livraison marquée comme récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Livraison marquée comme récupérée avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utilisateur, profil livreur ou livraison introuvable"
+                    },
+                    "422": {
+                        "description": "Livraison non assignée à ce livreur ou statut invalide pour cette transition",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cette livraison est assignée à un autre livreur."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/favorites": {
             "get": {
                 "tags": [

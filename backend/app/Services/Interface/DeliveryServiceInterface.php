@@ -35,8 +35,7 @@ interface DeliveryServiceInterface
     // Interface + implementation
 
     public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void;
-        public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto;
-            public function getVendorDeliveries(GetVendorDeliveriesDto $dto): PaginatedVendorDeliveriesDto;
-
-        
+    public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto;
+    public function getVendorDeliveries(GetVendorDeliveriesDto $dto): PaginatedVendorDeliveriesDto;
+    public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void;
 }

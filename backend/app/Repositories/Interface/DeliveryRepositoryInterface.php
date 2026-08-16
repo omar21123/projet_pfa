@@ -47,4 +47,5 @@ interface DeliveryRepositoryInterface
     public function acceptDeliveryById(int $deliveryId, int $deliveryProfileId): void;
     public function getVendorDeliveries(GetVendorDeliveriesDto $dto): PaginatedVendorDeliveriesDto;
     public function getDeliveryDetails(int $deliveryId): DeliveryDetailsDto;
+    public function markDeliveryPickedUp(int $deliveryId, int $deliveryProfileId): void;
 }

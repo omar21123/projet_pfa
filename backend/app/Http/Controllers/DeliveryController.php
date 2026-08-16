@@ -16,6 +16,7 @@ use App\Http\Requests\Delivery\GetAllDeliveryProfilesRequest;
 use App\Http\Requests\Delivery\GetDeliveryHistoryRequest;
 use App\Http\Requests\Delivery\GetRecommendedDeliveriesRequest;
 use App\Http\Requests\Delivery\GetVendorDeliveriesRequest;
+use App\Http\Requests\Delivery\MarkDeliveryPickedUpRequest;
 use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
 use App\Services\Interface\DeliveryServiceInterface;
@@ -920,6 +921,88 @@ class DeliveryController extends Controller
         return response()->json([
             'success' => true,
             'data' => $result->toArray(),
+        ], 200);
+    }
+    #[OA\Patch(
+        path: "/api/deliveries/{delivery}/pickup",
+        tags: ["Deliveries"],
+        summary: "Marquer une livraison comme récupérée",
+        description: "Le livreur assigné confirme avoir récupéré le(s) colis chez le vendeur. La livraison passe du statut 'accepted' à 'picked_up'.",
+        security: [["bearerAuth" => []]]
+    )]
+    #[OA\Parameter(
+        name: "delivery",
+        in: "path",
+        required: true,
+        schema: new OA\Schema(type: "integer", minimum: 1),
+        example: 14
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Livraison marquée comme récupérée avec succès",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: true),
+                new OA\Property(property: "message", type: "string", example: "Livraison marquée comme récupérée avec succès."),
+            ]
+        )
+    )]
+    #[OA\Response(response: 404, description: "Utilisateur, profil livreur ou livraison introuvable")]
+    #[OA\Response(
+        response: 422,
+        description: "Livraison non assignée à ce livreur ou statut invalide pour cette transition",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "success", type: "boolean", example: false),
+                new OA\Property(property: "message", type: "string", example: "Cette livraison est assignée à un autre livreur."),
+            ]
+        )
+    )]
+    public function pickup(MarkDeliveryPickedUpRequest $request, int $delivery): JsonResponse
+    {
+        if ($delivery <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiant de livraison invalide.',
+            ], 404);
+        }
+
+        $publicId = $request->attributes->get('user_id');
+        $userInfo = $this->userService->getUserStandardInformationByPublicID($publicId);
+
+        if (!$userInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur introuvable.',
+            ], 404);
+        }
+
+        $deliveryProfile = $this->deliveryService->getDeliveryProfileByUserId($userInfo->userId);
+
+        if (!$deliveryProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil livreur introuvable pour cet utilisateur.',
+            ], 404);
+        }
+
+        try {
+            $this->deliveryService->markDeliveryPickedUp($delivery, $deliveryProfile->deliveryProfileId);
+        } catch (\App\Exceptions\BusinessValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Livraison marquée comme récupérée avec succès.',
         ], 200);
     }
 }
