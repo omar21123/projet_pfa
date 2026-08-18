@@ -178,7 +178,7 @@ Route::prefix('products')->group(function () {
     });
     Route::middleware(['jwt.custom', 'role:VENDOR'])->group(function () {
         Route::get('/vendor/me', [ProductController::class, 'getVendorProducts']);
-        Route::get('/deliveries/vendor', [\App\Http\Controllers\DeliveryController::class, 'vendorDeliveries']);
+
     });
 
     Route::middleware(['jwt.custom', 'role:ADMIN'])->group(function () {
@@ -212,7 +212,6 @@ Route::prefix('promotions')->group(function () {
         Route::get('/product/{product}', [PromotionController::class, 'getByProduct']);
     });
 });
-
 Route::prefix('search')->group(function () {
     Route::get('/suggestions', [SearchController::class, 'suggestions']);
 
@@ -221,7 +220,6 @@ Route::prefix('search')->group(function () {
     });
     Route::get('/', [SearchController::class, 'search']);
 });
-
 Route::prefix('wishlists')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
         Route::get('/', [WishlistsController::class, 'index']);
@@ -238,7 +236,6 @@ Route::prefix('favorites')->group(function () {
         Route::delete('/{productId}', [FavoritesController::class, 'destroy']);
     });
 });
-
 Route::prefix('cart')->group(function () {
     Route::middleware(['jwt.custom'])->group(function () {
         Route::post('/items', [CartController::class, 'addItem']);
@@ -247,9 +244,7 @@ Route::prefix('cart')->group(function () {
         Route::patch('/items/quantity', [CartController::class, 'updateItemQuantity']);
     });
 });
-
 Route::get('/vendors/{vendorProfileID}/public-profile', [VendorController::class, 'publicProfile']);
-
 Route::prefix('vendors/{vendorProfileID}/ratings')->group(function () {
     Route::get('/',    [StoreRatingController::class, 'index']);   // public
     Route::middleware(['jwt.custom'])->group(function () {
@@ -264,7 +259,6 @@ Route::middleware(['jwt.custom' ,'role:VENDOR'])->group(function () {
     Route::post('/vendor/withdraw', [\App\Http\Controllers\VendorController::class, 'requestWithdraw']);
 });
 Route::get('addresses/shipping/default',             [AddressController::class, 'getDefaultShippingAddress']);
-
 Route::middleware('jwt.custom')->prefix('addresses')->group(function () {
     Route::middleware('role:VENDOR,ADMIN')->get('/orders/{order}/shipping-address', [AddressController::class, 'getOrderShippingAddress']);
     Route::get('/',                          [AddressController::class, 'index']);
@@ -284,7 +278,6 @@ Route::middleware('jwt.custom')->prefix('orders')->group(function () {
         Route::patch('/{order}/ship', [\App\Http\Controllers\OrderController::class, 'shipOrder']);
     });
 });
-// routes/api.php
 Route::middleware('jwt.custom')->group(function () {
     Route::middleware('role:ADMIN')->group(function () {
         Route::get('/deliveries/profiles', [\App\Http\Controllers\DeliveryController::class, 'index']);
@@ -295,6 +288,9 @@ Route::middleware('jwt.custom')->group(function () {
         Route::get('/admin/livreurs/cash-collections/outstanding', [\App\Http\Controllers\DeliveryController::class, 'outstandingCash']);
         Route::patch('/admin/livreurs/{deliveryProfile}/remit-cash', [\App\Http\Controllers\DeliveryController::class, 'remitCash']);
     });
+       Route::middleware('role:VENDOR')->group(function () {
+        Route::get('/deliveries/vendor', [\App\Http\Controllers\DeliveryController::class, 'vendorDeliveries']);
+    }); 
     Route::middleware('role:LIVREUR')->group(function () {
         Route::patch('/deliveries/location', [\App\Http\Controllers\DeliveryController::class, 'updateLocation']);
         Route::get('/deliveries/recommended', [\App\Http\Controllers\DeliveryController::class, 'recommended']);
@@ -309,4 +305,5 @@ Route::middleware('jwt.custom')->group(function () {
         Route::post('/livreur/wallet/withdraw', [\App\Http\Controllers\DeliveryController::class, 'requestWithdraw']);
         Route::get('/livreur/wallet/cash-collections/pending', [\App\Http\Controllers\DeliveryController::class, 'myPendingCash']);
     });
+   
 });

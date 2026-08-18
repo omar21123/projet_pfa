@@ -30,6 +30,7 @@ use App\Http\Requests\Delivery\SuspendDeliveryProfileRequest;
 use App\Http\Requests\Delivery\UpdateDeliveryLocationRequest;
 use App\Services\Interface\DeliveryServiceInterface;
 use App\Services\UserService;
+use App\Services\VendorService;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -42,7 +43,8 @@ class DeliveryController extends Controller
 {
     public function __construct(
         protected DeliveryServiceInterface $deliveryService,
-        protected UserService $userService
+        protected UserService $userService ,
+        protected VendorService $vendorService
     ) {}
 
     #[OA\Get(
