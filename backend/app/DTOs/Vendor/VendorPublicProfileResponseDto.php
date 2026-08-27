@@ -22,7 +22,7 @@ class VendorPublicProfileResponseDto
         public readonly ?string $HasProductsInCategories,
         public readonly int     $TotalProducts,
         public readonly int     $TotalVentes,
-        public readonly float $Progression, 
+        public readonly float $progression, 
     ) {}
 
     public static function fromRow(object $row): self
@@ -30,7 +30,7 @@ class VendorPublicProfileResponseDto
         return new self(
             StoreName:               $row->StoreName,
             logoURL:                 $row->LogoURL                  ?? null,
-            Progression : $row->Progression,
+            progression: $row->progression,
             bannerURL:               $row->BannerURL                ?? null,
             Note:                    $row->Note,
             Rating:                  (float) $row->Rating,
@@ -56,7 +56,7 @@ class VendorPublicProfileResponseDto
             'LogoURL'                 => $this->logoURL,
             'BannerURL'               => $this->bannerURL,
             'Note'                    => $this->Note,
-            'Progression' => $this->Progression,
+            'progression' => $this->progression,
             'Rating'                  => $this->Rating,
             'ReviewCount'             => $this->ReviewCount,
             'IdentityVerified'        => $this->IdentityVerified,
