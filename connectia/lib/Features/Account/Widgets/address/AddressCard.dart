@@ -72,19 +72,6 @@ class AddressCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // IconButton(
-              //   onPressed: onEdit,
-              //   icon: Icon(Icons.edit_outlined, color: AppColors.secondary(context)),
-              //   visualDensity: VisualDensity.compact,
-              // ),
-              IconButton(
-                onPressed: onDelete,
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: AppColors.logout(context),
-                ),
-                visualDensity: VisualDensity.compact,
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -111,15 +98,6 @@ class AddressCard extends StatelessWidget {
             height: 1,
           ),
           const SizedBox(height: 16),
-          _DefaultStatusRow(
-            isDefault: address.isDefaultBilling,
-            defaultLabel: 'Adresse de facturation par défaut',
-            actionLabel: 'Définir comme facturation',
-            actionColor: AppColors.neutral(context),
-            actionBackgroundColor: AppColors.neutralBg(context),
-            onTap: onSetDefaultBilling,
-          ),
-          const SizedBox(height: 12),
           _DefaultStatusRow(
             isDefault: address.isDefaultShipping,
             defaultLabel: 'Adresse de livraison par défaut',

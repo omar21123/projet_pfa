@@ -5,6 +5,7 @@ class Textsearchbar extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback? onClear;
   final bool autofocus;
   final String hintText;
@@ -14,6 +15,7 @@ class Textsearchbar extends StatelessWidget {
     required this.controller,
     this.focusNode,
     this.onChanged,
+    this.onSubmitted,
     this.onClear,
     this.autofocus = false,
     this.hintText = 'Rechercher un produit, une marque...',
@@ -34,6 +36,7 @@ class Textsearchbar extends StatelessWidget {
           autofocus: autofocus,
           style: TextStyle(color: AppColors.primaryText(context)),
           onChanged: onChanged,
+          onSubmitted: onSubmitted,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: TextStyle(color: AppColors.secondary(context)),

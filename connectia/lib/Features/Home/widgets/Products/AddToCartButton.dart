@@ -25,6 +25,7 @@ class AddToCartButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         child: Container(
           width: double.infinity,
+          height: 60,
           padding: const EdgeInsets.symmetric(vertical: 18),
           alignment: Alignment.center,
           child: isLoading

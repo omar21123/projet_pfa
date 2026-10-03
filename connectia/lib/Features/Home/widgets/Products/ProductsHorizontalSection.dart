@@ -64,7 +64,9 @@ class ProductsHorizontalSection extends StatelessWidget {
                 child: ProductCard(
                   product: product,
                   onTap: () async {
-                    await CustomNavigator.navigateProductDetailsPage(product);
+                    await CustomNavigator.navigateProductDetailsPage(
+                      product.id,
+                    );
                   },
                 ),
               );

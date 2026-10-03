@@ -1,15 +1,20 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
+import 'package:connectia/Core/api/AuthRepo.dart';
+import 'package:connectia/Core/enums/Gender.dart';
+import 'package:connectia/Core/shared/CurrentUser.dart';
+import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomPillRadioGroup.dart';
 import 'package:connectia/Core/widgets/DateTime/CustomDateTimePicker.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsAcceptanceCheckbox.dart';
 import 'package:connectia/Core/widgets/Texts/CustomTextFormField.dart';
+import 'package:connectia/Features/Register/data/RegisterRequestModel.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Registerscreen extends StatefulWidget {
   const Registerscreen({super.key});
-
   @override
   State<Registerscreen> createState() => _RegisterscreenState();
 }
@@ -27,7 +32,7 @@ class _RegisterscreenState extends State<Registerscreen>
   String? selectedGender;
   DateTime? birthDate;
   bool acceptedTerms = false;
-  bool isLoading = false;
+  bool _isRegistering = false;
 
   late final AnimationController _entranceController;
   late final Animation<double> _fadeIn;
@@ -222,6 +227,7 @@ class _RegisterscreenState extends State<Registerscreen>
                       ),
                       const SizedBox(height: 16),
                       CustomDateTimePicker(
+                      
                         label: 'Date de naissance',
                         onDateSelected: (date) {
                           setState(() => birthDate = date);
@@ -261,7 +267,7 @@ class _RegisterscreenState extends State<Registerscreen>
                     height: 54,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
-                      child: isLoading
+                      child: _isRegistering
                           ? Container(
                               key: const ValueKey('loading'),
                               decoration: BoxDecoration(
@@ -285,7 +291,7 @@ class _RegisterscreenState extends State<Registerscreen>
                               text: 'Créer un compte',
                               backgroundColor: AppColors.primary(context),
                               textColor: AppColors.onPrimary(context),
-                              onPressed: _handleLogin,
+                              onPressed: _handleRegister,
                             ),
                     ),
                   ),
@@ -299,13 +305,9 @@ class _RegisterscreenState extends State<Registerscreen>
     );
   }
 
-  Future<void> _handleLogin() async {
-    // 1. Validate all text-field-based rules (name, email, password, phone)
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _handleRegister() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    // 2. Validate terms acceptance separately (not a Form field)
     if (!acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -319,42 +321,65 @@ class _RegisterscreenState extends State<Registerscreen>
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => _isRegistering = true);
 
     try {
-      // ─────────────────────────────────────────────
-      // 👉 CALL YOUR API HERE
-      // Example:
-      // final result = await authRepository.register(
-      //   firstName: _firstNameController.text.trim(),
-      //   lastName: _lastNameController.text.trim(),
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      //   phone: _phoneController.text.trim().isEmpty
-      //       ? null
-      //       : _phoneController.text.trim(),
-      //   birthDate: birthDate,
-      //   gender: selectedGender,
-      // );
-      //
-      // if (result.isSuccess) {
-      //   if (mounted) context.go('/');
-      // } else {
-      //   if (mounted) {
-      //     ScaffoldMessenger.of(context).showSnackBar(
-      //       SnackBar(content: Text(result.errorMessage)),
-      //     );
-      //   }
-      // }
-      // ─────────────────────────────────────────────
-    } catch (e) {
+      final phoneText = _phoneController.text.trim();
+      final gender = selectedGender == 'Homme'
+          ? Gender.male
+          : selectedGender == 'Femme'
+              ? Gender.female
+              : null;
+
+      final request = RegisterRequestModel(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phoneNumber: phoneText.isEmpty ? null : phoneText,
+        birthDate: birthDate,
+        gender: gender,
+      );
+
+      final result = await locator<AuthRepo>().register(request: request);
+
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          final message = failure.hasFieldErrors
+              ? failure.errors!
+                  .entries
+                  .map((e) => '${e.key}: ${e.value.first}')
+                  .join('\n')
+              : failure.displayMessage;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.redAccent,
+              content: Text(message),
+            ),
+          );
+        },
+        (user) {
+          locator<CurrentUser>().set(user);
+          locator<AppPreferencesService>().setHasSeenLogin();
+          context.go('/');
+        },
+      );
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Une erreur est survenue: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: const Text('Une erreur inattendue est survenue.'),
+          ),
+        );
       }
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isRegistering = false);
     }
   }
 }

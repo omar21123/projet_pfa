@@ -1,7 +1,7 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
-import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Features/Account/data/Dark%20Mode%20Cubit/dark_mode_cubit.dart';
+import 'package:connectia/Features/Account/data/FavoritesCubit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:connectia/Core/DI/locator.dart';
@@ -24,6 +24,9 @@ Future<void> main() async {
 
             return DarkModeCubit()..initiale(isDarkMode);
           },
+        ),
+        BlocProvider(
+          create: (_) => FavoritesCubit()..fetchFavorites(),
         ),
       ],
       child: const ConnectiaApp(),

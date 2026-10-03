@@ -1,8 +1,10 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/widgets/Buttons/CircleIconButton.dart';
-import 'package:connectia/Core/widgets/Buttons/StatChip.dart';
+import 'package:connectia/Features/Account/data/FavoritesCubit.dart';
 import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
+import 'package:connectia/Features/Wishlist/widgets/ChooseWishlistDialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Carte produit pour le feed Home (carrousels horizontaux) — et réutilisable
 /// dans une grille (ex: Liste de souhaits) en passant `width` dynamiquement.
@@ -14,6 +16,8 @@ class ProductCard extends StatefulWidget {
   // (ex: retirer la carte de la liste quand elle est dé-likée/wishlistée).
   final ValueChanged<bool>? onLikeChanged;
   final ValueChanged<bool>? onWishlistChanged;
+  final VoidCallback? onDelete;
+  final ValueChanged<bool>? onFavoriteToggle;
 
   const ProductCard({
     super.key,
@@ -22,6 +26,8 @@ class ProductCard extends StatefulWidget {
     this.width = 190,
     this.onLikeChanged,
     this.onWishlistChanged,
+    this.onDelete,
+    this.onFavoriteToggle,
   });
 
   @override
@@ -29,12 +35,6 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  String _formatCount(int count) {
-    if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
-    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}k';
-    return '$count';
-  }
-
   bool _isLiked = false;
   bool _isWishedList = false;
   int _totalLikes = 0;
@@ -50,6 +50,8 @@ class _ProductCardState extends State<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
+    final promo = widget.product.promotionLabel;
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -62,25 +64,27 @@ class _ProductCardState extends State<ProductCard> {
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Image + boutons like/wishlist ──────────────────
+            // ── Image + boutons like/wishlist + promo badge ──
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-                  // Tag partagé avec ProductDetailsPage pour l'animation Hero.
-                  child: Hero(
-                    tag: 'product-image-${widget.product.id}',
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     child: Image.network(
-                      widget.product.imageUrl,
-                      height: 130,
+                      widget.product.resolvedImageUrl,
                       width: double.infinity,
+                      height: 180,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        height: 130,
+                        height: 80,
                         color: AppColors.accent20(context),
                         alignment: Alignment.center,
                         child: Icon(
@@ -91,6 +95,30 @@ class _ProductCardState extends State<ProductCard> {
                     ),
                   ),
                 ),
+                // ── Promotion badge ────────────────────────
+                if (promo != null)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.wishlist(context),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        promo,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -108,7 +136,11 @@ class _ProductCardState extends State<ProductCard> {
                                 ? _totalLikes + 1
                                 : _totalLikes - 1;
                           });
+                          context.read<FavoritesCubit>().toggleFavorite(
+                                int.tryParse(widget.product.id) ?? 0,
+                              );
                           widget.onLikeChanged?.call(_isLiked);
+                          widget.onFavoriteToggle?.call(_isLiked);
                         },
                       ),
                       const SizedBox(width: 6),
@@ -120,26 +152,44 @@ class _ProductCardState extends State<ProductCard> {
                             ? AppColors.primary(context)
                             : AppColors.primaryText(context),
                         onTap: () {
-                          setState(() {
-                            _isWishedList = !_isWishedList;
-                            _totalWishlists = _isWishedList
-                                ? _totalWishlists + 1
-                                : _totalWishlists - 1;
-                          });
-                          widget.onWishlistChanged?.call(_isWishedList);
+                          final productId = int.tryParse(widget.product.id);
+                          if (productId == null) return;
+
+                          showChooseWishlistDialog(
+                            context,
+                            productId: productId,
+                            onSelected: (wishListId, name) {
+                              setState(() {
+                                _isWishedList = true;
+                                _totalWishlists = _totalWishlists + 1;
+                              });
+                              widget.onWishlistChanged?.call(_isWishedList);
+                            },
+                          );
                         },
                       ),
                     ],
                   ),
                 ),
+                if (widget.onDelete != null)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: CircleIconButton(
+                      icon: Icons.delete_outline,
+                      color: AppColors.wishlist(context),
+                      onTap: widget.onDelete!,
+                    ),
+                  ),
               ],
             ),
 
             // ── Infos ───────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     widget.product.name,
@@ -148,62 +198,45 @@ class _ProductCardState extends State<ProductCard> {
                     style: TextStyle(
                       color: AppColors.primaryText(context),
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    widget.product.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.secondary(context),
-                      fontSize: 12,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${widget.product.brand} · ${widget.product.model}',
+                    widget.product.model.isNotEmpty
+                        ? '${widget.product.brand} · ${widget.product.model}'
+                        : widget.product.brand,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppColors.secondary(context),
                       fontSize: 11,
-                      fontStyle: FontStyle.italic,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${widget.product.price.toStringAsFixed(0)} MAD',
-                    style: TextStyle(
-                      color: AppColors.primary(context),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Divider(
-                    height: 1,
-                    color: AppColors.secondary(context).withValues(alpha: 0.15),
-                  ),
-                  const SizedBox(height: 8),
-                  // ── Stats : ventes / likes / wishlists ─────────
+                  const SizedBox(height: 6),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      StatChip(
-                        icon: Icons.shopping_bag_outlined,
-                        value: _formatCount(widget.product.totalSales),
+                      Text(
+                        '${widget.product.effectivePrice.toStringAsFixed(0)} MAD',
+                        style: TextStyle(
+                          color: AppColors.primary(context),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
-                      StatChip(
-                        icon: Icons.favorite_border,
-                        value: _formatCount(_totalLikes),
-                      ),
-                      StatChip(
-                        icon: Icons.bookmark_border,
-                        value: _formatCount(_totalWishlists),
-                      ),
+                      if (widget.product.hasPromotion) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.product.price.toStringAsFixed(0)} MAD',
+                          style: TextStyle(
+                            color: AppColors.secondary(context),
+                            fontSize: 11,
+                            decoration: TextDecoration.lineThrough,
+                            decorationColor:
+                                AppColors.secondary(context).withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

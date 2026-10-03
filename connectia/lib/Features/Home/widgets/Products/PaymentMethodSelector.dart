@@ -1,4 +1,5 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Features/Home/data/Models/ProductDetailModel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,17 +7,56 @@ enum PaymentMethod { cod, online }
 
 /// Sélecteur "Paiement" (À la livraison / Carte Bancaire), carte
 /// sélectionnée avec bordure teal épaisse, non-sélectionnée en surface plate.
+/// Affiche uniquement les moyens de paiement disponibles pour le produit.
 class PaymentMethodSelector extends StatefulWidget {
   final ValueChanged<PaymentMethod> onChanged;
+  final List<ProductPaymentMethod> availableMethods;
 
-  const PaymentMethodSelector({super.key, required this.onChanged});
+  const PaymentMethodSelector({
+    super.key,
+    required this.onChanged,
+    this.availableMethods = const [],
+  });
 
   @override
   State<PaymentMethodSelector> createState() => _PaymentMethodSelectorState();
 }
 
 class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
-  PaymentMethod _value = PaymentMethod.cod;
+  PaymentMethod? _value;
+
+  bool get _hasCod =>
+      widget.availableMethods.any((m) => !m.isOnline);
+  bool get _hasOnline =>
+      widget.availableMethods.any((m) => m.isOnline);
+
+  PaymentMethod? get _defaultSelection {
+    if (_hasCod) return PaymentMethod.cod;
+    if (_hasOnline) return PaymentMethod.online;
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _value = _defaultSelection;
+    if (_value != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onChanged(_value!);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PaymentMethodSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _value = _defaultSelection;
+    if (_value != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onChanged(_value!);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,35 +75,37 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(
-              child: _PaymentCard(
-                icon: Icons.payments_outlined,
-                label: 'À la livraison',
-                isSelected: _value == PaymentMethod.cod,
-                onTap: () {
-                  setState(() {
-                    _value = PaymentMethod.cod;
-                  });
-
-                  widget.onChanged(PaymentMethod.cod);
-                },
+            if (_hasCod) ...[
+              Expanded(
+                child: _PaymentCard(
+                  icon: Icons.payments_outlined,
+                  label: 'À la livraison',
+                  isSelected: _value == PaymentMethod.cod,
+                  onTap: () {
+                    setState(() {
+                      _value = PaymentMethod.cod;
+                    });
+                    widget.onChanged(PaymentMethod.cod);
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: _PaymentCard(
-                icon: Icons.credit_card_rounded,
-                label: 'Carte Bancaire',
-                isSelected: _value == PaymentMethod.online,
-                onTap: () {
-                  setState(() {
-                    _value = PaymentMethod.online;
-                  });
-
-                  widget.onChanged(PaymentMethod.online);
-                },
+            ],
+            if (_hasCod && _hasOnline) const SizedBox(width: 14),
+            if (_hasOnline) ...[
+              Expanded(
+                child: _PaymentCard(
+                  icon: Icons.credit_card_rounded,
+                  label: 'Carte Bancaire',
+                  isSelected: _value == PaymentMethod.online,
+                  onTap: () {
+                    setState(() {
+                      _value = PaymentMethod.online;
+                    });
+                    widget.onChanged(PaymentMethod.online);
+                  },
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ],

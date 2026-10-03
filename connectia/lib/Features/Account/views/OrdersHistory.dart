@@ -1,20 +1,16 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Features/Account/Widgets/Orders%20History/OrderCard.dart';
 import 'package:connectia/Features/Account/Widgets/Orders%20History/OrderFilterTabs.dart';
 import 'package:connectia/Features/Account/Widgets/Orders%20History/OrderHistoryEmptyState.dart';
-import 'package:connectia/Features/Account/data/Models/OrderModel.dart';
+import 'package:connectia/Features/Account/data/Models/OrderListItem.dart';
+import 'package:connectia/Features/Cart/data/OrderRepo.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 /// Page "Historique des commandes".
-///
-/// TODO: `orders` est injecté depuis l'extérieur pour l'instant — brancher
-/// sur le vrai service (ex: OrdersService.fetch()) une fois l'API dispo.
-/// `_demoOrders` sert de données de démo en attendant — à retirer une fois
-/// la vraie source branchée.
 class Ordershistory extends StatefulWidget {
-  final List<OrderModel> orders;
-
-  const Ordershistory({super.key, this.orders = const []});
+  const Ordershistory({super.key});
 
   @override
   State<Ordershistory> createState() => _OrdershistoryState();
@@ -23,72 +19,103 @@ class Ordershistory extends StatefulWidget {
 class _OrdershistoryState extends State<Ordershistory> {
   OrderFilter _selectedFilter = OrderFilter.all;
 
-  late final List<OrderModel> _allOrders =
-      widget.orders.isNotEmpty ? widget.orders : _demoOrders;
+  List<OrderListItem> _orders = [];
+  bool _isLoading = true;
+  String? _error;
 
-  // ── Données de démo ──────────────────────────────────────────
-  // TODO: à retirer une fois branché sur la vraie source (API/provider).
-  static final List<OrderModel> _demoOrders = [
-    OrderModel(
-      id: 'CMD-20458',
-      createdDate: DateTime(2026, 7, 22),
-      status: OrderStatus.shipped,
-      productName: 'Lumix G-Pro X1',
-      productImageUrl: 'https://picsum.photos/seed/lumixgprox1/400/400',
-      itemCount: 1,
-      totalPrice: 1499,
-      paymentMethod: PaymentMethod.card,
-      livreurName: 'Hamza M.',
-      trackingNumber: 'TRK-99218',
-    ),
-    OrderModel(
-      id: 'CMD-20392',
-      createdDate: DateTime(2026, 7, 20),
-      status: OrderStatus.preparing,
-      productName: 'AirPods Pro',
-      productImageUrl: 'https://picsum.photos/seed/airpodspro/400/400',
-      itemCount: 1,
-      totalPrice: 2100,
-      paymentMethod: PaymentMethod.cashOnDelivery,
-      estimatedDeliveryDate: DateTime(2026, 7, 24),
-    ),
-    OrderModel(
-      id: 'CMD-20150',
-      createdDate: DateTime(2026, 7, 15),
-      status: OrderStatus.delivered,
-      productName: 'iPhone 15 Pro',
-      productImageUrl: 'https://picsum.photos/seed/iphone15pro/400/400',
-      itemCount: 1,
-      totalPrice: 12500,
-      paymentMethod: PaymentMethod.card,
-      ville: 'Casablanca',
-    ),
-  ];
+  // Pagination
+  int _currentPage = 1;
+  int _lastPage = 1;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
-  List<OrderModel> get _filteredOrders {
+  static const int _pageSize = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrders(reset: true);
+  }
+
+  String? get _apiStatusParam {
     switch (_selectedFilter) {
       case OrderFilter.all:
-        return _allOrders;
+        return null;
       case OrderFilter.inProgress:
-        return _allOrders
-            .where(
-              (o) =>
-                  o.status == OrderStatus.pending ||
-                  o.status == OrderStatus.preparing ||
-                  o.status == OrderStatus.shipped,
-            )
-            .toList();
+        return null; // API doesn't have "inProgress", fetch all and filter client-side
       case OrderFilter.delivered:
-        return _allOrders
-            .where((o) => o.status == OrderStatus.delivered)
-            .toList();
+        return 'DELIVERED';
     }
+  }
+
+  Future<void> _fetchOrders({bool reset = false}) async {
+    if (!mounted) return;
+
+    if (reset) {
+      _currentPage = 1;
+      _hasMore = true;
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    final result = await locator<OrderRepo>().getOrders(
+      status: _apiStatusParam,
+      page: _currentPage,
+      perPage: _pageSize,
+    );
+
+    if (!mounted) return;
+
+    result.fold(
+      (failure) {
+        setState(() {
+          _error = failure.displayMessage;
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      },
+      (response) {
+        setState(() {
+          if (reset) {
+            _orders = response.orders;
+          } else {
+            _orders = [..._orders, ...response.orders];
+          }
+          _lastPage = response.meta.lastPage;
+          _hasMore = _currentPage < _lastPage;
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      },
+    );
+  }
+
+  void _loadMore() {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    _currentPage++;
+    _fetchOrders();
+  }
+
+  void _onFilterChanged(OrderFilter filter) {
+    if (filter == _selectedFilter) return;
+    setState(() => _selectedFilter = filter);
+    _fetchOrders(reset: true);
+  }
+
+  List<OrderListItem> get _filteredOrders {
+    if (_selectedFilter != OrderFilter.inProgress) return _orders;
+    // Client-side filter for "in progress" (PENDING + PREPARING + SHIPPED)
+    return _orders.where((o) {
+      final code = o.statusCode.toUpperCase();
+      return code == 'PENDING' || code == 'PREPARING' || code == 'SHIPPED';
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredOrders;
-
     return Scaffold(
       backgroundColor: AppColors.background(context),
       appBar: AppBar(
@@ -112,28 +139,104 @@ class _OrdershistoryState extends State<Ordershistory> {
               alignment: Alignment.centerLeft,
               child: OrderFilterTabs(
                 selected: _selectedFilter,
-                onChanged: (filter) => setState(() => _selectedFilter = filter),
+                onChanged: _onFilterChanged,
               ),
             ),
           ),
           Expanded(
-            child: filtered.isEmpty
-                ? const OrderHistoryEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final order = filtered[index];
-                      return OrderCard(
-                        order: order,
-                        onTap: () {
-                          // TODO: naviguer vers OrderDetailsPage.
-                        },
-                      );
-                    },
-                  ),
+            child: _buildBody(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) return _buildShimmer();
+    if (_error != null) return _buildError();
+    if (_orders.isEmpty) return const OrderHistoryEmptyState();
+    return _buildOrderList();
+  }
+
+  Widget _buildOrderList() {
+    final filtered = _filteredOrders;
+    return RefreshIndicator(
+      onRefresh: () => _fetchOrders(reset: true),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        itemCount: filtered.length + (_hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == filtered.length) {
+            // Load more indicator
+            if (_isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              );
+            }
+            // Trigger load more on last item
+            WidgetsBinding.instance.addPostFrameCallback((_) => _loadMore());
+            return const SizedBox.shrink();
+          }
+          final order = filtered[index];
+          return OrderCard(
+            order: order,
+            onTap: () {
+              // TODO: naviguer vers OrderDetailsPage.
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.softBg(context),
+      highlightColor: AppColors.surface(context),
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        itemCount: 4,
+        itemBuilder: (_, __) => Container(
+          height: 160,
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppColors.secondary(context)),
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.secondary(context)),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => _fetchOrders(reset: true),
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
       ),
     );
   }

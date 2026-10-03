@@ -1,11 +1,15 @@
 import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/shared/Models/BrandModel.dart';
 import 'package:connectia/Core/shared/Views/BrandInfoPage.dart';
+import 'package:connectia/Core/shared/Views/VendorProfilePage.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/PrivacyPolicyScreen.dart';
 import 'package:connectia/Core/widgets/Terms%20and%20policies/TermsOfUseScreen.dart';
 import 'package:connectia/Features/Account/views/AboutPage.dart';
 import 'package:connectia/Features/Account/views/AddressesView.dart';
+import 'package:connectia/Features/Account/data/AddressesCubit.dart';
+import 'package:connectia/Features/Account/Widgets/address/AddressDetailPage.dart';
+import 'package:connectia/Features/Account/Widgets/address/AddAddressPage.dart';
 import 'package:connectia/Features/Account/views/HelpCenterPage.dart';
 import 'package:connectia/Features/Account/views/OrdersHistory.dart';
 import 'package:connectia/Features/Account/views/PersonalInformationsView.dart';
@@ -16,8 +20,11 @@ import 'package:connectia/Features/Account/views/WishLists.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ForgotPasswordEmailScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/ResetPasswordScreen.dart';
 import 'package:connectia/Features/Forgotpassword/presentation/Views/VerifyResetCodeScreen.dart';
-import 'package:connectia/Features/Home/data/Models/ProductModel.dart';
+import 'package:connectia/Features/Cart/Views/CheckoutPage.dart';
+import 'package:connectia/Features/Cart/data/Cubits/CartCubit.dart';
 import 'package:connectia/Features/Home/Views/ProductDetailsPage.dart';
+import 'package:connectia/Features/Home/Views/ProductLoadMorePage.dart';
+import 'package:connectia/Features/Home/data/ProductRepo.dart';
 import 'package:connectia/Features/Login/Login.dart';
 import 'package:connectia/Features/Notifications/presentation/View/NotificationsPage.dart';
 import 'package:connectia/Features/Onboarding/Views/IntroductionView.dart';
@@ -26,6 +33,7 @@ import 'package:connectia/Features/Search/Views/SearchResultsPage.dart';
 import 'package:connectia/Features/Search/Views/SearchTypingSuggestions.dart';
 import 'package:connectia/Features/main/views/mainPage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class CustomNavigator {
@@ -119,7 +127,17 @@ class CustomNavigator {
       ),
       GoRoute(
         path: '/Addressesview',
-        builder: (context, state) => const Addressesview(),
+        builder: (context, state) => BlocProvider(
+          create: (_) => AddressesCubit(),
+          child: const Addressesview(),
+        ),
+      ),
+      GoRoute(
+        path: '/AddressDetailPage',
+        builder: (context, state) {
+          final addressId = state.extra as int;
+          return AddressDetailPage(addressId: addressId);
+        },
       ),
       GoRoute(
         path: '/Securitysetting',
@@ -139,13 +157,17 @@ class CustomNavigator {
       GoRoute(
         path: '/ProductDetailsPage',
         builder: (context, state) {
-          final product = state.extra as ProductModel?;
-          if (product == null) {
+          final params = state.extra as ProductDetailParams?;
+          if (params == null) {
             return const Scaffold(
               body: Center(child: Text('Produit introuvable')),
             );
           }
-          return ProductDetailsPage(product: product);
+          return ProductDetailsPage(
+            productId: params.productId,
+            searchTerm: params.searchTerm,
+            fromSearch: params.fromSearch,
+          );
         },
       ),
       GoRoute(
@@ -158,6 +180,21 @@ class CustomNavigator {
             );
           }
           return BrandInfoPage(brand: brand);
+        },
+      ),
+      GoRoute(
+        path: '/VendorProfilePage',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          if (extra == null) {
+            return const Scaffold(
+              body: Center(child: Text('Vendeur introuvable')),
+            );
+          }
+          return VendorProfilePage(
+            vendorProfileId: extra['vendorProfileId'] as int,
+            storeName: extra['storeName'] as String? ?? '',
+          );
         },
       ),
        GoRoute(
@@ -176,6 +213,38 @@ class CustomNavigator {
        GoRoute(
         path: '/NotificationsPage',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/ProductLoadMorePage',
+        builder: (context, state) {
+          final params = state.extra as LoadMoreParams?;
+          if (params == null) {
+            return const Scaffold(
+              body: Center(child: Text('Section introuvable')),
+            );
+          }
+          return ProductLoadMorePage(
+            endpoint: params.endpoint,
+            categoryId: params.categoryId,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/checkout',
+        builder: (context, state) => MultiBlocProvider(
+          providers: [
+            BlocProvider(create: (_) => AddressesCubit()),
+            BlocProvider(create: (_) => CartCubit()..fetchCart()),
+          ],
+          child: const CheckoutPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/AddAddressPage',
+        builder: (context, state) => BlocProvider(
+          create: (_) => AddressesCubit(),
+          child: const AddAddressPage(),
+        ),
       ),
     ],
   );
@@ -217,6 +286,10 @@ class CustomNavigator {
     await router.push('/Addressesview');
   }
 
+  static Future navigateToAddressDetailPage(int addressId) async {
+    await router.push('/AddressDetailPage', extra: addressId);
+  }
+
   static Future navigateToSecuritysetting() async {
     await router.push('/Securitysetting');
   }
@@ -231,13 +304,38 @@ class CustomNavigator {
     );
   }
 
-  static Future navigateProductDetailsPage(ProductModel product) async {
-    await router.push('/ProductDetailsPage', extra: product);
+  static Future navigateProductDetailsPage(
+    String productId, {
+    String searchTerm = '',
+    bool fromSearch = false,
+  }) async {
+    await router.push(
+      '/ProductDetailsPage',
+      extra: ProductDetailParams(
+        productId: productId,
+        searchTerm: searchTerm,
+        fromSearch: fromSearch,
+      ),
+    );
   }
 
   static Future navigateBrandInfoPage(BrandModel brand) async {
     await router.push('/BrandInfoPage', extra: brand);
   }
+
+  static Future navigateVendorProfilePage({
+    required int vendorProfileId,
+    required String storeName,
+  }) async {
+    await router.push(
+      '/VendorProfilePage',
+      extra: {
+        'vendorProfileId': vendorProfileId,
+        'storeName': storeName,
+      },
+    );
+  }
+
   static Future navigateWishlistsPage( ) async {
     await router.push('/Wishlists');
   }
@@ -250,7 +348,35 @@ class CustomNavigator {
    static Future navigateNotificationsPagePage( ) async {
     await router.push('/NotificationsPage');
   }
+
+  static Future navigateProductLoadMorePage(
+    LoadMoreEndpoint endpoint, {
+    int? categoryId,
+  }) async {
+    await router.push(
+      '/ProductLoadMorePage',
+      extra: LoadMoreParams(endpoint: endpoint, categoryId: categoryId),
+    );
+  }
+
   // ── Methods with context ──────────────────────────────────────
   // static void navigateToMainPage(BuildContext context) =>
   //     context.go('/mainPage');
+}
+
+class ProductDetailParams {
+  final String productId;
+  final String searchTerm;
+  final bool fromSearch;
+  const ProductDetailParams({
+    required this.productId,
+    this.searchTerm = '',
+    this.fromSearch = false,
+  });
+}
+
+class LoadMoreParams {
+  final LoadMoreEndpoint endpoint;
+  final int? categoryId;
+  const LoadMoreParams({required this.endpoint, this.categoryId});
 }

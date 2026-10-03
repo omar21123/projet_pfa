@@ -1,10 +1,13 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
 import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/api/AuthRepo.dart';
+import 'package:connectia/Core/shared/CurrentUser.dart';
 import 'package:connectia/Core/storage/AppPreferencesService.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomIconButton.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Core/widgets/Texts/CustomTextFormField.dart';
+import 'package:connectia/Features/Login/data/LoginRequestModel.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,7 +23,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool isLoading = false;
+  bool _isLoggingIn = false;
 
   late final AnimationController _entranceController;
   late final Animation<double> _fadeIn;
@@ -56,43 +59,48 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _handleLogin() async {
-    // 1. Validate email/password rules first
-    // if (!(_formKey.currentState?.validate() ?? false)) {
-    //   return;
-    // }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() => isLoading = true);
+    setState(() => _isLoggingIn = true);
 
     try {
-      // ─────────────────────────────────────────────
-      // 👉 CALL YOUR API HERE
-      // Example:
-      // final result = await authRepository.login(
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      // );
-      //
-      // if (result.isSuccess) {
-      //   if (mounted) CustomNavigator.safeNavigateToMainPage();
-      locator<AppPreferencesService>().setHasSeenLogin();
-      CustomNavigator.safeNavigateToMainPage();
+      final request = LoginRequestModel(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-      // } else {
-      //   if (mounted) {
-      //     ScaffoldMessenger.of(context).showSnackBar(
-      //       SnackBar(content: Text(result.errorMessage)),
-      //     );
-      //   }
-      // }
-      // ─────────────────────────────────────────────
-    } catch (e) {
+      final result = await locator<AuthRepo>().login(request: request);
+
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.redAccent,
+              content: Text(failure.displayMessage),
+            ),
+          );
+        },
+        (user) {
+          locator<CurrentUser>().set(user);
+          locator<AppPreferencesService>().setHasSeenLogin();
+          CustomNavigator.safeNavigateToMainPage();
+        },
+      );
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Une erreur est survenue: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: const Text('Une erreur inattendue est survenue.'),
+          ),
+        );
       }
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoggingIn = false);
     }
   }
 
@@ -216,7 +224,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: isLoading
+                      onPressed: _isLoggingIn
                           ? null
                           : () => context.push('/forgot-password'),
 
@@ -236,7 +244,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                     height: 54,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
-                      child: isLoading
+                      child: _isLoggingIn
                           ? Container(
                               key: const ValueKey('loading'),
                               decoration: BoxDecoration(
@@ -297,7 +305,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         child: CustomIconButton(
                           iconPath: 'assets/images/google.svg',
                           title: 'Google',
-                          onPressed: isLoading
+                          onPressed: _isLoggingIn
                               ? null
                               : () {
                                   // Handle Google login logic here
@@ -309,7 +317,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         child: CustomIconButton(
                           iconPath: 'assets/images/facebook.svg',
                           title: 'Facebook',
-                          onPressed: isLoading
+                          onPressed: _isLoggingIn
                               ? null
                               : () {
                                   // Handle Facebook login logic here
@@ -321,7 +329,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         child: CustomIconButton(
                           iconPath: 'assets/images/apple.svg',
                           title: 'Apple',
-                          onPressed: isLoading
+                          onPressed: _isLoggingIn
                               ? null
                               : () {
                                   // Handle Apple login logic here
@@ -343,7 +351,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         ),
                       ),
                       TextButton(
-                        onPressed: isLoading
+                        onPressed: _isLoggingIn
                             ? null
                             : () async {
                                 await CustomNavigator.navigateToRegister();

@@ -1,77 +1,48 @@
-import 'dart:async';
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
 import 'package:connectia/Core/widgets/Texts/TextSearchBar.dart';
+import 'package:connectia/Features/Search/data/SearchRepo.dart';
+import 'package:connectia/Features/Search/data/search_cubit.dart';
 import 'package:connectia/Features/Search/widgets/SuggestionCard.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 
-class Searchtypingsuggestions extends StatefulWidget {
+class Searchtypingsuggestions extends StatelessWidget {
   const Searchtypingsuggestions({super.key});
 
   @override
-  State<Searchtypingsuggestions> createState() =>
-      _SearchtypingsuggestionsState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => SearchCubit(repo: locator<SearchRepo>()),
+      child: const _SearchView(),
+    );
+  }
 }
 
-class _SearchtypingsuggestionsState extends State<Searchtypingsuggestions> {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  Timer? _debounce;
+class _SearchView extends StatefulWidget {
+  const _SearchView();
 
-  // Demo data only — à remplacer plus tard par un vrai historique /
-  // appel API (produits, marques, catégories...).
-  final List<String> _allSuggestions = const [
-    'Robe d\'été fleurie',
-    'Baskets Nike Air Max',
-    'Sac à main cuir',
-    'T-shirt Zara homme',
-    'Montre connectée',
-    'Parfum Chanel',
-    'Chaussures de sport',
-    'Veste en jean',
-  ];
+  @override
+  State<_SearchView> createState() => _SearchViewState();
+}
 
-  // Ce qui est affiché à l'écran : historique complet si champ vide,
-  // résultats filtrés sinon.
-  List<String> _displayedResults = const [];
+class _SearchViewState extends State<_SearchView> {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    _displayedResults = _allSuggestions;
+    context.read<SearchCubit>().fetchHistory();
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _onQueryChanged(String query) {
-    _debounce?.cancel();
-    setState(() {}); // pour rafraîchir le bouton clear immédiatement
-
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      _performSearch(query);
-    });
-  }
-
-  void _performSearch(String query) {
-    if (!mounted) return;
-
-    setState(() {
-      if (query.trim().isEmpty) {
-        _displayedResults = _allSuggestions;
-      } else {
-        _displayedResults = _allSuggestions
-            .where((s) => s.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-        // TODO: remplacer ce filtre local par un vrai appel API
-        // (produits/marques/catégories) une fois le backend branché.
-      }
-    });
   }
 
   @override
@@ -87,23 +58,52 @@ class _SearchtypingsuggestionsState extends State<Searchtypingsuggestions> {
           controller: _controller,
           focusNode: _focusNode,
           autofocus: true,
-          onChanged: _onQueryChanged,
+          onChanged: (q) => context.read<SearchCubit>().onQueryChanged(q),
           onClear: () {
             _controller.clear();
-            _onQueryChanged('');
+            context.read<SearchCubit>().onQueryChanged('');
           },
         ),
       ),
-      body: _displayedResults.isEmpty
-          ? Center(
+      body: BlocBuilder<SearchCubit, SearchState>(
+        builder: (context, state) {
+          if (state is SearchLoading) {
+            return _buildShimmer(context);
+          }
+
+          if (state is SearchError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 40, color: AppColors.secondary(context)),
+                    const SizedBox(height: 12),
+                    Text(
+                      state.message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.secondary(context)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          if (state is SearchEmpty) {
+            return Center(
               child: Text(
-                'Aucun résultat trouvé',
+                'Aucun résultat pour "${state.query}"',
                 style: TextStyle(color: AppColors.secondary(context)),
               ),
-            )
-          : ListView.separated(
+            );
+          }
+
+          if (state is SearchSuggestionsLoaded) {
+            return ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _displayedResults.length,
+              itemCount: state.suggestions.length,
               separatorBuilder: (_, __) => Divider(
                 height: 1,
                 indent: 20,
@@ -111,18 +111,133 @@ class _SearchtypingsuggestionsState extends State<Searchtypingsuggestions> {
                 color: AppColors.secondary(context).withValues(alpha: 0.15),
               ),
               itemBuilder: (context, index) {
-                final suggestion = _displayedResults[index];
+                final suggestion = state.suggestions[index];
                 return SuggestionCard(
-                  isHistory: _controller.text.isEmpty,
-                  text: suggestion,
+                  isHistory: false,
+                  text: suggestion.text,
                   onTap: () {
-                    _controller.text = suggestion;
-                    _performSearch(suggestion);
-                    CustomNavigator.navigateSearchResultsPage(suggestion);
+                    _controller.text = suggestion.text;
+                    CustomNavigator.navigateSearchResultsPage(suggestion.text);
                   },
                 );
               },
+            );
+          }
+
+          if (state is SearchHistoryLoaded) {
+            return _buildHistory(state, context);
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmer(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppColors.softBg(context),
+      highlightColor: AppColors.surface(context),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: 6,
+        separatorBuilder: (_, __) => const SizedBox(height: 0),
+        itemBuilder: (_, __) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistory(SearchHistoryLoaded state, BuildContext context) {
+    final history = state.history;
+    final hasLatest = history.latest.isNotEmpty;
+    final hasFamous = history.famous.isNotEmpty;
+
+    if (!hasLatest && !hasFamous) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded,
+                size: 40, color: AppColors.secondary(context)),
+            const SizedBox(height: 12),
+            Text(
+              'Aucun historique de recherche',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.secondary(context),
+              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        if (hasLatest) ...[
+          _buildSectionHeader(context, 'Recherches récentes'),
+          ...history.latest.map((item) => SuggestionCard(
+                isHistory: true,
+                text: item.text,
+                onTap: () {
+                  _controller.text = item.text;
+                  CustomNavigator.navigateSearchResultsPage(item.text);
+                },
+              )),
+        ],
+        if (hasFamous) ...[
+          if (hasLatest) const SizedBox(height: 8),
+          _buildSectionHeader(context, 'Recherches populaires'),
+          ...history.famous.map((item) => SuggestionCard(
+                isHistory: true,
+                text: item.text,
+                onTap: () {
+                  _controller.text = item.text;
+                  CustomNavigator.navigateSearchResultsPage(item.text);
+                },
+              )),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppColors.secondary(context),
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }

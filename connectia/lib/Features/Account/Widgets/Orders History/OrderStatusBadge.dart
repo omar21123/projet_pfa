@@ -1,43 +1,58 @@
-import 'package:connectia/Features/Account/data/Models/OrderModel.dart';
 import 'package:flutter/material.dart';
 
 /// Badge de statut coloré.
-///
-/// TODO: ces couleurs sont codées en dur ici plutôt que dans AppColors
-/// car ce sont des couleurs "sémantiques de statut" (pas de thème clair/
-/// sombre à gérer, elles restent fixes). Si AppColors gère déjà ce genre
-/// de palette ailleurs, les migrer là-bas pour centraliser.
 class OrderStatusBadge extends StatelessWidget {
-  final OrderStatus status;
-  const OrderStatusBadge({super.key, required this.status});
+  final String statusCode;
+  const OrderStatusBadge({super.key, required this.statusCode});
 
   Color _backgroundColor() {
-    switch (status) {
-      case OrderStatus.pending:
+    switch (statusCode.toUpperCase()) {
+      case 'PENDING':
         return const Color(0xFFFFF3CD);
-      case OrderStatus.preparing:
+      case 'PREPARING':
         return const Color(0xFFD6ECFB);
-      case OrderStatus.shipped:
+      case 'SHIPPED':
         return const Color(0xFFD3E4FD);
-      case OrderStatus.delivered:
+      case 'DELIVERED':
         return const Color(0xFFFCE3D0);
-      case OrderStatus.cancelled:
+      case 'CANCELLED':
         return const Color(0xFFFBD5D5);
+      default:
+        return const Color(0xFFF0F0F0);
     }
   }
 
   Color _foregroundColor() {
-    switch (status) {
-      case OrderStatus.pending:
+    switch (statusCode.toUpperCase()) {
+      case 'PENDING':
         return const Color(0xFF8A6D1E);
-      case OrderStatus.preparing:
+      case 'PREPARING':
         return const Color(0xFF1D5B8A);
-      case OrderStatus.shipped:
+      case 'SHIPPED':
         return const Color(0xFF1E4FA0);
-      case OrderStatus.delivered:
+      case 'DELIVERED':
         return const Color(0xFFB05A1E);
-      case OrderStatus.cancelled:
+      case 'CANCELLED':
         return const Color(0xFFA32626);
+      default:
+        return const Color(0xFF666666);
+    }
+  }
+
+  String get _label {
+    switch (statusCode.toUpperCase()) {
+      case 'PENDING':
+        return 'En attente';
+      case 'PREPARING':
+        return 'En préparation';
+      case 'SHIPPED':
+        return 'Expédiée';
+      case 'DELIVERED':
+        return 'Livrée';
+      case 'CANCELLED':
+        return 'Annulée';
+      default:
+        return statusCode;
     }
   }
 
@@ -50,7 +65,7 @@ class OrderStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        status.label,
+        _label,
         style: TextStyle(
           color: _foregroundColor(),
           fontWeight: FontWeight.w600,

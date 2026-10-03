@@ -1,18 +1,66 @@
 import 'package:connectia/Core/Constants/AppColors.dart';
+import 'package:connectia/Core/DI/locator.dart';
 import 'package:connectia/Core/Navigations/CustomNavigator.dart';
+import 'package:connectia/Core/api/AuthRepo.dart';
+import 'package:connectia/Core/shared/CurrentUser.dart';
 import 'package:connectia/Core/widgets/Buttons/CustomNavigationButton.dart';
 import 'package:connectia/Features/Account/Widgets/CustomerProfileSliver.dart';
 import 'package:connectia/Features/Account/Widgets/MenuTileCard.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pro_dialog/pro_dialog.dart';
 
-class Accountview extends StatelessWidget {
+class Accountview extends StatefulWidget {
   const Accountview({super.key});
+
+  @override
+  State<Accountview> createState() => _AccountviewState();
+}
+
+class _AccountviewState extends State<Accountview> {
   final _currentPadding = const EdgeInsets.symmetric(
     horizontal: 16,
     vertical: 8,
   );
   final _itemsPAdding = const EdgeInsets.fromLTRB(16, 5, 16, 5);
+
+  bool _isLoggingOut = false;
+
+  void _handleLogout() async {
+    Navigator.pop(context); // close the confirmation dialog
+
+    setState(() => _isLoggingOut = true);
+
+    try {
+      final result = await locator<AuthRepo>().logout();
+
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.redAccent,
+              content: Text(failure.displayMessage),
+            ),
+          );
+        },
+        (_) {
+          locator<CurrentUser>().clear();
+          context.go('/login');
+        },
+      );
+    } catch (_) {
+      if (mounted) {
+        locator<CurrentUser>().clear();
+        context.go('/login');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
@@ -209,26 +257,28 @@ class Accountview extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
             child: Customnavigationbutton(
               backgroundColor: AppColors.logoutBg(context),
-              onPressed: () {
-                showProDialog(
-                  context,
-                  type: DialogType.question,
-                  title: 'Se déconnecter',
-                  description:
-                      'Voulez-vous vraiment vous déconnecter de votre compte ?',
-                  buttons: [
-                    DialogButton(
-                      text: 'Annuler',
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    DialogButton(
-                      text: 'Se déconnecter',
-                      isPrimary: true,
-                      onPressed: () {},
-                    ),
-                  ],
-                );
-              },
+              onPressed: _isLoggingOut
+                  ? null
+                  : () {
+                      showProDialog(
+                        context,
+                        type: DialogType.question,
+                        title: 'Se déconnecter',
+                        description:
+                            'Voulez-vous vraiment vous déconnecter de votre compte ?',
+                        buttons: [
+                          DialogButton(
+                            text: 'Annuler',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          DialogButton(
+                            text: 'Se déconnecter',
+                            isPrimary: true,
+                            onPressed: () => _handleLogout(),
+                          ),
+                        ],
+                      );
+                    },
               text: 'Se déconnecter',
               textColor: AppColors.logout(context),
             ),
